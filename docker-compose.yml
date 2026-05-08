@@ -56,6 +56,7 @@ services:
             - SINGLE_USER_CREDENTIALS_PASSWORD=prova123456789prova
         volumes:
             - ./data/raw:/opt/nifi/nifi-current/data
+            - ./nifi/extensions:/opt/nifi/nifi-current/extensions
 
     # Processing Layer - Spark
     spark-master:
