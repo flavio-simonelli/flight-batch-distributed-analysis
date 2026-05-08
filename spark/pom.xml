@@ -13,28 +13,29 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spark.version>4.1.1</spark.version>
+        <spark.version>3.5.1</spark.version>
+        <scala.compat.version>2.13</scala.compat.version>
     </properties>
 
     <dependencies>
         <!-- Source: https://mvnrepository.com/artifact/org.apache.spark/spark-core -->
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.13</artifactId>
+            <artifactId>spark-core_${scala.compat.version}</artifactId>
             <version>${spark.version}</version>
             <scope>compile</scope> <!-- compile perchè è necessario per la compilazione del codice, ma non va incluso nel jar finale (il cluster ha già Spark installato) -->
         </dependency>
         <!-- Source: https://mvnrepository.com/artifact/org.apache.spark/spark-sql -->
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.13</artifactId>
+            <artifactId>spark-sql_${scala.compat.version}</artifactId>
             <version>${spark.version}</version>
             <scope>provided</scope> <!-- provided perchè è già presente sul cluster, non va inclusa nel jar finale -->
         </dependency>
         <!-- Source: https://mvnrepository.com/artifact/org.apache.spark/spark-mllib -->
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-mllib_2.13</artifactId>
+            <artifactId>spark-mllib_${scala.compat.version}</artifactId>
             <version>${spark.version}</version>
             <scope>provided</scope> <!-- provided perchè è già presente sul cluster, non va inclusa nel jar finale -->
         </dependency>
