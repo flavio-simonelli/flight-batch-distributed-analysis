@@ -75,4 +75,51 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>spark-submit</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.1</version>
+                        <executions>
+                            <execution>
+                                <id>docker-upload</id>
+                                <phase>package</phase> <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <executable>docker</executable>
+                                    <arguments>
+                                        <argument>cp</argument>
+                                        <argument>${project.build.directory}/${project.build.finalName}.jar</argument>
+                                        <argument>spark-master:/opt/spark/scripts/</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>run-submit</id>
+                                <phase>package</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <executable>docker</executable>
+                                    <arguments>
+                                        <argument>exec</argument>
+                                        <argument>spark-master</argument>
+                                        <argument>/opt/spark/bin/spark-submit</argument>
+                                        <argument>--class</argument>
+                                        <argument>it.uniroma2.sae.HelloSpark</argument>
+                                        <argument>--master</argument>
+                                        <argument>spark://spark-master:7077</argument>
+                                        <argument>/opt/spark/scripts/${project.build.finalName}.jar</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
 </project>
