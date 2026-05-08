@@ -7,11 +7,71 @@
     <groupId>it.uniroma2.sae</groupId>
     <artifactId>flight-analysis-spark</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
 
     <properties>
-        <maven.compiler.source>26</maven.compiler.source>
-        <maven.compiler.target>26</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spark.version>4.1.1</spark.version>
     </properties>
+
+    <dependencies>
+        <!-- Source: https://mvnrepository.com/artifact/org.apache.spark/spark-core -->
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-core_2.13</artifactId>
+            <version>${spark.version}</version>
+            <scope>compile</scope> <!-- compile perchè è necessario per la compilazione del codice, ma non va incluso nel jar finale (il cluster ha già Spark installato) -->
+        </dependency>
+        <!-- Source: https://mvnrepository.com/artifact/org.apache.spark/spark-sql -->
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_2.13</artifactId>
+            <version>${spark.version}</version>
+            <scope>provided</scope> <!-- provided perchè è già presente sul cluster, non va inclusa nel jar finale -->
+        </dependency>
+        <!-- Source: https://mvnrepository.com/artifact/org.apache.spark/spark-mllib -->
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-mllib_2.13</artifactId>
+            <version>${spark.version}</version>
+            <scope>provided</scope> <!-- provided perchè è già presente sul cluster, non va inclusa nel jar finale -->
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- fat-jar per il submit sul cluster (inietta nel jar finale tutte le dipendenze necessarie)-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.2</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals><goal>shade</goal></goals>
+                        <configuration>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>it.uniroma2.sae.HelloSpark</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
