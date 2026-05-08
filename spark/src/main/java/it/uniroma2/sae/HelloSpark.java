@@ -10,16 +10,23 @@ import static org.apache.spark.sql.functions.*;
 public class HelloSpark {
 
     public static void main(String[] args) {
+
+        String hdfsUri = System.getenv("HDFS_URI");
+        if (hdfsUri == null) {
+            System.err.println("HDFS_URI environment variable is not set!");
+            System.exit(1);
+        }
+
         SparkSession spark = SparkSession.builder()
                 .appName("HelloSpark")
                 .master("spark://spark-master:7077")
-                .config("spark.hadoop.fs.defaultFS", "hdfs://master:54310")
+                .config("spark.hadoop.fs.defaultFS", hdfsUri)
                 .getOrCreate();
 
         spark.sparkContext().setLogLevel("WARN");
 
         // Read data from HDFS. Parquet files are self-describing, so Spark can infer the schema.
-        Dataset<Row> rawFlights = spark.read().parquet("hdfs://master:54310/data/conv/202501_T_ONTIME_REPORTING.parquet");
+        Dataset<Row> rawFlights = spark.read().parquet(hdfsUri + "/data/conv");
 
         // Adapt the raw data to the schema expected by the analysis logic
         Dataset<Row> flights = rawFlights
