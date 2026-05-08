@@ -4,11 +4,6 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
-import org.apache.spark.sql.types.StructType;
-
-import java.util.Arrays;
-import java.util.List;
 
 import static org.apache.spark.sql.functions.*;
 
@@ -17,26 +12,23 @@ public class HelloSpark {
     public static void main(String[] args) {
         SparkSession spark = SparkSession.builder()
                 .appName("HelloSpark")
+                .master("spark://spark-master:7077")
+                .config("spark.hadoop.fs.defaultFS", "hdfs://master:54310")
                 .getOrCreate();
 
         spark.sparkContext().setLogLevel("WARN");
 
-        StructType schema = DataTypes.createStructType(new StructField[]{
-                DataTypes.createStructField("flight_id", DataTypes.StringType, false),
-                DataTypes.createStructField("origin",    DataTypes.StringType, false),
-                DataTypes.createStructField("dest",      DataTypes.StringType, false),
-                DataTypes.createStructField("delay_min", DataTypes.IntegerType, false),
-        });
+        // Read data from HDFS. Parquet files are self-describing, so Spark can infer the schema.
+        Dataset<Row> rawFlights = spark.read().parquet("hdfs://master:54310/data/conv/202501_T_ONTIME_REPORTING.parquet");
 
-        List<Row> rows = Arrays.asList(
-                org.apache.spark.sql.RowFactory.create("AA001", "FCO", "JFK", 12),
-                org.apache.spark.sql.RowFactory.create("AZ202", "MXP", "LAX", 0),
-                org.apache.spark.sql.RowFactory.create("FR033", "CIA", "BCN", 45),
-                org.apache.spark.sql.RowFactory.create("LH044", "FRA", "ORD", 3),
-                org.apache.spark.sql.RowFactory.create("VY055", "BCN", "FCO", 120)
-        );
+        // Adapt the raw data to the schema expected by the analysis logic
+        Dataset<Row> flights = rawFlights
+                .withColumn("flight_id", concat(col("OP_UNIQUE_CARRIER"), lit("_"), col("OP_CARRIER_FL_NUM")))
+                .withColumn("origin", col("ORIGIN_AIRPORT_ID").cast(DataTypes.StringType))
+                .withColumn("dest", col("DEST_AIRPORT_ID").cast(DataTypes.StringType))
+                .withColumn("delay_min", col("ARR_DELAY").cast(DataTypes.IntegerType))
+                .select("flight_id", "origin", "dest", "delay_min");
 
-        Dataset<Row> flights = spark.createDataFrame(rows, schema);
 
         System.out.println("=== Dataset completo ===");
         flights.show();

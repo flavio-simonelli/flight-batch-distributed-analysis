@@ -33,9 +33,7 @@ services:
             - sae-net
         ports:
             - "9870:9870" # HDFS Web UI
-            - "9000:9000" # HDFS RPC NameNode
-        volumes:
-            - ./hadoop/config:/usr/local/hadoop/etc/hadoop
+            - "54310:54310" # HDFS RPC NameNode
         # this is needed to keep the container running
         tty: true
         stdin_open: true
