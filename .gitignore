@@ -1,3 +1,6 @@
+# Datasets
+data/conv
+
 # ========================
 # Maven / Java (spark/)
 # ========================
@@ -28,6 +31,7 @@ docker-compose.override.yml
 .DS_Store
 Thumbs.db
 .vscode/
+.idea/
 *.swp
 *.swo
 *~

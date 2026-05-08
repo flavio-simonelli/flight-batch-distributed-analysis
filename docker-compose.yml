@@ -1,10 +1,29 @@
 name: sky-analytics-engine
 
-networks:
-    sae-net:
-        driver: bridge
+# Base configuration for HDFS worker nodes
+x-hdfs-worker-base: &hdfs-worker-base
+    image: matnar/hadoop:3.3.2
+    networks:
+        - sae-net
+    tty: true
+    stdin_open: true
+    command: ["sh", "-c", "service ssh start; bash"]
+
+# Base configuration for Spark worker nodes
+x-spark-worker-base: &spark-worker-base
+    image: apache/spark:3.5.1
+    user: root
+    networks:
+        - sae-net
+    depends_on:
+        - spark-master
+    # Use absolute paths and point to the master service name
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    volumes:
+        - ./data:/opt/spark/data
 
 services:
+
     # Storage Layer - HDFS
     hdfs-master:
         image: matnar/hadoop:3.3.2
@@ -15,30 +34,22 @@ services:
         ports:
             - "9870:9870" # HDFS Web UI
             - "9000:9000" # HDFS RPC NameNode
+        volumes:
+            - ./hadoop/config:/usr/local/hadoop/etc/hadoop
         # this is needed to keep the container running
         tty: true
         stdin_open: true
         command: ["sh", "-c", "service ssh start; bash"]
 
-    hdfs-slave1:
-        image: matnar/hadoop:3.3.2
-        container_name: hdfs-slave1
-        hostname: slave1
-        networks:
-            - sae-net
-        tty: true
-        stdin_open: true
-        command: ["sh", "-c", "service ssh start; bash"]
+    hdfs-worker-1:
+        <<: *hdfs-worker-base
+        container_name: hdfs-worker-1
+        hostname: worker-1
 
-    hdfs-slave2:
-        image: matnar/hadoop:3.3.2
-        container_name: hdfs-slave2
-        hostname: slave2
-        networks:
-            - sae-net
-        tty: true
-        stdin_open: true
-        command: ["sh", "-c", "service ssh start; bash"]
+    hdfs-worker-2:
+        <<: *hdfs-worker-base
+        container_name: hdfs-worker-2
+        hostname: worker-2
 
     # Ingestion Layer - NiFi
     nifi:
@@ -56,7 +67,13 @@ services:
             - SINGLE_USER_CREDENTIALS_PASSWORD=prova123456789prova
         volumes:
             - ./data/raw:/opt/nifi/nifi-current/data
-            - ./nifi/extensions:/opt/nifi/nifi-current/extensions
+            - ./data/conv:/opt/nifi/nifi-current/res
+            - ./hadoop/config:/opt/nifi/nifi-current/conf/hadoop-config:ro
+            - ./nifi/extensions:/opt/nifi/nifi-current/nar_extensions
+        links:
+            - hdfs-master:master
+            - hdfs-worker-1:worker-1
+            - hdfs-worker-2:worker-2
 
     # Processing Layer - Spark
     spark-master:
@@ -75,19 +92,15 @@ services:
             - ./data:/opt/spark/data
             - ./spark:/opt/spark/scripts
     
-    spark-worker:
-        image: apache/spark:3.5.1
-        container_name: spark-worker
-        hostname: spark-worker
-        user: root
-        networks:
-            - sae-net
-        depends_on:
-            - spark-master
-        # Use absolute paths and point to the master service name
-        command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
-        volumes:
-            - ./data:/opt/spark/data
+    spark-worker-1:
+        <<: *spark-worker-base
+        container_name: spark-worker-1
+        hostname: spark-worker-1
+
+    spark-worker-2:
+        <<: *spark-worker-base
+        container_name: spark-worker-2
+        hostname: spark-worker-2
 
     # Visualization Layer - Redis + Grafana
     redis:
@@ -113,3 +126,6 @@ services:
         depends_on:
             - redis
 
+networks:
+    sae-net:
+        driver: bridge
