@@ -1,6 +1,6 @@
 package it.uniroma2.sae;
 
-import it.uniroma2.sae.config.AppConfig;
+import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.config.QueryType;
 import it.uniroma2.sae.query.ArrivalDelayRanking;
 import it.uniroma2.sae.query.HourlyDelayPercentiles;
@@ -16,7 +16,7 @@ public class FlightAnalysisApp {
     public static void main(String[] args) {
         try {
             // Load the configuration
-            AppConfig config = AppConfig.load(AppConfig.CONFIG_FILE);
+            ApplicationConfig config = ApplicationConfig.load(ApplicationConfig.CONFIG_FILE);
             QueryType queryToRun = config.getQueryToRun();
 
             if (queryToRun == null) {

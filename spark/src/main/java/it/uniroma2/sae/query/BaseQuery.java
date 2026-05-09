@@ -1,6 +1,6 @@
 package it.uniroma2.sae.query;
 
-import it.uniroma2.sae.config.AppConfig;
+import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.factory.FlightRepositoryFactory;
 import it.uniroma2.sae.model.RawFlight;
 import it.uniroma2.sae.repository.FlightRepository;
@@ -15,7 +15,7 @@ import org.apache.spark.sql.SparkSession;
  * 3. Loading the initial raw dataset using the target filename from configuration.
  * 4. Managing the SparkSession lifecycle (stopping it safely).
  * 
- * Subclasses only need to implement the {@link #runQuery(Dataset, AppConfig)} method
+ * Subclasses only need to implement the {@link #runQuery(Dataset, ApplicationConfig)} method
  * to focus strictly on the business logic and data transformations.
  */
 public abstract class BaseQuery {
@@ -26,7 +26,7 @@ public abstract class BaseQuery {
      *
      * @param config the application configuration loaded at startup
      */
-    public void execute(AppConfig config) {
+    public void execute(ApplicationConfig config) {
         SparkSession spark = null;
         try {
             spark = SparkSession.builder()
@@ -36,7 +36,8 @@ public abstract class BaseQuery {
 
             spark.sparkContext().setLogLevel("WARN");
 
-            FlightRepository repository = FlightRepositoryFactory.createInputRepository(config);
+            // Pass the SparkSession to the factory
+            FlightRepository repository = FlightRepositoryFactory.createInputRepository(config, spark);
             
             String datasetFilename = config.getDatasetFilename();
             if (datasetFilename == null || datasetFilename.isEmpty()) {
@@ -64,5 +65,5 @@ public abstract class BaseQuery {
      * @param flights the raw dataset loaded from the configured storage
      * @param config the application configuration
      */
-    protected abstract void runQuery(Dataset<RawFlight> flights, AppConfig config);
+    protected abstract void runQuery(Dataset<RawFlight> flights, ApplicationConfig config);
 }

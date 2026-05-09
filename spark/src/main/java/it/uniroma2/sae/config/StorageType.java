@@ -7,6 +7,9 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/*
+ * Enum defining the available storage types.
+ */
 public enum StorageType implements Serializable {
     @JsonProperty("hdfs")
     HDFS("hdfs"),

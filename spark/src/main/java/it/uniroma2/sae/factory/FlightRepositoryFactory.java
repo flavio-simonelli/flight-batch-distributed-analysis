@@ -1,6 +1,8 @@
 package it.uniroma2.sae.factory;
 
-import it.uniroma2.sae.config.AppConfig;
+import it.uniroma2.sae.config.ApplicationConfig;
+import it.uniroma2.sae.config.RemoteStorageConfig;
+import it.uniroma2.sae.config.StorageConfig;
 import it.uniroma2.sae.config.StorageType;
 import it.uniroma2.sae.repository.FlightRepository;
 import it.uniroma2.sae.repository.HdfsFlightRepository;
@@ -10,43 +12,40 @@ import org.apache.spark.sql.SparkSession;
 
 /**
  * Factory class to create instances of FlightRepository.
- * It uses the AppConfig to decide which implementation to instantiate.
+ * It uses the ApplicationConfig to decide which implementation to instantiate.
  */
 public class FlightRepositoryFactory {
 
     /**
      * Creates the input repository based on the provided configuration.
      *
-     * @param config the AppConfig object
+     * @param config the ApplicationConfig object
+     * @param spark the initialized SparkSession
      * @return an instance of FlightRepository
-     * @throws IllegalArgumentException if the storage type is not supported
+     * @throws IllegalArgumentException if the storage type is not supported or configuration is invalid
      */
-    public static FlightRepository createInputRepository(AppConfig config) {
-        AppConfig.StorageConfig inputConfig = config.getInput();
+    public static FlightRepository createInputRepository(ApplicationConfig config, SparkSession spark) {
+        StorageConfig inputConfig = config.getInput();
         StorageType inputType = inputConfig.getType();
         String inputPath = inputConfig.getPath();
-
-        SparkSession spark = SparkSession.builder().getOrCreate();
 
         switch (inputType) {
             case HDFS:
 
-                String hdfsUri = System.getenv("HDFS_URI");
-                if (hdfsUri == null) {
-                    System.err.println("Input type is HDFS, but HDFS_URI environment variable is not set!");
-                    System.exit(1);
+                RemoteStorageConfig hdfsConfig = (RemoteStorageConfig) inputConfig;
+                String hdfsUri = hdfsConfig.getUri();
+                if (hdfsUri == null || hdfsUri.isEmpty()) {
+                    throw new IllegalArgumentException("HDFS URI is not defined in config.yml for HDFS input type.");
                 }
-
                 return new HdfsFlightRepository(spark, hdfsUri, inputPath);
 
             case S3:
 
-                String s3Uri = System.getenv("S3_URI");
-                if (s3Uri == null) {
-                    System.err.println("Input type is S3, but S3_URI environment variable is not set!");
-                    System.exit(1);
+                RemoteStorageConfig s3Config = (RemoteStorageConfig) inputConfig;
+                String s3Uri = s3Config.getUri();
+                if (s3Uri == null || s3Uri.isEmpty()) {
+                    throw new IllegalArgumentException("S3 URI is not defined in config.yml for S3 input type.");
                 }
-                
                 return new S3FlightRepository(spark, s3Uri, inputPath);
 
             case LOCAL:

@@ -1,6 +1,6 @@
 package it.uniroma2.sae.query;
 
-import it.uniroma2.sae.config.AppConfig;
+import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.model.RawFlight;
 import org.apache.spark.sql.Dataset;
 
@@ -17,7 +17,7 @@ public class ArrivalDelayRanking extends BaseQuery {
      * @param config the application configuration
      */
     @Override
-    protected void runQuery(Dataset<RawFlight> flights, AppConfig config) {
+    protected void runQuery(Dataset<RawFlight> flights, ApplicationConfig config) {
         // TODO: Implement Query 2 logic here based on the project requirements
         System.out.println("Executing Query 2 logic...");
     }

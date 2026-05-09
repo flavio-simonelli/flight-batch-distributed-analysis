@@ -1,6 +1,6 @@
 package it.uniroma2.sae.query;
 
-import it.uniroma2.sae.config.AppConfig;
+import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.model.RawFlight;
 import it.uniroma2.sae.service.FlightService;
 import org.apache.spark.sql.Dataset;
@@ -18,7 +18,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
      * @param config the application configuration
      */
     @Override
-    protected void runQuery(Dataset<RawFlight> flights, AppConfig config) {
+    protected void runQuery(Dataset<RawFlight> flights, ApplicationConfig config) {
         FlightService service = new FlightService();
 
         System.out.println("=== Dataset caricato ===");

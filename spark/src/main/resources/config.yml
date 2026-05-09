@@ -17,9 +17,11 @@ sparkCluster:
 # Input data configuration
 input:
   type: "hdfs"  # Possible types: hdfs, local, s3
+  uri: "hdfs://master:54310"
   path: "/data/conv"
 
 # Output data configuration
 output:
   type: "hdfs" # Possible types: hdfs, local, s3
+  uri: "hdfs://master:54310"
   path: "/data/res"
