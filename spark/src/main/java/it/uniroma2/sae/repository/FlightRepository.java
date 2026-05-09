@@ -44,6 +44,22 @@ public abstract class FlightRepository {
     }
 
     /**
+     * Retrieves the flights from the specified file for the given airlines and converts them into a strongly typed Dataset.
+     * This method orchestrates the reading process by delegating the path construction to subclasses.
+     *
+     * @param datasetFilename the name of the Parquet file to read
+     * @return a Dataset of RawFlight objects
+     * @throws IllegalArgumentException if the filename is null or invalid
+     */
+    public final Dataset<RawFlight> getFlightsOfAirlines(String datasetFilename, String... airlines) {
+        datasetFilename = checkInputFilename(datasetFilename);
+        String fullPath = getFullPath(datasetFilename);
+
+        Dataset<Row> filteredRows = this.spark.read().parquet(fullPath).filter(col("OP_UNIQUE_CARRIER").isin((Object[]) airlines));
+        return convertToRawFlight(filteredRows);
+    }
+
+    /**
      * Saves the given Dataset as a CSV file to the specified output path.
      *
      * @param results the Dataset to save

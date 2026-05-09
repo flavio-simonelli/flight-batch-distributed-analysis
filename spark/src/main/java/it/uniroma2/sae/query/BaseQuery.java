@@ -37,15 +37,9 @@ public abstract class BaseQuery {
 
             spark.sparkContext().setLogLevel("WARN");
 
-            // Pass the SparkSession to the factory
+            // Run query on the loaded dataset
             FlightRepository inputRepository = FlightRepositoryFactory.createInputRepository(config, spark);
-            String datasetFilename = config.getInput().getDatasetFilename();
-            if (datasetFilename == null || datasetFilename.isEmpty()) {
-                throw new IllegalArgumentException("datasetFilename is not defined in config.yml");
-            }
-            
-            Dataset<RawFlight> flights = inputRepository.getFlights(datasetFilename);
-            Dataset<Row> results = runQuery(flights, config);
+            Dataset<Row> results = runQuery(inputRepository, config);
 
             // Save the results
             if (results != null) {
@@ -68,9 +62,9 @@ public abstract class BaseQuery {
      * Abstract method that must be implemented by concrete Query classes.
      * Contains the specific Dataset transformations required to answer the query.
      *
-     * @param flights the raw dataset loaded from the configured storage
+     * @param repository the input repository
      * @param config the application configuration
      * @return a Dataset<Row> containing the results of the query
      */
-    protected abstract Dataset<Row> runQuery(Dataset<RawFlight> flights, ApplicationConfig config);
+    protected abstract Dataset<Row> runQuery(FlightRepository repository, ApplicationConfig config);
 }

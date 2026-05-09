@@ -2,6 +2,7 @@ package it.uniroma2.sae.query;
 
 import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.model.RawFlight;
+import it.uniroma2.sae.repository.FlightRepository;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 
@@ -14,12 +15,12 @@ public class ArrivalDelayRanking extends BaseQuery {
     /**
      * Executes the specific logic for Query 2 using the provided dataset.
      *
-     * @param flights the raw flight dataset
+     * @param repository the input repository
      * @param config the application configuration
      * @return a Dataset<Row> containing the arrival delay ranking
      */
     @Override
-    protected Dataset<Row> runQuery(Dataset<RawFlight> flights, ApplicationConfig config) {
+    protected Dataset<Row> runQuery(FlightRepository repository, ApplicationConfig config) {
         // TODO: Implement Query 2 logic here based on the project requirements
         System.out.println("Executing Query 2 logic...");
         
