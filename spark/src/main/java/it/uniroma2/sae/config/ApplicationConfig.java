@@ -49,7 +49,7 @@ public class ApplicationConfig {
     // --- Getters and Setters ---
 
     public String getAppName() {
-        return appName;
+        return appName + " - " + queryToRun;
     }
     public void setAppName(String appName) {
         this.appName = appName;

@@ -7,6 +7,8 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.SaveMode;
 
+import java.util.Map;
+
 import static org.apache.spark.sql.functions.col;
 
 /**
@@ -35,12 +37,7 @@ public abstract class FlightRepository {
      * @throws IllegalArgumentException if the filename is null or invalid
      */
     public final Dataset<RawFlight> getFlights(String datasetFilename) {
-        datasetFilename = checkInputFilename(datasetFilename);
-        String fullPath = getFullPath(datasetFilename);
-
-        Dataset<Row> rawRows = this.spark.read().parquet(fullPath);
-
-        return convertToRawFlight(rawRows);
+        return getFlights(datasetFilename, null);
     }
 
     /**
@@ -48,15 +45,39 @@ public abstract class FlightRepository {
      * This method orchestrates the reading process by delegating the path construction to subclasses.
      *
      * @param datasetFilename the name of the Parquet file to read
+     * @param airlines an array of airline codes to filter the dataset
      * @return a Dataset of RawFlight objects
      * @throws IllegalArgumentException if the filename is null or invalid
      */
     public final Dataset<RawFlight> getFlightsOfAirlines(String datasetFilename, String... airlines) {
+        if(airlines == null || airlines.length == 0) throw new IllegalArgumentException("Airlines array cannot be null or empty");
+        Map<String, Object[]> filters = Map.of("OP_UNIQUE_CARRIER", airlines);
+        return getFlights(datasetFilename, filters);
+    }
+
+    /**
+     * Retrieves the flights from the specified file and converts them into a strongly typed Dataset.
+     * This method orchestrates the reading process by delegating the path construction to subclasses.
+     *
+     * @param datasetFilename the name of the Parquet file to read
+     * @param filters a map of column names to arrays of values to filter the dataset (e.g., {"OP_UNIQUE_CARRIER": ["AA", "DL"]})
+     * @return a Dataset of RawFlight objects
+     * @throws IllegalArgumentException if the filename is null or invalid
+     */
+    protected Dataset<RawFlight> getFlights(String datasetFilename, Map<String, Object[]> filters) {
         datasetFilename = checkInputFilename(datasetFilename);
         String fullPath = getFullPath(datasetFilename);
+        Dataset<Row> rawRows = this.spark.read().parquet(fullPath);
 
-        Dataset<Row> filteredRows = this.spark.read().parquet(fullPath).filter(col("OP_UNIQUE_CARRIER").isin((Object[]) airlines));
-        return convertToRawFlight(filteredRows);
+        if (filters != null) {
+            for (Map.Entry<String, Object[]> filter : filters.entrySet()) {
+                if (filter.getValue() != null && filter.getValue().length > 0) {
+                    rawRows = rawRows.filter(col(filter.getKey()).isin((Object[]) filter.getValue()));
+                }
+            }
+        }
+
+        return convertToRawFlight(rawRows);
     }
 
     /**

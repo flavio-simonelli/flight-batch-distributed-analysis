@@ -38,7 +38,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
                         round(avg(when(col("cancelled").equalTo(0), col("depDelay"))), 2).as("dep-delay-mean"),
                         round(min(when(col("cancelled").equalTo(0), col("depDelay"))), 2).as("dep-delay-min"),
                         round(max(when(col("cancelled").equalTo(0), col("depDelay"))), 2).as("dep-delay-max"),
-                        round(sum(col("cancelled")).divide(count("*")), 2).multiply(100).as("cancellation-rate")
+                        round(sum(col("cancelled")).divide(count("*")).multiply(100), 2).as("cancellation-rate")
                 )
                 .orderBy("month", "opUniqueCarrier");
         result.show();
