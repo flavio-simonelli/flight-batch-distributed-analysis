@@ -72,7 +72,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
             Tuple2<String, Integer> key = new Tuple2<>(flight.getOpUniqueCarrier(), flight.getMonth());
             // [0: SumDelay, 1: MaxDelay, 2: MinDelay, 3: NotCancelledCount, 4: TotalCount]
             double[] values = new double[5];
-            boolean isCancelled = (flight.getCancelled() != null && flight.getCancelled() > 0.0);
+            boolean isCancelled = (flight.getCancelled() != null && flight.getCancelled() == true);
             values[4] = 1.0; // TotalCount
             if (isCancelled) {
                 values[0] = 0.0; // Delay in SumDelay è 0 se il volo è stato cancellato
