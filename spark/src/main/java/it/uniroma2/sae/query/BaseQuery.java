@@ -1,8 +1,8 @@
 package it.uniroma2.sae.query;
 
 import it.uniroma2.sae.config.ApplicationConfig;
+import it.uniroma2.sae.config.PostgresStorageConfig;
 import it.uniroma2.sae.factory.FlightRepositoryFactory;
-import it.uniroma2.sae.model.RawFlight;
 import it.uniroma2.sae.repository.FlightRepository;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -13,10 +13,9 @@ import org.apache.spark.sql.SparkSession;
  * It encapsulates the common boilerplate code required to bootstrap a Spark job:
  * 1. Initializing the SparkSession with cluster settings.
  * 2. Instantiating the appropriate input repository via the Factory.
- * 3. Loading the initial raw dataset using the target filename from configuration.
- * 4. Managing the SparkSession lifecycle (stopping it safely).
- * 
- * Subclasses only need to implement the {@link #runQuery(Dataset, ApplicationConfig)} method
+ * 3. Managing the SparkSession lifecycle (stopping it safely).
+ *
+ * Subclasses only need to implement the {@link #runQuery(FlightRepository, ApplicationConfig)} method
  * to focus strictly on the business logic and data transformations.
  */
 public abstract class BaseQuery {
@@ -44,7 +43,15 @@ public abstract class BaseQuery {
             // Save the results
             if (results != null) {
                 FlightRepository outputRepository = FlightRepositoryFactory.createOutputRepository(config, spark);
-                outputRepository.saveResults(results, config.getOutput().getResultDirectory());
+                
+                String target = "";
+                if(config.getOutput() instanceof PostgresStorageConfig) {
+                    target = ((PostgresStorageConfig) config.getOutput()).getDbtable();
+                } else {
+                    target = config.getOutput().getResultDirectory(); 
+                }
+                 
+                outputRepository.saveResults(results, target);
             }
 
         } catch (Exception e) {

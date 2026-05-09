@@ -3,7 +3,9 @@ package it.uniroma2.sae.service;
 import it.uniroma2.sae.model.RawFlight;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
-import static org.apache.spark.sql.functions.*;
+
+import static org.apache.spark.sql.functions.avg;
+import static org.apache.spark.sql.functions.col;
 
 public class FlightService {
 

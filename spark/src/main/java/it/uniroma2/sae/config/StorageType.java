@@ -18,7 +18,10 @@ public enum StorageType implements Serializable {
     S3("s3"),
 
     @JsonProperty("local")
-    LOCAL("local");
+    LOCAL("local"),
+    
+    @JsonProperty("postgres")
+    POSTGRES("postgres");
 
     private final String type;
     private static final Map<String, StorageType> LOOKUP = Arrays
