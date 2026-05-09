@@ -4,6 +4,8 @@ import java.io.Serializable;
 
 public class RawFlight implements Serializable {
 
+    // Time is in format HHmm, e.g., 2359 for 11:59 PM
+
     private Integer year;
     private Integer month;
     private Integer dayOfMonth;
@@ -15,11 +17,11 @@ public class RawFlight implements Serializable {
     private Long destAirportId;
     private Long destCityMarketId;
     private String destStateAbr;
-    private String crsDepTime;
-    private String depTime;
+    private Integer crsDepTime;          // Expected departure time
+    private Integer depTime;             // Actual departure time
     private Double depDelay;
-    private String crsArrTime;
-    private String arrTime;
+    private Integer crsArrTime;          // Expected arrival time
+    private Integer arrTime;             // Actual arrival time
     private Double arrDelay;
     private Boolean cancelled;
     private String cancellationCode;
