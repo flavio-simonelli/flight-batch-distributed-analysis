@@ -3,9 +3,9 @@ package it.uniroma2.sae;
 import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.config.QueryType;
 import it.uniroma2.sae.query.ArrivalDelayRanking;
+import it.uniroma2.sae.query.BaseQuery;
 import it.uniroma2.sae.query.HourlyDelayPercentiles;
 import it.uniroma2.sae.query.MonthlyPerformanceAnalyzer;
-import it.uniroma2.sae.query.BaseQuery;
 
 /**
  * The main entry point for the Flight Analysis application.

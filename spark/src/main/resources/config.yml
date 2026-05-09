@@ -3,7 +3,7 @@ appName: Flight Analysis
 
 # Define which query to run:
 # Options: monthly_performance, arrival_delay_ranking, hourly_delay_percentiles
-queryToRun: monthly_performance
+queryToRun: arrival_delay_ranking
 
 # Cluster configuration
 sparkCluster:

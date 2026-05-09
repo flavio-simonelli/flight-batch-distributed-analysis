@@ -1,15 +1,7 @@
 package it.uniroma2.sae.factory;
 
-import it.uniroma2.sae.config.ApplicationConfig;
-import it.uniroma2.sae.config.PostgresStorageConfig;
-import it.uniroma2.sae.config.RemoteStorageConfig;
-import it.uniroma2.sae.config.StorageConfig;
-import it.uniroma2.sae.config.StorageType;
-import it.uniroma2.sae.repository.FlightRepository;
-import it.uniroma2.sae.repository.HdfsFlightRepository;
-import it.uniroma2.sae.repository.LocalFlightRepository;
-import it.uniroma2.sae.repository.PostgresFlightRepository;
-import it.uniroma2.sae.repository.S3FlightRepository;
+import it.uniroma2.sae.config.*;
+import it.uniroma2.sae.repository.*;
 import org.apache.spark.sql.SparkSession;
 
 /**

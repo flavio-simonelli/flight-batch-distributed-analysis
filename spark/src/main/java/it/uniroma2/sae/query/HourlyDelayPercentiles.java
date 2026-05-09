@@ -1,7 +1,6 @@
 package it.uniroma2.sae.query;
 
 import it.uniroma2.sae.config.ApplicationConfig;
-import it.uniroma2.sae.model.RawFlight;
 import it.uniroma2.sae.repository.FlightRepository;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;

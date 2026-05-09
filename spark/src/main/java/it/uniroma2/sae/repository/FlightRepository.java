@@ -1,11 +1,7 @@
 package it.uniroma2.sae.repository;
 
 import it.uniroma2.sae.model.RawFlight;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Encoders;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.*;
 
 import java.util.Map;
 

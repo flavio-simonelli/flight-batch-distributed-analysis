@@ -1,5 +1,6 @@
 # Datasets
 data/conv
+data/postgres
 
 # ========================
 # Maven / Java (spark/)

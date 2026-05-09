@@ -21,9 +21,9 @@ public class RawFlight implements Serializable {
     private String crsArrTime;
     private String arrTime;
     private Double arrDelay;
-    private Double cancelled;
+    private Boolean cancelled;
     private String cancellationCode;
-    private Double diverted;
+    private Boolean diverted;
     private Double actualElapsedTime;
     private Double distance;
     private Double carrierDelay;
