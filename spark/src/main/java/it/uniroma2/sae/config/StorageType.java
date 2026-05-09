@@ -14,15 +14,13 @@ public enum StorageType implements Serializable {
     @JsonProperty("s3")
     S3("s3"),
 
-    @JsonProperty("redis")
-    REDIS("redis"),
-
     @JsonProperty("local")
     LOCAL("local");
 
     private final String type;
-    private static final Map<String, StorageType> LOOKUP = Arrays.stream(values())
-            .collect(Collectors.toMap(t -> t.type.toLowerCase(), t -> t));
+    private static final Map<String, StorageType> LOOKUP = Arrays
+                                                                .stream(values())
+                                                                .collect(Collectors.toMap(t -> t.type.toLowerCase(), t -> t));
 
     StorageType(String type) { this.type = type; }
 

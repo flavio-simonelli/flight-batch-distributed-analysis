@@ -5,10 +5,22 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import java.io.InputStream;
 
+/**
+ * POJO class representing the application configuration loaded from a YAML file.
+ * It contains all the necessary settings to initialize the Spark job, including
+ * cluster configuration, input data sources, and output destinations.
+ */
 public class AppConfig {
 
     public static final String CONFIG_FILE = "config.yml";
 
+    /**
+     * Loads and parses a YAML configuration file from the classpath into an AppConfig object.
+     *
+     * @param resourceName the name of the resource file to load (e.g., "/config.yml")
+     * @return an instance of AppConfig populated with the data from the YAML file
+     * @throws Exception if the resource is not found or cannot be parsed
+     */
     public static AppConfig load(String resourceName) throws Exception {
         if (resourceName == null) throw new IllegalArgumentException("Resource name cannot be null");
         if (!resourceName.startsWith("/")) resourceName = "/" + resourceName;
@@ -29,6 +41,7 @@ public class AppConfig {
     private StorageConfig input;
     private StorageConfig output;
 
+    
     public String getAppName() {
         return appName;
     }
@@ -36,6 +49,7 @@ public class AppConfig {
         this.appName = appName;
     }
 
+    
     public SparkCluster getSparkCluster() {
         return sparkCluster;
     }
@@ -43,6 +57,7 @@ public class AppConfig {
         this.sparkCluster = sparkCluster;
     }
 
+    
     public StorageConfig getInput() {
         return input;
     }
@@ -57,6 +72,9 @@ public class AppConfig {
         this.output = output;
     }
 
+    /**
+     * Inner class modeling the configuration for a specific storage component (input or output).
+     */
     public static class StorageConfig {
         private StorageType type;
         private String path;
@@ -82,9 +100,13 @@ public class AppConfig {
         }
     }
 
+    /**
+     * Inner class modeling the configuration for the Spark cluster environment.
+     */
     public static class SparkCluster {
         private SparkNode master;
 
+        
         public SparkNode getMaster() {
             return master;
         }
@@ -92,10 +114,18 @@ public class AppConfig {
             this.master = master;
         }
 
+        /**
+         * Computes the full connection URI for the Spark master node.
+         *
+         * @return the formatted Spark master URI (e.g., "spark://hostname:port")
+         */
         public String getMasterUri() {
             return "spark://" + master.getHostname() + ":" + master.getPort();
         }
 
+        /**
+         * Inner class modeling a single node within the Spark cluster.
+         */
         public static class SparkNode {
             private String hostname;
             private String port;

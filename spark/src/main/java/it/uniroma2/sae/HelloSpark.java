@@ -25,7 +25,7 @@ public class HelloSpark {
 
             spark.sparkContext().setLogLevel("WARN");
 
-            FlightRepository repository = FlightRepositoryFactory.createRepository(config);
+            FlightRepository repository = FlightRepositoryFactory.createInputRepository(config);
             Dataset<RawFlight> flights = repository.getFlights("202501_T_ONTIME_REPORTING.parquet");
 
             FlightService service = new FlightService();

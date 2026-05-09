@@ -1,19 +1,18 @@
-# Configurazione per l'applicazione di analisi dei voli
+# Application configuration for Flight Analysis
 appName: Flight Analysis
 
-# Configurazione del cluster
+# Cluster configuration
 sparkCluster:
   master:
     hostname: spark-master
     port: 7077
 
-
-# Configurazione dell'input
+# Input data configuration
 input:
-  type: "hdfs"  # Tipi possibili: hdfs, local, s3, etc.
+  type: "hdfs"  # Possible types: hdfs, local, s3
   path: "/data/conv"
 
-# Configurazione dell'output
+# Output data configuration
 output:
-  type: "hdfs" # Tipi possibili: redis, hdfs, console, etc.
+  type: "hdfs" # Possible types: hdfs, local, s3
   path: "/data/res"
