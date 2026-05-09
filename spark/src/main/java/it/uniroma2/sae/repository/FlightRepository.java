@@ -5,6 +5,7 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.SaveMode;
 
 import static org.apache.spark.sql.functions.col;
 
@@ -29,19 +30,39 @@ public abstract class FlightRepository {
      * Retrieves the flights from the specified file and converts them into a strongly typed Dataset.
      * This method orchestrates the reading process by delegating the path construction to subclasses.
      *
-     * @param filename the name of the Parquet file to read
+     * @param datasetFilename the name of the Parquet file to read
      * @return a Dataset of RawFlight objects
      * @throws IllegalArgumentException if the filename is null or invalid
      */
-    public final Dataset<RawFlight> getFlights(String filename) {
-        filename = checkFilename(filename);
-        String fullPath = getFullPath(filename);
+    public final Dataset<RawFlight> getFlights(String datasetFilename) {
+        datasetFilename = checkInputFilename(datasetFilename);
+        String fullPath = getFullPath(datasetFilename);
+
         Dataset<Row> rawRows = this.spark.read().parquet(fullPath);
+
         return convertToRawFlight(rawRows);
     }
 
     /**
-     * Constructs the full path to the file.
+     * Saves the given Dataset as a CSV file to the specified output path.
+     *
+     * @param results the Dataset to save
+     * @param resultDirectory the name of the output directory
+     */
+    public final void saveResults(Dataset<Row> results, String resultDirectory) {
+        if (results == null) throw new IllegalArgumentException("Results dataset cannot be null.");
+
+        resultDirectory = checkOutputDirectory(resultDirectory);
+        String fullPath = getFullPath(resultDirectory);
+
+        results.write()
+                .mode(SaveMode.Overwrite)
+                .option("header", "true")
+                .csv(fullPath);
+    }
+
+    /**
+     * Constructs the full path to the input file.
      * Must be implemented by subclasses to provide the specific URI scheme (e.g., file://, hdfs://, s3a://).
      *
      * @param filename the name of the file
@@ -50,16 +71,41 @@ public abstract class FlightRepository {
     protected abstract String getFullPath(String filename);
 
     /**
-     * Validates and normalizes the given filename.
+     * Validates and normalizes the given input filename.
      * Ensures the filename ends with '.parquet' and starts with a slash '/'.
      *
      * @param filename the raw filename string
      * @return the normalized filename string
      * @throws IllegalArgumentException if the filename is null or doesn't have the correct extension
      */
-    protected String checkFilename(String filename) {
+    protected String checkInputFilename(String filename) {
+        return checkFilename(filename, ".parquet");
+    }
+
+    /**
+     * Validates and normalizes the given output directory.
+     * Ensures the directory starts with a slash '/'.
+     *
+     * @param directory the raw directory string
+     * @return the normalized directory string
+     * @throws IllegalArgumentException if the directory is null or doesn't have the correct extension
+     */
+    protected String checkOutputDirectory(String directory) {
+        return checkFilename(directory, null);
+    }
+
+    /**
+     * Validates and normalizes the given filename.
+     * Ensures the filename ends with extension and starts with a slash '/'.
+     *
+     * @param filename the raw filename string
+     * @param extension the expected file extension (e.g., ".csv", ".parquet")
+     * @return the normalized filename string
+     * @throws IllegalArgumentException if the filename is null or doesn't have the correct extension
+     */
+    private String checkFilename(String filename, String extension) {
         if(filename == null) throw new IllegalArgumentException("Filename cannot be null");
-        if(!filename.endsWith(".parquet")) throw new IllegalArgumentException("Filename must end with .parquet. Provided: " + filename);
+        if(extension != null && !filename.endsWith(extension)) throw new IllegalArgumentException("Filename must end with " + extension + ". Provided: " + filename);
         if(!filename.startsWith("/")) filename = "/" + filename;
         return filename;
     }

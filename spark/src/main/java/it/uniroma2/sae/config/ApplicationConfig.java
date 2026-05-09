@@ -38,7 +38,6 @@ public class ApplicationConfig {
     // --- Application Specific Configuration ---
     private String appName;
     private QueryType queryToRun;
-    private String datasetFilename;
 
     // --- Spark Cluster Configuration ---
     private SparkConfig sparkCluster;
@@ -68,13 +67,6 @@ public class ApplicationConfig {
     }
     public void setStringQueryToRun(String queryToRun) {
         this.queryToRun = QueryType.fromString(queryToRun);
-    }
-
-    public String getDatasetFilename() {
-        return datasetFilename;
-    }
-    public void setDatasetFilename(String datasetFilename) {
-        this.datasetFilename = datasetFilename;
     }
 
     public SparkConfig getSparkCluster() {

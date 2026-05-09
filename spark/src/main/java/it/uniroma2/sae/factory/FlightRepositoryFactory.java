@@ -26,33 +26,58 @@ public class FlightRepositoryFactory {
      */
     public static FlightRepository createInputRepository(ApplicationConfig config, SparkSession spark) {
         StorageConfig inputConfig = config.getInput();
-        StorageType inputType = inputConfig.getType();
-        String inputPath = inputConfig.getPath();
+        return FlightRepositoryFactory.createRepository(inputConfig, spark);
+    }
 
-        switch (inputType) {
+    /**
+     * Creates the output repository based on the provided configuration.
+     *
+     * @param config the ApplicationConfig object
+     * @param spark the initialized SparkSession
+     * @return an instance of FlightRepository
+     * @throws IllegalArgumentException if the storage type is not supported or configuration is invalid
+     */
+    public static FlightRepository createOutputRepository(ApplicationConfig config, SparkSession spark) {
+        StorageConfig outputConfig = config.getOutput();
+        return FlightRepositoryFactory.createRepository(outputConfig, spark);
+    }
+
+    /**
+     * Creates the repository based on the provided configuration.
+     *
+     * @param storageConfig the StorageConfig object
+     * @param spark the initialized SparkSession
+     * @return an instance of FlightRepository
+     * @throws IllegalArgumentException if the storage type is not supported or configuration is invalid
+     */
+    private static FlightRepository createRepository(StorageConfig storageConfig, SparkSession spark) {
+        StorageType storageType = storageConfig.getType();
+        String storagePath = storageConfig.getPath();
+
+        switch (storageType) {
             case HDFS:
 
-                RemoteStorageConfig hdfsConfig = (RemoteStorageConfig) inputConfig;
+                RemoteStorageConfig hdfsConfig = (RemoteStorageConfig) storageConfig;
                 String hdfsUri = hdfsConfig.getUri();
                 if (hdfsUri == null || hdfsUri.isEmpty()) {
                     throw new IllegalArgumentException("HDFS URI is not defined in config.yml for HDFS input type.");
                 }
-                return new HdfsFlightRepository(spark, hdfsUri, inputPath);
+                return new HdfsFlightRepository(spark, hdfsUri, storagePath);
 
             case S3:
 
-                RemoteStorageConfig s3Config = (RemoteStorageConfig) inputConfig;
+                RemoteStorageConfig s3Config = (RemoteStorageConfig) storageConfig;
                 String s3Uri = s3Config.getUri();
                 if (s3Uri == null || s3Uri.isEmpty()) {
                     throw new IllegalArgumentException("S3 URI is not defined in config.yml for S3 input type.");
                 }
-                return new S3FlightRepository(spark, s3Uri, inputPath);
+                return new S3FlightRepository(spark, s3Uri, storagePath);
 
             case LOCAL:
-                return new LocalFlightRepository(spark, inputPath);
+                return new LocalFlightRepository(spark, storagePath);
 
             default:
-                throw new IllegalArgumentException("Unsupported input type: " + inputType);
+                throw new IllegalArgumentException("Unsupported input type: " + storagePath);
         }
     }
 }

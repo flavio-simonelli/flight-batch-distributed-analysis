@@ -3,6 +3,7 @@ package it.uniroma2.sae.query;
 import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.model.RawFlight;
 import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
 
 /**
  * Implementation of Query 3: Hourly Delay Percentiles.
@@ -15,10 +16,13 @@ public class HourlyDelayPercentiles extends BaseQuery {
      *
      * @param flights the raw flight dataset
      * @param config the application configuration
+     * @return a Dataset<Row> containing the hourly delay percentiles
      */
     @Override
-    protected void runQuery(Dataset<RawFlight> flights, ApplicationConfig config) {
+    protected Dataset<Row> runQuery(Dataset<RawFlight> flights, ApplicationConfig config) {
         // TODO: Implement Query 3 logic here based on the project requirements
         System.out.println("Executing Query 3 logic...");
+        
+        return null;
     }
 }

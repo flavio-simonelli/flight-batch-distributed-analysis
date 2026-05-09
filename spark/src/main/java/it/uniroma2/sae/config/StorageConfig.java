@@ -27,6 +27,8 @@ import java.io.Serializable;
 public class StorageConfig implements Serializable {
     private StorageType type;
     private String path;
+    private String datasetFilename;
+    private String resultDirectory;
 
 
     public StorageType getType() {
@@ -47,5 +49,19 @@ public class StorageConfig implements Serializable {
     }
     public void setPath(String path) {
         this.path = path;
+    }
+
+    public String getDatasetFilename() {
+        return datasetFilename;
+    }
+    public void setDatasetFilename(String datasetFilename) {
+        this.datasetFilename = datasetFilename;
+    }
+
+    public String getResultDirectory() {
+        return resultDirectory;
+    }
+    public void setResultDirectory(String resultDirectory) {
+        this.resultDirectory = resultDirectory;
     }
 }

@@ -5,9 +5,6 @@ appName: Flight Analysis
 # Options: monthly_performance, arrival_delay_ranking, hourly_delay_percentiles
 queryToRun: monthly_performance
 
-# The name of the file to process
-datasetFilename: "202501_T_ONTIME_REPORTING.parquet"
-
 # Cluster configuration
 sparkCluster:
   master:
@@ -19,9 +16,11 @@ input:
   type: "hdfs"  # Possible types: hdfs, local, s3
   uri: "hdfs://master:54310"
   path: "/data/conv"
+  datasetFilename: "202501_T_ONTIME_REPORTING.parquet"
 
 # Output data configuration
 output:
   type: "hdfs" # Possible types: hdfs, local, s3
   uri: "hdfs://master:54310"
-  path: "/data/res"
+  path: "/data"
+  resultDirectory: "res"

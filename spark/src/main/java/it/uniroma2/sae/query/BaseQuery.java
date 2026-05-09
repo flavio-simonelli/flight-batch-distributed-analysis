@@ -5,6 +5,7 @@ import it.uniroma2.sae.factory.FlightRepositoryFactory;
 import it.uniroma2.sae.model.RawFlight;
 import it.uniroma2.sae.repository.FlightRepository;
 import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
 /**
@@ -37,15 +38,20 @@ public abstract class BaseQuery {
             spark.sparkContext().setLogLevel("WARN");
 
             // Pass the SparkSession to the factory
-            FlightRepository repository = FlightRepositoryFactory.createInputRepository(config, spark);
-            
-            String datasetFilename = config.getDatasetFilename();
+            FlightRepository inputRepository = FlightRepositoryFactory.createInputRepository(config, spark);
+            String datasetFilename = config.getInput().getDatasetFilename();
             if (datasetFilename == null || datasetFilename.isEmpty()) {
                 throw new IllegalArgumentException("datasetFilename is not defined in config.yml");
             }
             
-            Dataset<RawFlight> flights = repository.getFlights(datasetFilename);
-            runQuery(flights, config);
+            Dataset<RawFlight> flights = inputRepository.getFlights(datasetFilename);
+            Dataset<Row> results = runQuery(flights, config);
+
+            // Save the results
+            if (results != null) {
+                FlightRepository outputRepository = FlightRepositoryFactory.createOutputRepository(config, spark);
+                outputRepository.saveResults(results, config.getOutput().getResultDirectory());
+            }
 
         } catch (Exception e) {
             System.err.println("Fatal error during query execution:");
@@ -64,6 +70,7 @@ public abstract class BaseQuery {
      *
      * @param flights the raw dataset loaded from the configured storage
      * @param config the application configuration
+     * @return a Dataset<Row> containing the results of the query
      */
-    protected abstract void runQuery(Dataset<RawFlight> flights, ApplicationConfig config);
+    protected abstract Dataset<Row> runQuery(Dataset<RawFlight> flights, ApplicationConfig config);
 }
