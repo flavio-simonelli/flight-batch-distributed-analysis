@@ -1,12 +1,14 @@
 package it.uniroma2.sae.factory;
 
 import it.uniroma2.sae.config.ApplicationConfig;
+import it.uniroma2.sae.config.PostgresStorageConfig;
 import it.uniroma2.sae.config.RemoteStorageConfig;
 import it.uniroma2.sae.config.StorageConfig;
 import it.uniroma2.sae.config.StorageType;
 import it.uniroma2.sae.repository.FlightRepository;
 import it.uniroma2.sae.repository.HdfsFlightRepository;
 import it.uniroma2.sae.repository.LocalFlightRepository;
+import it.uniroma2.sae.repository.PostgresFlightRepository;
 import it.uniroma2.sae.repository.S3FlightRepository;
 import org.apache.spark.sql.SparkSession;
 
@@ -26,7 +28,7 @@ public class FlightRepositoryFactory {
      */
     public static FlightRepository createInputRepository(ApplicationConfig config, SparkSession spark) {
         StorageConfig inputConfig = config.getInput();
-        return FlightRepositoryFactory.createRepository(inputConfig, spark);
+        return createRepository(inputConfig, spark);
     }
 
     /**
@@ -39,24 +41,18 @@ public class FlightRepositoryFactory {
      */
     public static FlightRepository createOutputRepository(ApplicationConfig config, SparkSession spark) {
         StorageConfig outputConfig = config.getOutput();
-        return FlightRepositoryFactory.createRepository(outputConfig, spark);
+        return createRepository(outputConfig, spark);
     }
 
-    /**
-     * Creates the repository based on the provided configuration.
-     *
-     * @param storageConfig the StorageConfig object
-     * @param spark the initialized SparkSession
-     * @return an instance of FlightRepository
-     * @throws IllegalArgumentException if the storage type is not supported or configuration is invalid
-     */
     private static FlightRepository createRepository(StorageConfig storageConfig, SparkSession spark) {
         StorageType storageType = storageConfig.getType();
         String storagePath = storageConfig.getPath();
 
         switch (storageType) {
             case HDFS:
-
+                if (!(storageConfig instanceof RemoteStorageConfig)) {
+                    throw new IllegalArgumentException("Configuration mismatch: Expected RemoteStorageConfig for HDFS output type.");
+                }
                 RemoteStorageConfig hdfsConfig = (RemoteStorageConfig) storageConfig;
                 String hdfsUri = hdfsConfig.getUri();
                 if (hdfsUri == null || hdfsUri.isEmpty()) {
@@ -65,7 +61,9 @@ public class FlightRepositoryFactory {
                 return new HdfsFlightRepository(spark, hdfsUri, storagePath);
 
             case S3:
-
+                if(!(storageConfig instanceof RemoteStorageConfig)) {
+                    throw new IllegalArgumentException("Configuration mismatch: Expected RemoteStorageConfig for S3 output type.");
+                }
                 RemoteStorageConfig s3Config = (RemoteStorageConfig) storageConfig;
                 String s3Uri = s3Config.getUri();
                 if (s3Uri == null || s3Uri.isEmpty()) {
@@ -76,8 +74,15 @@ public class FlightRepositoryFactory {
             case LOCAL:
                 return new LocalFlightRepository(spark, storagePath);
 
+            case POSTGRES:
+                if (!(storageConfig instanceof PostgresStorageConfig)) {
+                     throw new IllegalArgumentException("Configuration mismatch: Expected PostgresStorageConfig for POSTGRES output type.");
+                }
+                PostgresStorageConfig pgConfig = (PostgresStorageConfig) storageConfig;
+                return new PostgresFlightRepository(spark, pgConfig.getUrl(), pgConfig.getUser(), pgConfig.getPassword());
+
             default:
-                throw new IllegalArgumentException("Unsupported input type: " + storagePath);
+                throw new IllegalArgumentException("Unsupported storage type: " + storageType);
         }
     }
 }

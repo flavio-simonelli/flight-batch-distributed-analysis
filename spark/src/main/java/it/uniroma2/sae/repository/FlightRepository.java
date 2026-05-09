@@ -29,25 +29,24 @@ public abstract class FlightRepository {
     }
 
     /**
-     * Retrieves the flights from the specified file and converts them into a strongly typed Dataset.
-     * This method orchestrates the reading process by delegating the path construction to subclasses.
+     * Retrieves the flights from the specified file or directory and converts them into a strongly typed Dataset.
+     * If the filename is not provided (null or empty), it reads all parquet files in the base path.
      *
-     * @param datasetFilename the name of the Parquet file to read
+     * @param datasetFilename the name of the Parquet file to read, or null/empty to read all files in the directory
      * @return a Dataset of RawFlight objects
-     * @throws IllegalArgumentException if the filename is null or invalid
+     * @throws IllegalArgumentException if the filename is invalid (when provided)
      */
-    public final Dataset<RawFlight> getFlights(String datasetFilename) {
+    public Dataset<RawFlight> getFlights(String datasetFilename) {
         return getFlights(datasetFilename, null);
     }
 
     /**
-     * Retrieves the flights from the specified file for the given airlines and converts them into a strongly typed Dataset.
-     * This method orchestrates the reading process by delegating the path construction to subclasses.
+     * Retrieves the flights from the specified file or directory for the given airlines and converts them into a strongly typed Dataset.
      *
-     * @param datasetFilename the name of the Parquet file to read
+     * @param datasetFilename the name of the Parquet file to read, or null/empty to read all files in the directory
      * @param airlines an array of airline codes to filter the dataset
      * @return a Dataset of RawFlight objects
-     * @throws IllegalArgumentException if the filename is null or invalid
+     * @throws IllegalArgumentException if the filename is invalid (when provided)
      */
     public final Dataset<RawFlight> getFlightsOfAirlines(String datasetFilename, String... airlines) {
         if(airlines == null || airlines.length == 0) throw new IllegalArgumentException("Airlines array cannot be null or empty");
@@ -56,17 +55,24 @@ public abstract class FlightRepository {
     }
 
     /**
-     * Retrieves the flights from the specified file and converts them into a strongly typed Dataset.
-     * This method orchestrates the reading process by delegating the path construction to subclasses.
+     * Retrieves the flights from the specified file or directory and converts them into a strongly typed Dataset.
      *
-     * @param datasetFilename the name of the Parquet file to read
+     * @param datasetFilename the name of the Parquet file to read, or null/empty to read all files in the directory
      * @param filters a map of column names to arrays of values to filter the dataset (e.g., {"OP_UNIQUE_CARRIER": ["AA", "DL"]})
      * @return a Dataset of RawFlight objects
-     * @throws IllegalArgumentException if the filename is null or invalid
+     * @throws IllegalArgumentException if the filename is invalid (when provided)
      */
     protected Dataset<RawFlight> getFlights(String datasetFilename, Map<String, Object[]> filters) {
-        datasetFilename = checkInputFilename(datasetFilename);
-        String fullPath = getFullPath(datasetFilename);
+        String fullPath;
+        if (datasetFilename == null || datasetFilename.trim().isEmpty()) {
+            // If no filename is provided, read all Parquet files in the base path
+            fullPath = getFullPath("");
+        } else {
+            // Otherwise, check and normalize the filename
+            datasetFilename = checkInputFilename(datasetFilename);
+            fullPath = getFullPath(datasetFilename);
+        }
+        
         Dataset<Row> rawRows = this.spark.read().parquet(fullPath);
 
         if (filters != null) {
@@ -86,7 +92,7 @@ public abstract class FlightRepository {
      * @param results the Dataset to save
      * @param resultDirectory the name of the output directory
      */
-    public final void saveResults(Dataset<Row> results, String resultDirectory) {
+    public void saveResults(Dataset<Row> results, String resultDirectory) {
         if (results == null) throw new IllegalArgumentException("Results dataset cannot be null.");
 
         resultDirectory = checkOutputDirectory(resultDirectory);
@@ -102,7 +108,7 @@ public abstract class FlightRepository {
      * Constructs the full path to the input file.
      * Must be implemented by subclasses to provide the specific URI scheme (e.g., file://, hdfs://, s3a://).
      *
-     * @param filename the name of the file
+     * @param filename the name of the file (can be empty to point to the base directory)
      * @return the full path string
      */
     protected abstract String getFullPath(String filename);

@@ -25,9 +25,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
     protected Dataset<Row> runQuery(FlightRepository repository, ApplicationConfig config) {
 
         String datasetFilename = config.getInput().getDatasetFilename();
-        if (datasetFilename == null || datasetFilename.isEmpty()) {
-            throw new IllegalArgumentException("datasetFilename is not defined in config.yml");
-        }
+        
         Dataset<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL");
         System.out.println("=== Dataset caricato ===");
         flights.show(5);
