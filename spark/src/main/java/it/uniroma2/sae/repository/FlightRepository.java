@@ -2,6 +2,7 @@ package it.uniroma2.sae.repository;
 
 import it.uniroma2.sae.model.RawFlight;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 
 import java.util.Map;
 
@@ -157,6 +158,8 @@ public abstract class FlightRepository {
      * @return a strongly typed Dataset of RawFlight objects
      */
     protected Dataset<RawFlight> convertToRawFlight(Dataset<Row> rawRows) {
+        // Here we explicitly cast CANCELLED and DIVERTED to Double because in the model RawFlight 
+        // they are Double (as read from Parquet), NOT Boolean.
         return rawRows.select(
                 col("YEAR").as("year"),
                 col("MONTH").as("month"),
@@ -175,9 +178,9 @@ public abstract class FlightRepository {
                 col("CRS_ARR_TIME").as("crsArrTime"),
                 col("ARR_TIME").as("arrTime"),
                 col("ARR_DELAY").as("arrDelay"),
-                col("CANCELLED").as("cancelled"),
+                col("CANCELLED").cast(DataTypes.DoubleType).as("cancelled"),
                 col("CANCELLATION_CODE").as("cancellationCode"),
-                col("DIVERTED").as("diverted"),
+                col("DIVERTED").cast(DataTypes.DoubleType).as("diverted"),
                 col("ACTUAL_ELAPSED_TIME").as("actualElapsedTime"),
                 col("DISTANCE").as("distance"),
                 col("CARRIER_DELAY").as("carrierDelay"),

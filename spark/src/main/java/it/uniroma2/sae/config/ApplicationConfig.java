@@ -11,6 +11,7 @@ import java.io.InputStream;
  * - Spark cluster settings
  * - input/output storage details
  * - query to be executed
+ * - execution backend API
  */
 public class ApplicationConfig {
 
@@ -38,6 +39,7 @@ public class ApplicationConfig {
     // --- Application Specific Configuration ---
     private String appName;
     private QueryType queryToRun;
+    private AppBackendType appBackend;
 
     // --- Spark Cluster Configuration ---
     private SparkConfig sparkCluster;
@@ -49,7 +51,7 @@ public class ApplicationConfig {
     // --- Getters and Setters ---
 
     public String getAppName() {
-        return appName + " - " + queryToRun;
+        return appName + " - " + queryToRun + " (" + appBackend + ")";
     }
     public void setAppName(String appName) {
         this.appName = appName;
@@ -67,6 +69,19 @@ public class ApplicationConfig {
     }
     public void setStringQueryToRun(String queryToRun) {
         this.queryToRun = QueryType.fromString(queryToRun);
+    }
+    
+    public AppBackendType getAppBackend() {
+        return appBackend;
+    }
+    public void setAppBackend(AppBackendType appBackend) {
+        this.appBackend = appBackend;
+    }
+    public String getStringAppBackend() {
+        return appBackend != null ? appBackend.toString() : null;
+    }
+    public void setStringAppBackend(String appBackend) {
+        this.appBackend = AppBackendType.fromString(appBackend);
     }
 
     public SparkConfig getSparkCluster() {

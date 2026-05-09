@@ -5,6 +5,7 @@ import it.uniroma2.sae.model.RawFlight;
 import it.uniroma2.sae.repository.FlightRepository;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
 
 import static org.apache.spark.sql.functions.*;
 
@@ -14,15 +15,8 @@ import static org.apache.spark.sql.functions.*;
  */
 public class ArrivalDelayRanking extends BaseQuery {
 
-    /**
-     * Executes the specific logic for Query 2 using the provided dataset.
-     *
-     * @param repository the input repository
-     * @param config the application configuration
-     * @return a Dataset<Row> containing the arrival delay ranking
-     */
     @Override
-    protected Dataset<Row> runQuery(FlightRepository repository, ApplicationConfig config) {
+    protected Dataset<Row> runQueryDataFrame(FlightRepository repository, ApplicationConfig config) {
         String datasetFilename = config.getInput().getDatasetFilename();
 
         Dataset<RawFlight> flights = repository.getFlights(datasetFilename);
@@ -45,6 +39,32 @@ public class ArrivalDelayRanking extends BaseQuery {
                 .limit(10);
         result.show();
 
+        return result;
+    }
+
+    @Override
+    protected Dataset<Row> runQuerySQL(FlightRepository repository, ApplicationConfig config, SparkSession spark) {
+        String datasetFilename = config.getInput().getDatasetFilename();
+        Dataset<RawFlight> flights = repository.getFlights(datasetFilename);
+
+        flights.createOrReplaceTempView("flights");
+
+        String sqlQuery = "SELECT opUniqueCarrier, " +
+                "COUNT(CASE WHEN cancelled = 0 AND diverted = 0 THEN 1 END) AS num_flights, " +
+                "ROUND(AVG(arrDelay), 2) AS arrdelay_mean, " +
+                "ROUND(AVG(carrierDelay), 2) AS carrier_delay_mean, " +
+                "ROUND(AVG(weatherDelay), 2) AS weather_delay_mean, " +
+                "ROUND(AVG(nasDelay), 2) AS nas_delay_mean, " +
+                "ROUND(AVG(securityDelay), 2) AS security_delay_mean, " +
+                "ROUND(AVG(lateAircraftDelay), 2) AS late_aircraft_delay_mean " +
+                "FROM flights " +
+                "GROUP BY opUniqueCarrier " +
+                "HAVING num_flights > 500 " +
+                "ORDER BY arrdelay_mean DESC " +
+                "LIMIT 10";
+
+        Dataset<Row> result = spark.sql(sqlQuery);
+        result.show();
         return result;
     }
 }

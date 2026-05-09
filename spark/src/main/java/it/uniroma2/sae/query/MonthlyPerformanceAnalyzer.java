@@ -7,6 +7,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
 import scala.Tuple2;
 
 import java.util.List;
@@ -20,17 +21,6 @@ import static org.apache.spark.sql.functions.*;
 public class MonthlyPerformanceAnalyzer extends BaseQuery {
 
     @Override
-    protected Dataset<Row> runQuery(FlightRepository repository, ApplicationConfig config) {
-        Dataset<Row> result = null;
-        switch (2) {
-            case 1:
-                result = runQueryDataFrame(repository, config);
-            case 2:
-                result = runQueryRDD(repository, config);
-        }
-        return result;
-    }
-
     protected Dataset<Row> runQueryDataFrame(FlightRepository repository, ApplicationConfig config) {
 
         String datasetFilename = config.getInput().getDatasetFilename();
@@ -42,9 +32,9 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         Dataset<Row> result = flights
                 .groupBy("month", "opUniqueCarrier")
                 .agg(
-                        round(avg(when(col("cancelled").equalTo(0), col("depDelay"))), 2).as("dep-delay-mean"),
-                        round(min(when(col("cancelled").equalTo(0), col("depDelay"))), 2).as("dep-delay-min"),
-                        round(max(when(col("cancelled").equalTo(0), col("depDelay"))), 2).as("dep-delay-max"),
+                        round(avg(when(col("cancelled").equalTo(0.0), col("depDelay"))), 2).as("dep-delay-mean"),
+                        round(min(when(col("cancelled").equalTo(0.0), col("depDelay"))), 2).as("dep-delay-min"),
+                        round(max(when(col("cancelled").equalTo(0.0), col("depDelay"))), 2).as("dep-delay-max"),
                         round(sum(col("cancelled")).divide(count("*")).multiply(100), 2).as("cancellation-rate")
                 )
                 .orderBy("month", "opUniqueCarrier");
@@ -53,13 +43,33 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         return result;
     }
 
-    protected Dataset<Row> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
+    @Override
+    protected Dataset<Row> runQuerySQL(FlightRepository repository, ApplicationConfig config, SparkSession spark) {
+        String datasetFilename = config.getInput().getDatasetFilename();
+        Dataset<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL");
+
+        // Create a temporary view to run SQL queries against it
+        flights.createOrReplaceTempView("flights");
+
+        String sqlQuery = "SELECT month, opUniqueCarrier, " +
+                "ROUND(AVG(CASE WHEN cancelled = 0.0 THEN depDelay END), 2) AS `dep-delay-mean`, " +
+                "ROUND(MIN(CASE WHEN cancelled = 0.0 THEN depDelay END), 2) AS `dep-delay-min`, " +
+                "ROUND(MAX(CASE WHEN cancelled = 0.0 THEN depDelay END), 2) AS `dep-delay-max`, " +
+                "ROUND((SUM(cancelled) / COUNT(*)) * 100, 2) AS `cancellation-rate` " +
+                "FROM flights " +
+                "GROUP BY month, opUniqueCarrier " +
+                "ORDER BY month, opUniqueCarrier";
+
+        Dataset<Row> result = spark.sql(sqlQuery);
+        result.show();
+        return result;
+    }
+
+    @Override
+    protected JavaRDD<Row> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
 
         String datasetFilename = config.getInput().getDatasetFilename();
-        if (datasetFilename == null || datasetFilename.isEmpty()) {
-            throw new IllegalArgumentException("datasetFilename is not defined in config.yml");
-        }
-
+        
         JavaRDD<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL").javaRDD();
         System.out.println("=== Dataset caricato ===");
         // stampa delle prime 5 righe
@@ -114,28 +124,24 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
             double notCancelledFlights = stats[3];
             double cancelledFlights = totalFlights - notCancelledFlights;
 
-            double avgDelay = (notCancelledFlights > 0) ? (stats[0] / notCancelledFlights) : 0.0;
-            double maxDelay = (notCancelledFlights > 0) ? stats[1] : 0.0;
-            double minDelay = (notCancelledFlights > 0) ? stats[2] : 0.0;
-            double cancellationRate = (totalFlights > 0) ? (cancelledFlights / totalFlights) * 100 : 0.0;
+            // Arrotondamento a 2 cifre decimali
+            double avgDelay = Math.round(((notCancelledFlights > 0) ? (stats[0] / notCancelledFlights) : 0.0) * 100.0) / 100.0;
+            double maxDelay = Math.round(((notCancelledFlights > 0) ? stats[1] : 0.0) * 100.0) / 100.0;
+            double minDelay = Math.round(((notCancelledFlights > 0) ? stats[2] : 0.0) * 100.0) / 100.0;
+            double cancellationRate = Math.round(((totalFlights > 0) ? (cancelledFlights / totalFlights) * 100 : 0.0) * 100.0) / 100.0;
 
             return org.apache.spark.sql.RowFactory.create(month, carrier, avgDelay, minDelay, maxDelay, cancellationRate);
         });
 
-        java.util.List<org.apache.spark.sql.types.StructField> fields = new java.util.ArrayList<>();
-        fields.add(org.apache.spark.sql.types.DataTypes.createStructField("month", org.apache.spark.sql.types.DataTypes.IntegerType, false));
-        fields.add(org.apache.spark.sql.types.DataTypes.createStructField("opUniqueCarrier", org.apache.spark.sql.types.DataTypes.StringType, false));
-        fields.add(org.apache.spark.sql.types.DataTypes.createStructField("dep-delay-mean", org.apache.spark.sql.types.DataTypes.DoubleType, false));
-        fields.add(org.apache.spark.sql.types.DataTypes.createStructField("dep-delay-min", org.apache.spark.sql.types.DataTypes.DoubleType, false));
-        fields.add(org.apache.spark.sql.types.DataTypes.createStructField("dep-delay-max", org.apache.spark.sql.types.DataTypes.DoubleType, false));
-        fields.add(org.apache.spark.sql.types.DataTypes.createStructField("cancellation-rate", org.apache.spark.sql.types.DataTypes.DoubleType, false));
+        // Ordinamento per RDD
+        // JavaRDD<Row> sortedRowRDD = rowRDD.sortBy(
+        //         row -> new Tuple2<>(row.getInt(0), row.getString(1)),
+        //         true,
+        //         rowRDD.getNumPartitions()
+        // );
 
-        org.apache.spark.sql.types.StructType schema = org.apache.spark.sql.types.DataTypes.createStructType(fields);
+        rowRDD.collect().forEach(System.out::println);
 
-        Dataset<Row> result = spark.createDataFrame(rowRDD, schema).orderBy("month", "opUniqueCarrier");
-
-        result.show();
-
-        return result;
+        return rowRDD;
     }
 }
