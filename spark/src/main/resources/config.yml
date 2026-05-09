@@ -1,6 +1,13 @@
 # Application configuration for Flight Analysis
 appName: Flight Analysis
 
+# Define which query to run:
+# Options: monthly_performance, arrival_delay_ranking, hourly_delay_percentiles
+queryToRun: monthly_performance
+
+# The name of the file to process
+datasetFilename: "202501_T_ONTIME_REPORTING.parquet"
+
 # Cluster configuration
 sparkCluster:
   master:

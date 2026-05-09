@@ -7,8 +7,11 @@ import java.io.InputStream;
 
 /**
  * POJO class representing the application configuration loaded from a YAML file.
- * It contains all the necessary settings to initialize the Spark job, including
- * cluster configuration, input data sources, and output destinations.
+ * It contains all the necessary settings to initialize the Spark job, including:
+ * - cluster configuration
+ * - input data sources
+ * - output destinations
+ * - query to run
  */
 public class AppConfig {
 
@@ -35,6 +38,8 @@ public class AppConfig {
 
 
     private String appName;
+    private QueryType queryToRun;
+    private String datasetFilename;
 
     private SparkCluster sparkCluster;
 
@@ -49,7 +54,26 @@ public class AppConfig {
         this.appName = appName;
     }
 
+    public QueryType getQueryToRun() {
+        return queryToRun;
+    }
+    public void setQueryToRun(QueryType queryToRun) {
+        this.queryToRun = queryToRun;
+    }
+    public String getStringQueryToRun() {
+        return queryToRun != null ? queryToRun.toString() : null;
+    }
+    public void setStringQueryToRun(String queryToRun) {
+        this.queryToRun = QueryType.fromString(queryToRun);
+    }
     
+    public String getDatasetFilename() {
+        return datasetFilename;
+    }
+    public void setDatasetFilename(String datasetFilename) {
+        this.datasetFilename = datasetFilename;
+    }
+
     public SparkCluster getSparkCluster() {
         return sparkCluster;
     }

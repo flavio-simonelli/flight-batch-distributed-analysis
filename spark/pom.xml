@@ -83,7 +83,7 @@
                             </filters>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>it.uniroma2.sae.HelloSpark</mainClass>
+                                    <mainClass>it.uniroma2.sae.FlightAnalysisApp</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
@@ -126,7 +126,7 @@
                                         <argument>spark-master</argument>
                                         <argument>/opt/spark/bin/spark-submit</argument>
                                         <argument>--class</argument>
-                                        <argument>it.uniroma2.sae.HelloSpark</argument>
+                                        <argument>it.uniroma2.sae.FlightAnalysisApp</argument>
                                         <argument>--master</argument>
                                         <argument>spark://spark-master:7077</argument>
                                         <argument>/opt/spark/scripts/${project.build.finalName}.jar</argument>
