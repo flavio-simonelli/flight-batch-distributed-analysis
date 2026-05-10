@@ -2,10 +2,12 @@ package it.uniroma2.sae.repository;
 
 import it.uniroma2.sae.model.RawFlight;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructType;
 
+import java.util.Collections;
 import java.util.Map;
 
 import static org.apache.spark.sql.functions.col;
@@ -119,6 +121,43 @@ public abstract class FlightRepository {
 
         Dataset<Row> convertedResults = spark.createDataFrame(results, schema);
         saveResults(convertedResults, resultDirectory);
+    }
+
+    /**
+     * @deprecated This method is deprecated in favor of the version that accepts a Dataset<Row> for better performance and simplicity.
+     * Saves the given JavaRDD as a CSV file to the specified output path.
+     *
+     * @param jsc the SparkContext to use
+     * @param results the JavaRDD to save
+     * @param schema the schema of the RDD
+     * @param resultDirectory the name of the output directory
+     */
+    public void saveResults(JavaSparkContext jsc, JavaRDD<Row> results, StructType schema, String resultDirectory) {
+        if (results == null) throw new IllegalArgumentException("Results RDD cannot be null.");
+        if (schema == null) throw new IllegalArgumentException("Schema cannot be null when saving JavaRDD<Row>.");
+        // Avoid to use .empty() for performance reasons
+        // if (results.isEmpty()) return;
+
+        resultDirectory = checkOutputDirectory(resultDirectory);
+        String fullPath = getFullPath(resultDirectory);
+
+        String header = String.join(",", schema.fieldNames());
+
+        // Convert each row to a comma-separated string
+        JavaRDD<String> dataLines = results.map(row -> {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < row.length(); i++) {
+                sb.append(row.get(i) == null ? "" : row.get(i).toString());
+                if (i < row.length() - 1) sb.append(",");
+            }
+            return sb.toString();
+        });
+
+        JavaRDD<String> headerRDD = jsc.parallelize(Collections.singletonList(header));
+
+        headerRDD.union(dataLines)
+                .coalesce(1)
+                .saveAsTextFile(getFullPath(resultDirectory));
     }
 
     /**

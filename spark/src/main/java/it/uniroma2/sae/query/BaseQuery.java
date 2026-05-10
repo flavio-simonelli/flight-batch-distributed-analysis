@@ -2,7 +2,6 @@ package it.uniroma2.sae.query;
 
 import it.uniroma2.sae.config.AppBackendType;
 import it.uniroma2.sae.config.ApplicationConfig;
-import it.uniroma2.sae.config.JdbcStorageConfig;
 import it.uniroma2.sae.factory.FlightRepositoryFactory;
 import it.uniroma2.sae.repository.FlightRepository;
 import org.apache.spark.api.java.JavaRDD;
@@ -51,55 +50,52 @@ public abstract class BaseQuery {
                 throw new IllegalArgumentException("appBackend is not defined in config.yml. Please choose rdd, dataframe, or sql.");
             }
 
-            // Determine output target name
+            // Determine output target name based on query and backend
             String queryName = this.getClass().getSimpleName();
             String backendName = backend.name().toLowerCase();
             String baseTargetName = String.format("%s_%s", queryName, backendName);
-
-            String target;
-            if (config.getOutput() instanceof JdbcStorageConfig) {
-                // For JDBC, the target is the table name
-                target = baseTargetName;
-            } else {
-                // For file-based storage, it's a directory path
-                target = config.getOutput().getResultDirectory() + baseTargetName;
-            }
+            String fullTargetName = config.getOutput().getResultDirectory() + baseTargetName;
 
             // Execute the query using the configured backend API
             switch (backend) {
                 case DATAFRAME:
                     List<Dataset<Row>> dfResults = runQueryDataFrame(inputRepository, config);
-                    if (dfResults != null) {
-                        for (int i = 0; i < dfResults.size(); i++) {
-                            String currentTarget = dfResults.size() > 1 ? target + "_" + (i + 1) : target;
-                            outputRepository.saveResults(dfResults.get(i), currentTarget);
-                        }
+                    if (dfResults == null) break;
+
+                    for (int i = 0; i < dfResults.size(); i++) {
+                        String currentTarget = dfResults.size() > 1 ? fullTargetName + "_" + (i + 1) : fullTargetName;
+                        outputRepository.saveResults(dfResults.get(i), currentTarget);
                     }
                     break;
 
                 case SQL:
                     List<Dataset<Row>> sqlResults = runQuerySQL(inputRepository, config, spark);
-                    if (sqlResults != null) {
-                        for (int i = 0; i < sqlResults.size(); i++) {
-                            String currentTarget = sqlResults.size() > 1 ? target + "_" + (i + 1) : target;
-                            outputRepository.saveResults(sqlResults.get(i), currentTarget);
-                        }
+                    if (sqlResults == null) break;
+
+                    for (int i = 0; i < sqlResults.size(); i++) {
+                        String currentTarget = sqlResults.size() > 1 ? fullTargetName + "_" + (i + 1) : fullTargetName;
+                        outputRepository.saveResults(sqlResults.get(i), currentTarget);
                     }
                     break;
 
                 case RDD:
                     List<Tuple2<JavaRDD<Row>, StructType>> rddResultsWithSchema = runQueryRDD(inputRepository, config);
-                    if (rddResultsWithSchema != null) {
-                        for (int i = 0; i < rddResultsWithSchema.size(); i++) {
-                            Tuple2<JavaRDD<Row>, StructType> rddTuple = rddResultsWithSchema.get(i);
-                            JavaRDD<Row> rdd = rddTuple._1();
-                            StructType schema = rddTuple._2();
+                    if (rddResultsWithSchema == null) break;
 
-                            if (!rdd.isEmpty()) {
-                                String currentTarget = rddResultsWithSchema.size() > 1 ? target + "_" + (i + 1) : target;
-                                outputRepository.saveResults(rdd, schema, currentTarget);
-                            }
-                        }
+                    for (int i = 0; i < rddResultsWithSchema.size(); i++) {
+                        Tuple2<JavaRDD<Row>, StructType> rddTuple = rddResultsWithSchema.get(i);
+                        JavaRDD<Row> rdd = rddTuple._1();
+                        StructType schema = rddTuple._2();
+
+                        // Avoid to use .empty() for performance reasons
+                        // if (rdd.isEmpty()) continue;
+
+                        String currentTarget = rddResultsWithSchema.size() > 1 ? fullTargetName + "_" + (i + 1) : fullTargetName;
+                        // Don't use depreciated method
+                        // outputRepository.saveResults(JavaSparkContext.fromSparkContext(spark.sparkContext()), rdd, schema, currentTarget);
+                        //
+                        // Use version with internal conversion
+                        outputRepository.saveResults(rdd, schema, currentTarget);
                     }
                     break;
 
