@@ -145,10 +145,6 @@ public final class SparkDiagnostics {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Value object
-    // -------------------------------------------------------------------------
-
     private static final class PartitionStats {
         final int numPartitions;
         final List<Long> counts;

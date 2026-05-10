@@ -53,11 +53,10 @@ public class HourlyDelayPercentiles extends BaseQuery {
 
         // Single non-cancelled filter shared by both pipelines (cached to avoid double scan).
         JavaRDD<RawFlight> validFlights = flights.filter(f ->
-                f.getCancelled() != null && f.getCancelled() == 0.0
-                        && f.getDepDelay() != null
+                f.getCancelled() != null && f.getCancelled() == 0.0 && f.getDepDelay() != null
         ).cache();
 
-        // ===== Pipeline 1: hourly percentiles =====
+        // Pipeline 1: hourly percentiles
         JavaPairRDD<Tuple2<String, Integer>, Double> hourlyPairs = validFlights
                 .filter(f -> f.getCrsDepTime() != null)
                 .mapToPair(f -> {
@@ -100,7 +99,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
                 DataTypes.createStructField("p90",             DataTypes.DoubleType, false)
         });
 
-        // ===== Pipeline 2: global min/max per airline (exact) =====
+        // Pipeline 2: global min/max per airline
         JavaRDD<Row> globalRows = validFlights
                 .mapToPair(f -> new Tuple2<>(
                         f.getOpUniqueCarrier(),

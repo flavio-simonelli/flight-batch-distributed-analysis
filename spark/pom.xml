@@ -68,7 +68,7 @@
         <dependency>
             <groupId>org.apache.datasketches</groupId>
             <artifactId>datasketches-java</artifactId>
-            <version>6.1.1</version>
+            <version>6.2.0</version>
         </dependency>
 
         <!-- T-Digest: alternative quantile sketch for Q3 RDD percentile estimation -->
@@ -117,7 +117,7 @@
                                 Relocate the percentile sketch packages so our versions don't collide
                                 with the older copies bundled by Spark (Spark 3.5.1 ships an older
                                 datasketches-java internally for percentile_approx, which causes
-                                NoSuchMethodError at runtime against our 6.1.1 API).
+                                NoSuchMethodError at runtime against our API).
                             -->
                             <relocations>
                                 <relocation>
