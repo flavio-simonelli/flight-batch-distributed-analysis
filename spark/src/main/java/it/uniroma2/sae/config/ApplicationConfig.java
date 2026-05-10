@@ -40,6 +40,7 @@ public class ApplicationConfig {
     private String appName;
     private QueryType queryToRun;
     private AppBackendType appBackend;
+    private PercentileAlgorithm percentileAlgorithm = PercentileAlgorithm.KLL;
 
     // --- Spark Cluster Configuration ---
     private SparkConfig sparkCluster;
@@ -82,6 +83,19 @@ public class ApplicationConfig {
     }
     public void setStringAppBackend(String appBackend) {
         this.appBackend = AppBackendType.fromString(appBackend);
+    }
+
+    public PercentileAlgorithm getPercentileAlgorithm() {
+        return percentileAlgorithm;
+    }
+    public void setPercentileAlgorithm(PercentileAlgorithm percentileAlgorithm) {
+        this.percentileAlgorithm = percentileAlgorithm;
+    }
+    public String getStringPercentileAlgorithm() {
+        return percentileAlgorithm != null ? percentileAlgorithm.toString() : null;
+    }
+    public void setStringPercentileAlgorithm(String percentileAlgorithm) {
+        this.percentileAlgorithm = PercentileAlgorithm.fromString(percentileAlgorithm);
     }
 
     public SparkConfig getSparkCluster() {

@@ -63,6 +63,20 @@
             <artifactId>postgresql</artifactId>
             <version>42.6.0</version>
         </dependency>
+
+        <!-- Apache DataSketches: KLL quantile sketch for Q3 RDD percentile estimation -->
+        <dependency>
+            <groupId>org.apache.datasketches</groupId>
+            <artifactId>datasketches-java</artifactId>
+            <version>6.1.1</version>
+        </dependency>
+
+        <!-- T-Digest: alternative quantile sketch for Q3 RDD percentile estimation -->
+        <dependency>
+            <groupId>com.tdunning</groupId>
+            <artifactId>t-digest</artifactId>
+            <version>3.3</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -99,6 +113,22 @@
                                     <mainClass>it.uniroma2.sae.FlightAnalysisApp</mainClass>
                                 </transformer>
                             </transformers>
+                            <!--
+                                Relocate the percentile sketch packages so our versions don't collide
+                                with the older copies bundled by Spark (Spark 3.5.1 ships an older
+                                datasketches-java internally for percentile_approx, which causes
+                                NoSuchMethodError at runtime against our 6.1.1 API).
+                            -->
+                            <relocations>
+                                <relocation>
+                                    <pattern>org.apache.datasketches</pattern>
+                                    <shadedPattern>it.uniroma2.sae.shaded.datasketches</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.tdunning.math.stats</pattern>
+                                    <shadedPattern>it.uniroma2.sae.shaded.tdigest</shadedPattern>
+                                </relocation>
+                            </relocations>
                         </configuration>
                     </execution>
                 </executions>

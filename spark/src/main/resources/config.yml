@@ -7,7 +7,11 @@ queryToRun: hourly_delay_percentiles
 
 # Define which Spark backend API to use for the query execution
 # Options: rdd, dataframe, sql
-appBackend: sql
+appBackend: rdd
+
+# Algorithm for Q3 (hourly_delay_percentiles) percentile estimation in the RDD backend
+# Options: kll, tdigest
+percentileAlgorithm: kll
 
 # Cluster configuration
 sparkCluster:
