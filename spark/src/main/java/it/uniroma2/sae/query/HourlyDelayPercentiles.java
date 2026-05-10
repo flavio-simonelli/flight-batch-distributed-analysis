@@ -42,8 +42,6 @@ public class HourlyDelayPercentiles extends BaseQuery {
 
         Dataset<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL", "UA", "WN");
         flights.cache();
-        System.out.println("=== Dataset loaded (and cached) ===");
-        flights.show(5);
 
         Dataset<Row> hourlyStats = flights
                 .filter(col("cancelled").equalTo(0))
@@ -64,9 +62,6 @@ public class HourlyDelayPercentiles extends BaseQuery {
                     max("depDelay").as("max_delay_global")
                 )
                 .orderBy("opUniqueCarrier");
-
-        hourlyStats.show(24);
-        globalMinMax.show();
 
         flights.unpersist();
 
@@ -108,9 +103,6 @@ public class HourlyDelayPercentiles extends BaseQuery {
                 "ORDER BY opUniqueCarrier";
         
         Dataset<Row> globalMinMax = spark.sql(globalMinMaxSql);
-
-        hourlyStats.show(24);
-        globalMinMax.show();
 
         flights.unpersist();
 

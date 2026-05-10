@@ -2,8 +2,10 @@ package it.uniroma2.sae.query;
 
 import it.uniroma2.sae.config.AppBackendType;
 import it.uniroma2.sae.config.ApplicationConfig;
+import it.uniroma2.sae.config.QueryType;
 import it.uniroma2.sae.factory.FlightRepositoryFactory;
 import it.uniroma2.sae.repository.FlightRepository;
+import it.uniroma2.sae.util.JobTimerListener; // Import the new listener
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -33,6 +35,11 @@ public abstract class BaseQuery {
      */
     public void execute(ApplicationConfig config) {
         SparkSession spark = null;
+
+        QueryType query = config.getQueryToRun();
+        if (query == null) throw new IllegalArgumentException("queryToRun is not defined in config.yml. Please choose monthly_performance, arrival_delay_ranking, or hourly_delay_percentiles");
+        String queryName = query.name().toLowerCase();
+
         try {
             spark = SparkSession.builder()
                     .appName(config.getAppName())
@@ -41,46 +48,89 @@ public abstract class BaseQuery {
 
             spark.sparkContext().setLogLevel("WARN");
 
+            // Add the custom SparkListener for job timing
+            JobTimerListener timer = new JobTimerListener();
+            spark.sparkContext().addSparkListener(timer);
+
             // Instantiate repositories
             FlightRepository inputRepository = FlightRepositoryFactory.createInputRepository(config, spark);
             FlightRepository outputRepository = FlightRepositoryFactory.createOutputRepository(config, spark);
 
             AppBackendType backend = config.getAppBackend();
-            if (backend == null) {
-                throw new IllegalArgumentException("appBackend is not defined in config.yml. Please choose rdd, dataframe, or sql.");
-            }
+            if (backend == null) throw new IllegalArgumentException("appBackend is not defined in config.yml. Please choose rdd, dataframe, or sql.");
+            String backendName = backend.name().toLowerCase();
 
             // Determine output target name based on query and backend
-            String queryName = this.getClass().getSimpleName();
-            String backendName = backend.name().toLowerCase();
             String baseTargetName = String.format("%s_%s", queryName, backendName);
             String fullTargetName = config.getOutput().getResultDirectory() + baseTargetName;
+
+
+            long endProcess = 0;
+            long processWallTime = 0;
+            long processMaxJob = 0;
+
+            long startSave = 0;
+            long endSave = 0;
+            long saveWallTime = 0;
+            long saveMaxJob = 0;
+
+            long startTime = System.currentTimeMillis();
+            long startProcess = System.currentTimeMillis();
 
             // Execute the query using the configured backend API
             switch (backend) {
                 case DATAFRAME:
                     List<Dataset<Row>> dfResults = runQueryDataFrame(inputRepository, config);
+
+                    endProcess = System.currentTimeMillis();
+                    processMaxJob = timer.getMaxJobDuration();
+                    timer.reset();
+
                     if (dfResults == null) break;
+
+                    startSave = System.currentTimeMillis();
 
                     for (int i = 0; i < dfResults.size(); i++) {
                         String currentTarget = dfResults.size() > 1 ? fullTargetName + "_" + (i + 1) : fullTargetName;
                         outputRepository.saveResults(dfResults.get(i), currentTarget);
                     }
+
+                    endSave = System.currentTimeMillis();
+                    saveMaxJob = timer.getMaxJobDuration();
+
                     break;
 
                 case SQL:
                     List<Dataset<Row>> sqlResults = runQuerySQL(inputRepository, config, spark);
+
+                    endProcess = System.currentTimeMillis();
+                    processMaxJob = timer.getMaxJobDuration();
+                    timer.reset();
+
                     if (sqlResults == null) break;
+
+                    startSave = System.currentTimeMillis();
 
                     for (int i = 0; i < sqlResults.size(); i++) {
                         String currentTarget = sqlResults.size() > 1 ? fullTargetName + "_" + (i + 1) : fullTargetName;
                         outputRepository.saveResults(sqlResults.get(i), currentTarget);
                     }
+
+                    endSave = System.currentTimeMillis();
+                    saveMaxJob = timer.getMaxJobDuration();
+
                     break;
 
                 case RDD:
                     List<Tuple2<JavaRDD<Row>, StructType>> rddResultsWithSchema = runQueryRDD(inputRepository, config);
+
+                    endProcess = System.currentTimeMillis();
+                    processMaxJob = timer.getMaxJobDuration();
+                    timer.reset();
+
                     if (rddResultsWithSchema == null) break;
+
+                    startSave = System.currentTimeMillis();
 
                     for (int i = 0; i < rddResultsWithSchema.size(); i++) {
                         Tuple2<JavaRDD<Row>, StructType> rddTuple = rddResultsWithSchema.get(i);
@@ -91,17 +141,31 @@ public abstract class BaseQuery {
                         // if (rdd.isEmpty()) continue;
 
                         String currentTarget = rddResultsWithSchema.size() > 1 ? fullTargetName + "_" + (i + 1) : fullTargetName;
-                        // Don't use depreciated method
+                        // Don't use deprecated method
                         // outputRepository.saveResults(JavaSparkContext.fromSparkContext(spark.sparkContext()), rdd, schema, currentTarget);
                         //
                         // Use version with internal conversion
                         outputRepository.saveResults(rdd, schema, currentTarget);
                     }
+
+                    endSave = System.currentTimeMillis();
+                    saveMaxJob = timer.getMaxJobDuration();
+
                     break;
 
                 default:
                     throw new UnsupportedOperationException("Backend " + backend + " is not supported.");
             }
+
+            processWallTime = endProcess - startProcess;
+            saveWallTime = endSave - startSave;
+
+            long endTime = System.currentTimeMillis();
+
+            System.out.println("--- PERFORMANCE REPORT: " + queryName + " ---");
+            printPhase("LOADING & PROCESSING", processWallTime, processMaxJob);
+            printPhase("SAVING", saveWallTime, saveMaxJob);
+            System.out.println("TOTAL WALL TIME: " + (endTime - startTime) + " ms");
 
         } catch (Exception e) {
             System.err.println("Fatal error during query execution:");
@@ -112,6 +176,19 @@ public abstract class BaseQuery {
                 spark.stop();
             }
         }
+    }
+
+    /**
+     * Print time metrics for a specific phase.
+     *
+     * @param phaseName name of the phase
+     * @param wallTime total wall time for the phase
+     * @param maxJobTime max time for any job in the phase
+     */
+    private void printPhase(String phaseName, long wallTime, long maxJobTime) {
+        System.out.printf("Phase: %s%n", phaseName);
+        System.out.printf("  - Wall Clock Time: %d ms%n", wallTime);
+        System.out.printf("  - Longest Spark Job in this phase: %d ms%n", maxJobTime);
     }
 
     /**

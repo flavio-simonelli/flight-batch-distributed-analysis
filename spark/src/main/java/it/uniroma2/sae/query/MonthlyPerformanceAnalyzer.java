@@ -41,11 +41,6 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
 
         // Load the dataset for specific airlines
         JavaRDD<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL").javaRDD();
-        System.out.println("=== Dataset loaded ===");
-        
-        // Print the first 5 rows for debugging purposes
-        List<RawFlight> firstRows = flights.take(5);
-        firstRows.forEach(System.out::println);
 
         // PHASE 1: Map operation
         // Transforms each flight into a key-value pair where the key is (Airline, Month)
@@ -126,9 +121,6 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
                 DataTypes.createStructField("cancellation_rate", DataTypes.DoubleType, false)
         });
 
-        // Print the first 20 rows of the final output
-        sortedRDD.take(20).forEach(System.out::println);
-
         return Collections.singletonList(new Tuple2<>(sortedRDD, schema));
     }
 
@@ -146,8 +138,6 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         String datasetFilename = config.getInput().getDatasetFilename();
         
         Dataset<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL");
-        System.out.println("=== Dataset loaded ===");
-        flights.show(5);
 
         Dataset<Row> result = flights
                 .groupBy("month", "opUniqueCarrier")
@@ -158,8 +148,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
                         round(sum(col("cancelled")).divide(count("*")).multiply(100), 2).as("cancellation-rate")
                 )
                 .orderBy("month", "opUniqueCarrier");
-        result.show();
-        
+
         return Collections.singletonList(result);
     }
 
@@ -190,7 +179,6 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
                 "ORDER BY month, opUniqueCarrier";
 
         Dataset<Row> result = spark.sql(sqlQuery);
-        result.show();
         return Collections.singletonList(result);
     }
 }

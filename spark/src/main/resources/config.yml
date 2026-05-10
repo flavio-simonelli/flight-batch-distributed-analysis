@@ -3,11 +3,11 @@ appName: Flight Analysis
 
 # Define which query to run:
 # Options: monthly_performance, arrival_delay_ranking, hourly_delay_percentiles
-queryToRun: monthly_performance
+queryToRun: hourly_delay_percentiles
 
 # Define which Spark backend API to use for the query execution
 # Options: rdd, dataframe, sql
-appBackend: rdd
+appBackend: sql
 
 # Cluster configuration
 sparkCluster:

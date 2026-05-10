@@ -114,6 +114,7 @@ public abstract class JdbcFlightRepository extends FlightRepository {
      * @param table the name of the output table
      */
     @Override
+    @Deprecated
     public final void saveResults(JavaSparkContext jsc, JavaRDD<Row> results, StructType schema, String table) {
         if (results == null) throw new IllegalArgumentException("Results RDD cannot be null.");
         if (schema == null) throw new IllegalArgumentException("Schema is required.");

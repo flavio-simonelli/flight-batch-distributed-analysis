@@ -132,6 +132,7 @@ public abstract class FlightRepository {
      * @param schema the schema of the RDD
      * @param resultDirectory the name of the output directory
      */
+    @Deprecated
     public void saveResults(JavaSparkContext jsc, JavaRDD<Row> results, StructType schema, String resultDirectory) {
         if (results == null) throw new IllegalArgumentException("Results RDD cannot be null.");
         if (schema == null) throw new IllegalArgumentException("Schema cannot be null when saving JavaRDD<Row>.");

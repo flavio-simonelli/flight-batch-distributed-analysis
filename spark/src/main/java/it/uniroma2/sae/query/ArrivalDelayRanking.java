@@ -3,8 +3,10 @@ package it.uniroma2.sae.query;
 import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.model.RawFlight;
 import it.uniroma2.sae.repository.FlightRepository;
+import it.uniroma2.sae.util.SerializableComparator;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
@@ -39,6 +41,7 @@ public class ArrivalDelayRanking extends BaseQuery {
     protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
         String datasetFilename = config.getInput().getDatasetFilename();
         JavaRDD<RawFlight> flights = repository.getFlights(datasetFilename).javaRDD();
+        JavaSparkContext jsc = new JavaSparkContext(flights.context());
 
         // Discard flights that were either cancelled or diverted
         JavaRDD<RawFlight> validFlights = flights.filter(flight -> {
@@ -104,7 +107,9 @@ public class ArrivalDelayRanking extends BaseQuery {
                 });
 
         // Sort the result by average arrival delay in descending order
-        JavaRDD<Row> sortedRDD = processedRDD.sortBy(row -> row.getDouble(2), false, 1);
+        SerializableComparator<Row> comparator = (r1, r2) -> Double.compare(r2.getDouble(2), r1.getDouble(2));
+        List<Row> top10Local = processedRDD.takeOrdered(10, comparator);
+        JavaRDD<Row> top10RDD = jsc.parallelize(top10Local);
 
         // Define the schema for the RDD
         StructType schema = DataTypes.createStructType(new StructField[]{
@@ -118,13 +123,7 @@ public class ArrivalDelayRanking extends BaseQuery {
                 DataTypes.createStructField("avg_late_aircraft_delay", DataTypes.DoubleType, false)
         });
 
-        // Limit the results to the top 10 airlines
-        List<Row> top10List = sortedRDD.take(10);
-
-        System.out.println("=== TOP 10 AIRLINES BY AVG ARRIVAL DELAY ===");
-        top10List.forEach(r -> System.out.printf("Airline: %s | Delay: %.2f | Flights: %d%n", r.getString(0), r.getDouble(2), r.getLong(1)));
-
-        return Collections.singletonList(new Tuple2<>(sortedRDD, schema));
+        return Collections.singletonList(new Tuple2<>(top10RDD, schema));
     }
     
     /**
@@ -140,8 +139,6 @@ public class ArrivalDelayRanking extends BaseQuery {
         String datasetFilename = config.getInput().getDatasetFilename();
 
         Dataset<RawFlight> flights = repository.getFlights(datasetFilename);
-        System.out.println("=== Dataset loaded ===");
-        flights.show(5);
 
         Dataset<Row> result = flights
                 .groupBy("opUniqueCarrier")
@@ -157,7 +154,6 @@ public class ArrivalDelayRanking extends BaseQuery {
                 .filter(col("num_flights").gt(500))
                 .orderBy(col("arrdelay_mean").desc())
                 .limit(10);
-        result.show();
 
         return Collections.singletonList(result);
     }
@@ -193,7 +189,6 @@ public class ArrivalDelayRanking extends BaseQuery {
                 "LIMIT 10";
 
         Dataset<Row> result = spark.sql(sqlQuery);
-        result.show();
         return Collections.singletonList(result);
     }
 
