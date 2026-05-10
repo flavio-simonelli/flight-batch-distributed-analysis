@@ -97,7 +97,8 @@ public abstract class FlightRepository {
         resultDirectory = checkOutputDirectory(resultDirectory);
         String fullPath = getFullPath(resultDirectory);
 
-        results.write()
+        results.coalesce(1) // Consolidate into a single partition
+                .write()
                 .mode(SaveMode.Overwrite)
                 .option("header", "true")
                 .csv(fullPath);
@@ -107,13 +108,15 @@ public abstract class FlightRepository {
      * Saves the given JavaRDD as a CSV file to the specified output path.
      *
      * @param results the JavaRDD to save
+     * @param schema the schema of the RDD
      * @param resultDirectory the name of the output directory
      */
-    public void saveResults(JavaRDD<Row> results, String resultDirectory) {
+    public void saveResults(JavaRDD<Row> results, StructType schema, String resultDirectory) {
         if (results == null) throw new IllegalArgumentException("Results RDD cannot be null.");
-        if (results.isEmpty()) return;
+        if (schema == null) throw new IllegalArgumentException("Schema cannot be null when saving JavaRDD<Row>.");
+        // Avoid to use .empty() for performance reasons
+        // if (results.isEmpty()) return;
 
-        StructType schema = results.first().schema();
         Dataset<Row> convertedResults = spark.createDataFrame(results, schema);
         saveResults(convertedResults, resultDirectory);
     }

@@ -2,13 +2,15 @@ package it.uniroma2.sae.query;
 
 import it.uniroma2.sae.config.AppBackendType;
 import it.uniroma2.sae.config.ApplicationConfig;
-import it.uniroma2.sae.config.PostgresStorageConfig;
+import it.uniroma2.sae.config.JdbcStorageConfig;
 import it.uniroma2.sae.factory.FlightRepositoryFactory;
 import it.uniroma2.sae.repository.FlightRepository;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.types.StructType;
+import scala.Tuple2;
 
 import java.util.List;
 
@@ -44,17 +46,23 @@ public abstract class BaseQuery {
             FlightRepository inputRepository = FlightRepositoryFactory.createInputRepository(config, spark);
             FlightRepository outputRepository = FlightRepositoryFactory.createOutputRepository(config, spark);
 
-            // Determine output target (table name for Postgres, directory for HDFS/S3/Local)
-            String target = "";
-            if (config.getOutput() instanceof PostgresStorageConfig) {
-                target = ((PostgresStorageConfig) config.getOutput()).getDbtable();
-            } else {
-                target = config.getOutput().getResultDirectory();
-            }
-
             AppBackendType backend = config.getAppBackend();
             if (backend == null) {
                 throw new IllegalArgumentException("appBackend is not defined in config.yml. Please choose rdd, dataframe, or sql.");
+            }
+
+            // Determine output target name
+            String queryName = this.getClass().getSimpleName();
+            String backendName = backend.name().toLowerCase();
+            String baseTargetName = String.format("%s_%s", queryName, backendName);
+
+            String target;
+            if (config.getOutput() instanceof JdbcStorageConfig) {
+                // For JDBC, the target is the table name
+                target = baseTargetName;
+            } else {
+                // For file-based storage, it's a directory path
+                target = config.getOutput().getResultDirectory() + baseTargetName;
             }
 
             // Execute the query using the configured backend API
@@ -80,12 +88,16 @@ public abstract class BaseQuery {
                     break;
 
                 case RDD:
-                    List<JavaRDD<Row>> rddResults = runQueryRDD(inputRepository, config);
-                    if (rddResults != null) {
-                        for (int i = 0; i < rddResults.size(); i++) {
-                            if (!rddResults.get(i).isEmpty()) {
-                                String currentTarget = rddResults.size() > 1 ? target + "_" + (i + 1) : target;
-                                outputRepository.saveResults(rddResults.get(i), currentTarget);
+                    List<Tuple2<JavaRDD<Row>, StructType>> rddResultsWithSchema = runQueryRDD(inputRepository, config);
+                    if (rddResultsWithSchema != null) {
+                        for (int i = 0; i < rddResultsWithSchema.size(); i++) {
+                            Tuple2<JavaRDD<Row>, StructType> rddTuple = rddResultsWithSchema.get(i);
+                            JavaRDD<Row> rdd = rddTuple._1();
+                            StructType schema = rddTuple._2();
+
+                            if (!rdd.isEmpty()) {
+                                String currentTarget = rddResultsWithSchema.size() > 1 ? target + "_" + (i + 1) : target;
+                                outputRepository.saveResults(rdd, schema, currentTarget);
                             }
                         }
                     }
@@ -134,7 +146,7 @@ public abstract class BaseQuery {
      *
      * @param repository the repository used to load flight data
      * @param config the application configuration containing input/output paths
-     * @return a list containing RDDs with the query results
+     * @return a list containing RDDs with their corresponding schemas
      */
-    protected abstract List<JavaRDD<Row>> runQueryRDD(FlightRepository repository, ApplicationConfig config);
+    protected abstract List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(FlightRepository repository, ApplicationConfig config);
 }

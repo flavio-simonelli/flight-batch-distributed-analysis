@@ -7,6 +7,8 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.types.StructType;
+import scala.Tuple2;
 
 import java.util.Arrays;
 import java.util.List;
@@ -22,7 +24,7 @@ import static org.apache.spark.sql.functions.*;
 public class HourlyDelayPercentiles extends BaseQuery {
 
     @Override
-    protected List<JavaRDD<Row>> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
+    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
         throw new UnsupportedOperationException("RDD backend is not implemented for this query.");
     }
 

@@ -67,11 +67,11 @@ public class FlightRepositoryFactory {
                 return new LocalFlightRepository(spark, storagePath);
 
             case POSTGRES:
-                if (!(storageConfig instanceof PostgresStorageConfig)) {
-                     throw new IllegalArgumentException("Configuration mismatch: Expected PostgresStorageConfig for POSTGRES output type.");
+                if (!(storageConfig instanceof JdbcStorageConfig)) {
+                     throw new IllegalArgumentException("Configuration mismatch: Expected JdbcStorageConfig for POSTGRES output type.");
                 }
-                PostgresStorageConfig pgConfig = (PostgresStorageConfig) storageConfig;
-                return new PostgresFlightRepository(spark, pgConfig.getUrl(), pgConfig.getUser(), pgConfig.getPassword());
+                JdbcStorageConfig jdbcConfig = (JdbcStorageConfig) storageConfig;
+                return new PostgresFlightRepository(spark, jdbcConfig);
 
             default:
                 throw new IllegalArgumentException("Unsupported storage type: " + storageType);

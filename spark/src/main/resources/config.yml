@@ -7,7 +7,7 @@ queryToRun: monthly_performance
 
 # Define which Spark backend API to use for the query execution
 # Options: rdd, dataframe, sql
-appBackend: sql
+appBackend: rdd
 
 # Cluster configuration
 sparkCluster:
@@ -22,18 +22,22 @@ input:
   path: "/data/conv/flights/full"
   datasetFilename: ""
 
-output:
-  type: "hdfs" # Possible types: hdfs, local, s3, postgres
-  uri: "hdfs://master:54310"
-  path: "/data"
-  resultDirectory: "/res"
+# Output data configuration
+#
+# hdfs config
+#output:
+#  type: "hdfs" # Possible types: hdfs, local, s3, postgres
+#  uri: "hdfs://master:54310"
+#  path: "/data"
+#  resultDirectory: "/res"
 
 # Output data configuration
 #
 # Postgres config
-#output:
-#  type: "postgres" # Possible types: hdfs, local, s3, postgres
-#  url: "jdbc:postgresql://postgres:5432/flight_db"
-#  user: "postgres"
-#  password: "postgres"
-#  dbtable: "query_results"
+output:
+  type: "postgres" # Possible types: hdfs, local, s3, postgres
+  hostname: "postgres"
+  port: 5432
+  database: "flight_db"
+  user: "postgres"
+  password: "postgres"

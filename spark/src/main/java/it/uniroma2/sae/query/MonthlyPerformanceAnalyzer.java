@@ -8,6 +8,9 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
 import scala.Tuple2;
 
 import java.util.Collections;
@@ -29,10 +32,10 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
      *
      * @param repository the repository used to load flight data
      * @param config the application configuration containing input/output paths
-     * @return a list containing a single RDD with the formatted results
+     * @return a list containing a single RDD with the formatted results and its schema
      */
     @Override
-    protected List<JavaRDD<Row>> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
+    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
 
         String datasetFilename = config.getInput().getDatasetFilename();
 
@@ -113,10 +116,20 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         // Sort the RDD by month and then by airline
         JavaRDD<Row> sortedRDD = rowRDD.sortBy(row -> String.format("%02d-%s", row.getInt(0), row.getString(1)), true, rowRDD.getNumPartitions());
         
-        // Print the first 20 rows of the final output
-        rowRDD.take(20).forEach(System.out::println);
+        // Define the schema for the RDD
+        StructType schema = DataTypes.createStructType(new StructField[]{
+                DataTypes.createStructField("month", DataTypes.IntegerType, false),
+                DataTypes.createStructField("carrier", DataTypes.StringType, false),
+                DataTypes.createStructField("avg_delay", DataTypes.DoubleType, false),
+                DataTypes.createStructField("min_delay", DataTypes.DoubleType, false),
+                DataTypes.createStructField("max_delay", DataTypes.DoubleType, false),
+                DataTypes.createStructField("cancellation_rate", DataTypes.DoubleType, false)
+        });
 
-        return Collections.singletonList(rowRDD);
+        // Print the first 20 rows of the final output
+        sortedRDD.take(20).forEach(System.out::println);
+
+        return Collections.singletonList(new Tuple2<>(sortedRDD, schema));
     }
 
     /**

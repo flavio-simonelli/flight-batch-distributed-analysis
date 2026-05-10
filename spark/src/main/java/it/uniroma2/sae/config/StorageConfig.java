@@ -22,7 +22,7 @@ import java.io.Serializable;
 @JsonSubTypes({
         @JsonSubTypes.Type(value = RemoteStorageConfig.class, name = "hdfs"),
         @JsonSubTypes.Type(value = RemoteStorageConfig.class, name = "s3"),
-        @JsonSubTypes.Type(value = PostgresStorageConfig.class, name = "postgres"),
+        @JsonSubTypes.Type(value = JdbcStorageConfig.class, name = "postgres"),
         @JsonSubTypes.Type(value = StorageConfig.class, name = "local") // Default for local, no 'uri' field
 })
 public class StorageConfig implements Serializable {
@@ -60,7 +60,7 @@ public class StorageConfig implements Serializable {
     }
 
     public String getResultDirectory() {
-        return resultDirectory;
+        return resultDirectory.endsWith("/") ? resultDirectory : resultDirectory + "/";
     }
     public void setResultDirectory(String resultDirectory) {
         this.resultDirectory = resultDirectory;
