@@ -162,6 +162,13 @@ services:
         environment:
             - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
             - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+            - POSTGRES_PORT=${POSTGRES_PORT}
+            - POSTGRES_DB=${POSTGRES_DB}
+            - POSTGRES_USER=${POSTGRES_USER}
+            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+        volumes:
+            - ./grafana/datasources:/etc/grafana/provisioning/datasources
+            - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
         depends_on:
             - redis
             - postgres
