@@ -1,8 +1,10 @@
 package it.uniroma2.sae.repository;
 
 import it.uniroma2.sae.model.RawFlight;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructType;
 
 import java.util.Map;
 
@@ -99,6 +101,21 @@ public abstract class FlightRepository {
                 .mode(SaveMode.Overwrite)
                 .option("header", "true")
                 .csv(fullPath);
+    }
+
+    /**
+     * Saves the given JavaRDD as a CSV file to the specified output path.
+     *
+     * @param results the JavaRDD to save
+     * @param resultDirectory the name of the output directory
+     */
+    public void saveResults(JavaRDD<Row> results, String resultDirectory) {
+        if (results == null) throw new IllegalArgumentException("Results RDD cannot be null.");
+        if (results.isEmpty()) return;
+
+        StructType schema = results.first().schema();
+        Dataset<Row> convertedResults = spark.createDataFrame(results, schema);
+        saveResults(convertedResults, resultDirectory);
     }
 
     /**

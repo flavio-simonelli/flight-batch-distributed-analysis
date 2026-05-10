@@ -3,25 +3,44 @@ package it.uniroma2.sae.query;
 import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.model.RawFlight;
 import it.uniroma2.sae.repository.FlightRepository;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+
+import java.util.Arrays;
+import java.util.List;
 
 import static org.apache.spark.sql.functions.*;
 
 /**
  * Implementation of Query 3: Hourly Delay Percentiles.
  * Inherits the initialization and data loading boilerplate from {@link BaseQuery}.
+ * This query computes the 25th, 50th, 75th, and 90th percentiles of departure delays 
+ * grouped by airline and hour of the day, alongside global min and max delays for each airline.
  */
 public class HourlyDelayPercentiles extends BaseQuery {
 
     @Override
-    protected Dataset<Row> runQueryDataFrame(FlightRepository repository, ApplicationConfig config) {
+    protected List<JavaRDD<Row>> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
+        throw new UnsupportedOperationException("RDD backend is not implemented for this query.");
+    }
+
+    /**
+     * Executes the query using the Spark DataFrame API.
+     * Computes percentiles of delays by hour and overall min/max delays per airline.
+     *
+     * @param repository the repository used to load flight data
+     * @param config the application configuration containing input/output paths
+     * @return a list containing two Datasets: the first with hourly stats, the second with global min/max delays
+     */
+    @Override
+    protected List<Dataset<Row>> runQueryDataFrame(FlightRepository repository, ApplicationConfig config) {
         String datasetFilename = config.getInput().getDatasetFilename();
 
         Dataset<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL", "UA", "WN");
         flights.cache();
-        System.out.println("=== Dataset caricato (e messo in cache) ===");
+        System.out.println("=== Dataset loaded (and cached) ===");
         flights.show(5);
 
         Dataset<Row> hourlyStats = flights
@@ -49,11 +68,20 @@ public class HourlyDelayPercentiles extends BaseQuery {
 
         flights.unpersist();
 
-        return hourlyStats;
+        return Arrays.asList(hourlyStats, globalMinMax);
     }
 
+    /**
+     * Executes the query using the Spark SQL API.
+     * Computes percentiles of delays by hour and overall min/max delays per airline.
+     *
+     * @param repository the repository used to load flight data
+     * @param config the application configuration containing input/output paths
+     * @param spark the active SparkSession to run SQL commands
+     * @return a list containing two Datasets: the first with hourly stats, the second with global min/max delays
+     */
     @Override
-    protected Dataset<Row> runQuerySQL(FlightRepository repository, ApplicationConfig config, SparkSession spark) {
+    protected List<Dataset<Row>> runQuerySQL(FlightRepository repository, ApplicationConfig config, SparkSession spark) {
         String datasetFilename = config.getInput().getDatasetFilename();
         Dataset<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL", "UA", "WN");
         flights.cache();
@@ -84,6 +112,6 @@ public class HourlyDelayPercentiles extends BaseQuery {
 
         flights.unpersist();
 
-        return hourlyStats;
+        return Arrays.asList(hourlyStats, globalMinMax);
     }
 }

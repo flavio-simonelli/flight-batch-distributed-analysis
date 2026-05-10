@@ -1,10 +1,12 @@
 package it.uniroma2.sae.repository;
 
 import it.uniroma2.sae.model.RawFlight;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.types.StructType;
 import java.util.Properties;
 
 /**
@@ -73,5 +75,23 @@ public class PostgresFlightRepository extends FlightRepository {
         results.write()
                 .mode(SaveMode.Overwrite)
                 .jdbc(this.url, dbtable, connectionProperties);
+    }
+    
+    /**
+     * Saves the given JavaRDD to a table in the PostgreSQL database.
+     *
+     * @param results the JavaRDD to save
+     * @param dbtable the name of the target database table
+     */
+    @Override
+    public final void saveResults(JavaRDD<Row> results, String dbtable) {
+        if (results == null) {
+            throw new IllegalArgumentException("Results RDD cannot be null.");
+        }
+        if (results.isEmpty()) return;
+        
+        StructType schema = results.first().schema();
+        Dataset<Row> convertedResults = spark.createDataFrame(results, schema);
+        saveResults(convertedResults, dbtable);
     }
 }

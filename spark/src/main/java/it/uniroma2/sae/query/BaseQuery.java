@@ -10,6 +10,8 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
+import java.util.List;
+
 /**
  * Base abstract class for all Spark queries in the project.
  * It encapsulates the common boilerplate code required to bootstrap a Spark job:
@@ -58,26 +60,34 @@ public abstract class BaseQuery {
             // Execute the query using the configured backend API
             switch (backend) {
                 case DATAFRAME:
-                    Dataset<Row> dfResults = runQueryDataFrame(inputRepository, config);
+                    List<Dataset<Row>> dfResults = runQueryDataFrame(inputRepository, config);
                     if (dfResults != null) {
-                        outputRepository.saveResults(dfResults, target);
+                        for (int i = 0; i < dfResults.size(); i++) {
+                            String currentTarget = dfResults.size() > 1 ? target + "_" + (i + 1) : target;
+                            outputRepository.saveResults(dfResults.get(i), currentTarget);
+                        }
                     }
                     break;
 
                 case SQL:
-                    Dataset<Row> sqlResults = runQuerySQL(inputRepository, config, spark);
+                    List<Dataset<Row>> sqlResults = runQuerySQL(inputRepository, config, spark);
                     if (sqlResults != null) {
-                        outputRepository.saveResults(sqlResults, target);
+                        for (int i = 0; i < sqlResults.size(); i++) {
+                            String currentTarget = sqlResults.size() > 1 ? target + "_" + (i + 1) : target;
+                            outputRepository.saveResults(sqlResults.get(i), currentTarget);
+                        }
                     }
                     break;
 
                 case RDD:
-                    JavaRDD<Row> rddResults = runQueryRDD(inputRepository, config);
-                    if (rddResults != null && !rddResults.isEmpty()) {
-                        // To save results using the existing repository logic (which expects Dataset<Row>),
-                        // we convert the RDD back to a Dataset. We need the schema from the first row.
-                        // Dataset<Row> convertedResults = spark.createDataFrame(rddResults, rddResults.first().schema());
-                        // outputRepository.saveResults(convertedResults, target);
+                    List<JavaRDD<Row>> rddResults = runQueryRDD(inputRepository, config);
+                    if (rddResults != null) {
+                        for (int i = 0; i < rddResults.size(); i++) {
+                            if (!rddResults.get(i).isEmpty()) {
+                                String currentTarget = rddResults.size() > 1 ? target + "_" + (i + 1) : target;
+                                outputRepository.saveResults(rddResults.get(i), currentTarget);
+                            }
+                        }
                     }
                     break;
 
@@ -99,25 +109,32 @@ public abstract class BaseQuery {
     /**
      * Executes the query using the Spark DataFrame API.
      * By default, throws an exception. Must be overridden by subclasses supporting this backend.
+     *
+     * @param repository the repository used to load flight data
+     * @param config the application configuration containing input/output paths
+     * @return a list containing Datasets with the query results
      */
-    protected Dataset<Row> runQueryDataFrame(FlightRepository repository, ApplicationConfig config) {
-        throw new UnsupportedOperationException("DataFrame backend is not implemented for this query.");
-    }
+    protected abstract List<Dataset<Row>> runQueryDataFrame(FlightRepository repository, ApplicationConfig config);
 
     /**
      * Executes the query using Spark SQL.
      * By default, throws an exception. Must be overridden by subclasses supporting this backend.
      * Note: The SparkSession is provided here because SQL queries typically require registering temporary views.
+     *
+     * @param repository the repository used to load flight data
+     * @param config the application configuration containing input/output paths
+     * @param spark the active SparkSession to run SQL commands
+     * @return a list containing Datasets with the query results
      */
-    protected Dataset<Row> runQuerySQL(FlightRepository repository, ApplicationConfig config, SparkSession spark) {
-        throw new UnsupportedOperationException("SQL backend is not implemented for this query.");
-    }
+    protected abstract List<Dataset<Row>> runQuerySQL(FlightRepository repository, ApplicationConfig config, SparkSession spark);
 
     /**
      * Executes the query using the Spark RDD API.
      * By default, throws an exception. Must be overridden by subclasses supporting this backend.
+     *
+     * @param repository the repository used to load flight data
+     * @param config the application configuration containing input/output paths
+     * @return a list containing RDDs with the query results
      */
-    protected JavaRDD<Row> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
-        throw new UnsupportedOperationException("RDD backend is not implemented for this query.");
-    }
+    protected abstract List<JavaRDD<Row>> runQueryRDD(FlightRepository repository, ApplicationConfig config);
 }

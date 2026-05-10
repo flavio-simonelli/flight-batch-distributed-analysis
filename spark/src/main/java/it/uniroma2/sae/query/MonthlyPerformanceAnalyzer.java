@@ -10,6 +10,7 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import scala.Tuple2;
 
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.spark.sql.functions.*;
@@ -17,16 +18,122 @@ import static org.apache.spark.sql.functions.*;
 /**
  * Implementation of Query 1: Monthly Performance Analyzer.
  * Inherits the initialization and data loading boilerplate from {@link BaseQuery}.
+ * This query computes the average, minimum, and maximum departure delay, along with 
+ * the cancellation rate for each airline and month.
  */
 public class MonthlyPerformanceAnalyzer extends BaseQuery {
 
+    /**
+     * Executes the query using the Spark RDD API.
+     * Computes monthly statistics including average, min, max delays, and cancellation rates.
+     *
+     * @param repository the repository used to load flight data
+     * @param config the application configuration containing input/output paths
+     * @return a list containing a single RDD with the formatted results
+     */
     @Override
-    protected Dataset<Row> runQueryDataFrame(FlightRepository repository, ApplicationConfig config) {
+    protected List<JavaRDD<Row>> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
+
+        String datasetFilename = config.getInput().getDatasetFilename();
+
+        // Load the dataset for specific airlines
+        JavaRDD<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL").javaRDD();
+        System.out.println("=== Dataset loaded ===");
+        
+        // Print the first 5 rows for debugging purposes
+        List<RawFlight> firstRows = flights.take(5);
+        firstRows.forEach(System.out::println);
+
+        // PHASE 1: Map operation
+        // Transforms each flight into a key-value pair where the key is (Airline, Month)
+        // and the value is an array of statistics needed for aggregation.
+        JavaPairRDD<Tuple2<String, Integer>, double[]> mappedRDD = flights.mapToPair(flight -> {
+            // Key: (Airline, Month)
+            Tuple2<String, Integer> key = new Tuple2<>(flight.getOpUniqueCarrier(), flight.getMonth());
+            
+            // Values array holds statistics:
+            // [0: SumDelay, 1: MaxDelay, 2: MinDelay, 3: NotCancelledCount, 4: TotalCount]
+            double[] values = new double[5];
+            boolean isCancelled = (flight.getCancelled() != null && flight.getCancelled() > 0.0);
+            
+            values[4] = 1.0; // Increment TotalCount for every flight
+            
+            if (isCancelled) {
+                values[0] = 0.0; // SumDelay is 0 if the flight was cancelled
+                values[1] = -Double.MAX_VALUE; // Neutral element for MAX calculation
+                values[2] = Double.MAX_VALUE;  // Neutral element for MIN calculation
+                values[3] = 0.0; // NotCancelledCount is 0
+            } else {
+                double delay = (flight.getDepDelay() != null) ? flight.getDepDelay() : 0.0;
+                values[0] = delay;
+                values[1] = delay;
+                values[2] = delay;
+                values[3] = 1.0; // Increment NotCancelledCount
+            }
+
+            return new Tuple2<>(key, values);
+        });
+
+        // PHASE 2: Reduce operation
+        // Aggregates the statistics for each (Airline, Month) combination by summing up counts and delays,
+        // and finding the absolute min and max delays.
+        JavaPairRDD<Tuple2<String, Integer>, double[]> reducedRDD = mappedRDD.reduceByKey((a, b) -> {
+            double[] res = new double[5];
+            res[0] = a[0] + b[0]; // Sum of delays
+            res[1] = Math.max(a[1], b[1]); // Maximum delay
+            res[2] = Math.min(a[2], b[2]); // Minimum delay
+            res[3] = a[3] + b[3]; // Sum of not cancelled flights
+            res[4] = a[4] + b[4]; // Sum of total flights
+
+            return res;
+        });
+
+        // PHASE 3: Final Map operation
+        // Converts the aggregated statistics into Spark SQL Rows, computing the final averages and rates.
+        JavaRDD<Row> rowRDD = reducedRDD.map(tuple -> {
+            Tuple2<String, Integer> key = tuple._1;
+            double[] stats = tuple._2;
+
+            String carrier = key._1;
+            Integer month = key._2;
+
+            double totalFlights = stats[4];
+            double notCancelledFlights = stats[3];
+            double cancelledFlights = totalFlights - notCancelledFlights;
+
+            // Round calculations to 2 decimal places
+            double avgDelay = Math.round(((notCancelledFlights > 0) ? (stats[0] / notCancelledFlights) : 0.0) * 100.0) / 100.0;
+            double maxDelay = Math.round(((notCancelledFlights > 0) ? stats[1] : 0.0) * 100.0) / 100.0;
+            double minDelay = Math.round(((notCancelledFlights > 0) ? stats[2] : 0.0) * 100.0) / 100.0;
+            double cancellationRate = Math.round(((totalFlights > 0) ? (cancelledFlights / totalFlights) * 100 : 0.0) * 100.0) / 100.0;
+
+            return org.apache.spark.sql.RowFactory.create(month, carrier, avgDelay, minDelay, maxDelay, cancellationRate);
+        });
+
+        // Sort the RDD by month and then by airline
+        JavaRDD<Row> sortedRDD = rowRDD.sortBy(row -> String.format("%02d-%s", row.getInt(0), row.getString(1)), true, rowRDD.getNumPartitions());
+        
+        // Print the first 20 rows of the final output
+        rowRDD.take(20).forEach(System.out::println);
+
+        return Collections.singletonList(rowRDD);
+    }
+
+    /**
+     * Executes the query using the Spark DataFrame API.
+     * Computes monthly statistics including average, min, max delays, and cancellation rates.
+     *
+     * @param repository the repository used to load flight data
+     * @param config the application configuration containing input/output paths
+     * @return a list containing a single Dataset with the query results
+     */
+    @Override
+    protected List<Dataset<Row>> runQueryDataFrame(FlightRepository repository, ApplicationConfig config) {
 
         String datasetFilename = config.getInput().getDatasetFilename();
         
         Dataset<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL");
-        System.out.println("=== Dataset caricato ===");
+        System.out.println("=== Dataset loaded ===");
         flights.show(5);
 
         Dataset<Row> result = flights
@@ -40,11 +147,20 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
                 .orderBy("month", "opUniqueCarrier");
         result.show();
         
-        return result;
+        return Collections.singletonList(result);
     }
 
+    /**
+     * Executes the query using the Spark SQL API.
+     * Computes monthly statistics including average, min, max delays, and cancellation rates.
+     *
+     * @param repository the repository used to load flight data
+     * @param config the application configuration containing input/output paths
+     * @param spark the active SparkSession to run SQL commands
+     * @return a list containing a single Dataset with the query results
+     */
     @Override
-    protected Dataset<Row> runQuerySQL(FlightRepository repository, ApplicationConfig config, SparkSession spark) {
+    protected List<Dataset<Row>> runQuerySQL(FlightRepository repository, ApplicationConfig config, SparkSession spark) {
         String datasetFilename = config.getInput().getDatasetFilename();
         Dataset<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL");
 
@@ -62,86 +178,6 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
 
         Dataset<Row> result = spark.sql(sqlQuery);
         result.show();
-        return result;
-    }
-
-    @Override
-    protected JavaRDD<Row> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
-
-        String datasetFilename = config.getInput().getDatasetFilename();
-        
-        JavaRDD<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL").javaRDD();
-        System.out.println("=== Dataset caricato ===");
-        // stampa delle prime 5 righe
-        List<RawFlight> firstRows = flights.take(5);
-        firstRows.forEach(System.out::println);
-
-        // FASE 1: Map
-        JavaPairRDD<Tuple2<String, Integer>, double[]> mappedRDD = flights.mapToPair(flight -> {
-            // Chiave: (Compagnia, Mese)
-            Tuple2<String, Integer> key = new Tuple2<>(flight.getOpUniqueCarrier(), flight.getMonth());
-            // [0: SumDelay, 1: MaxDelay, 2: MinDelay, 3: NotCancelledCount, 4: TotalCount]
-            double[] values = new double[5];
-            boolean isCancelled = (flight.getCancelled() != null && flight.getCancelled() > 0.0);
-            values[4] = 1.0; // TotalCount
-            if (isCancelled) {
-                values[0] = 0.0; // Delay in SumDelay è 0 se il volo è stato cancellato
-                values[1] = -Double.MAX_VALUE; // Elemento neutro per il MAX
-                values[2] = Double.MAX_VALUE;  // Elemento neutro per il MIN
-                values[3] = 0.0; // NotCancelledCount
-            } else {
-                double delay = (flight.getDepDelay() != null) ? flight.getDepDelay() : 0.0;
-                values[0] = delay;
-                values[1] = delay;
-                values[2] = delay;
-                values[3] = 1.0;
-            }
-
-            return new Tuple2<>(key, values);
-        });
-
-        // FASE 2: Reduce
-        JavaPairRDD<Tuple2<String, Integer>, double[]> reducedRDD = mappedRDD.reduceByKey((a, b) -> {
-            double[] res = new double[5];
-            res[0] = a[0] + b[0]; // Somma dei ritardi
-            res[1] = Math.max(a[1], b[1]); // Massimo ritardo
-            res[2] = Math.min(a[2], b[2]); // Minimo ritardo
-            res[3] = a[3] + b[3]; // Somma voli non cancellati
-            res[4] = a[4] + b[4]; // Somma voli totali
-
-            return res;
-        });
-
-        // FASE 3: Map
-        JavaRDD<Row> rowRDD = reducedRDD.map(tuple -> {
-            Tuple2<String, Integer> key = tuple._1;
-            double[] stats = tuple._2;
-
-            String carrier = key._1;
-            Integer month = key._2;
-
-            double totalFlights = stats[4];
-            double notCancelledFlights = stats[3];
-            double cancelledFlights = totalFlights - notCancelledFlights;
-
-            // Arrotondamento a 2 cifre decimali
-            double avgDelay = Math.round(((notCancelledFlights > 0) ? (stats[0] / notCancelledFlights) : 0.0) * 100.0) / 100.0;
-            double maxDelay = Math.round(((notCancelledFlights > 0) ? stats[1] : 0.0) * 100.0) / 100.0;
-            double minDelay = Math.round(((notCancelledFlights > 0) ? stats[2] : 0.0) * 100.0) / 100.0;
-            double cancellationRate = Math.round(((totalFlights > 0) ? (cancelledFlights / totalFlights) * 100 : 0.0) * 100.0) / 100.0;
-
-            return org.apache.spark.sql.RowFactory.create(month, carrier, avgDelay, minDelay, maxDelay, cancellationRate);
-        });
-
-        // Ordinamento per RDD
-        // JavaRDD<Row> sortedRowRDD = rowRDD.sortBy(
-        //         row -> new Tuple2<>(row.getInt(0), row.getString(1)),
-        //         true,
-        //         rowRDD.getNumPartitions()
-        // );
-
-        rowRDD.collect().forEach(System.out::println);
-
-        return rowRDD;
+        return Collections.singletonList(result);
     }
 }
