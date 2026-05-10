@@ -4,6 +4,7 @@ import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.model.RawFlight;
 import it.uniroma2.sae.repository.FlightRepository;
 import it.uniroma2.sae.util.SerializableComparator;
+import it.uniroma2.sae.util.SparkDiagnostics;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -106,10 +107,17 @@ public class ArrivalDelayRanking extends BaseQuery {
                     );
                 });
 
+        //diagnostic print
+        SparkDiagnostics.profilePartitions(processedRDD, "Compagnie Aeree dopo Filtro 500");
+        SparkDiagnostics.checkSkew(processedRDD, "Compagnie Aeree", 3.0);
+
+
         // Sort the result by average arrival delay in descending order
-        SerializableComparator<Row> comparator = (r1, r2) -> Double.compare(r2.getDouble(2), r1.getDouble(2));
-        List<Row> top10Local = processedRDD.takeOrdered(10, comparator);
-        JavaRDD<Row> top10RDD = jsc.parallelize(top10Local);
+        JavaRDD<Row> sortedRDD = processedRDD.sortBy(r -> r.getDouble(2), false, processedRDD.getNumPartitions());
+        JavaRDD<Row> top10RDD = sortedRDD.zipWithIndex()
+                .filter(tuple -> tuple._2 < 10)
+                .map(tuple -> tuple._1)
+                .coalesce(1);
 
         // Define the schema for the RDD
         StructType schema = DataTypes.createStructType(new StructField[]{
