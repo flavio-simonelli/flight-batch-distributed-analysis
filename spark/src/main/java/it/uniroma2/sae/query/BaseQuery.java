@@ -58,10 +58,9 @@ public abstract class BaseQuery {
 
             AppBackendType backend = config.getAppBackend();
             if (backend == null) throw new IllegalArgumentException("appBackend is not defined in config.yml. Please choose rdd, dataframe, or sql.");
-            String backendName = backend.name().toLowerCase();
 
-            // Determine output target name based on query and backend
-            String baseTargetName = String.format("%s_%s", queryName, backendName);
+            // Determine output target name based on query and backend (subclasses may extend it).
+            String baseTargetName = buildBaseTargetName(config);
             String fullTargetName = config.getOutput().getResultDirectory() + baseTargetName;
 
 
@@ -222,4 +221,16 @@ public abstract class BaseQuery {
      * @return a list containing RDDs with their corresponding schemas
      */
     protected abstract List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(FlightRepository repository, ApplicationConfig config);
+
+    /**
+     * Builds the base name used to derive output target identifiers (table names, file names).
+     * Default form: {@code <queryName>_<backendName>}. Subclasses can override to append further
+     * qualifiers (e.g., the chosen percentile algorithm) so that runs with different parameters
+     * produce distinct outputs and don't overwrite each other.
+     */
+    protected String buildBaseTargetName(ApplicationConfig config) {
+        String queryName = config.getQueryToRun().name().toLowerCase();
+        String backendName = config.getAppBackend().name().toLowerCase();
+        return String.format("%s_%s", queryName, backendName);
+    }
 }

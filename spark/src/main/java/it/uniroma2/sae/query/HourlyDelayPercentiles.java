@@ -1,6 +1,8 @@
 package it.uniroma2.sae.query;
 
+import it.uniroma2.sae.config.AppBackendType;
 import it.uniroma2.sae.config.ApplicationConfig;
+import it.uniroma2.sae.config.PercentileAlgorithm;
 import it.uniroma2.sae.model.RawFlight;
 import it.uniroma2.sae.repository.FlightRepository;
 import it.uniroma2.sae.util.SparkDiagnostics;
@@ -128,6 +130,23 @@ public class HourlyDelayPercentiles extends BaseQuery {
 
     private static double round2(double v) {
         return Math.round(v * 100.0) / 100.0;
+    }
+
+    /**
+     * Appends the chosen percentile algorithm (kll/tdigest) to the base target name, so RDD
+     * runs with different sketches land in distinct output tables/files instead of overwriting.
+     * DataFrame and SQL backends always use Spark's percentile_approx, so no qualifier is added.
+     */
+    @Override
+    protected String buildBaseTargetName(ApplicationConfig config) {
+        String base = super.buildBaseTargetName(config);
+        if (config.getAppBackend() == AppBackendType.RDD) {
+            PercentileAlgorithm algo = config.getPercentileAlgorithm();
+            if (algo != null) {
+                return base + "_" + algo.toString();
+            }
+        }
+        return base;
     }
 
     /**
