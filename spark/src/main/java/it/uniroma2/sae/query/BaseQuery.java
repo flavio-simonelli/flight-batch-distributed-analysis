@@ -65,9 +65,9 @@ public abstract class BaseQuery {
             String fullTargetName = config.getOutput().getResultDirectory() + baseTargetName;
 
 
-            long endProcess = 0;
-            long processWallTime = 0;
-            long processMaxJob = 0;
+            long endLoad = 0;
+            long loadWallTime = 0;
+            long loadMaxJob = 0;
 
             long startSave = 0;
             long endSave = 0;
@@ -82,8 +82,8 @@ public abstract class BaseQuery {
                 case DATAFRAME:
                     List<Dataset<Row>> dfResults = runQueryDataFrame(inputRepository, config);
 
-                    endProcess = System.currentTimeMillis();
-                    processMaxJob = timer.getMaxJobDuration();
+                    endLoad = System.currentTimeMillis();
+                    loadMaxJob = timer.getMaxJobDuration();
                     timer.reset();
 
                     if (dfResults == null) break;
@@ -103,8 +103,8 @@ public abstract class BaseQuery {
                 case SQL:
                     List<Dataset<Row>> sqlResults = runQuerySQL(inputRepository, config, spark);
 
-                    endProcess = System.currentTimeMillis();
-                    processMaxJob = timer.getMaxJobDuration();
+                    endLoad = System.currentTimeMillis();
+                    loadMaxJob = timer.getMaxJobDuration();
                     timer.reset();
 
                     if (sqlResults == null) break;
@@ -124,8 +124,8 @@ public abstract class BaseQuery {
                 case RDD:
                     List<Tuple2<JavaRDD<Row>, StructType>> rddResultsWithSchema = runQueryRDD(inputRepository, config);
 
-                    endProcess = System.currentTimeMillis();
-                    processMaxJob = timer.getMaxJobDuration();
+                    endLoad = System.currentTimeMillis();
+                    loadMaxJob = timer.getMaxJobDuration();
                     timer.reset();
 
                     if (rddResultsWithSchema == null) break;
@@ -157,14 +157,14 @@ public abstract class BaseQuery {
                     throw new UnsupportedOperationException("Backend " + backend + " is not supported.");
             }
 
-            processWallTime = endProcess - startProcess;
+            loadWallTime = endLoad - startProcess;
             saveWallTime = endSave - startSave;
 
             long endTime = System.currentTimeMillis();
 
             System.out.println("--- PERFORMANCE REPORT: " + queryName + " ---");
-            printPhase("LOADING & PROCESSING", processWallTime, processMaxJob);
-            printPhase("SAVING", saveWallTime, saveMaxJob);
+            printPhase("LOADING", loadWallTime, loadMaxJob);
+            printPhase("PROCESSING & SAVING", saveWallTime, saveMaxJob);
             System.out.println("TOTAL WALL TIME: " + (endTime - startTime) + " ms");
 
         } catch (Exception e) {
