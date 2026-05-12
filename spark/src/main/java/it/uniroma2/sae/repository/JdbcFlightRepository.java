@@ -1,7 +1,6 @@
 package it.uniroma2.sae.repository;
 
 import it.uniroma2.sae.config.JdbcStorageConfig;
-import it.uniroma2.sae.model.RawFlight;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
@@ -19,48 +18,23 @@ import java.util.Properties;
  * An abstract repository for JDBC-based data sources.
  * It centralizes the logic for saving Datasets to a JDBC-compliant database.
  */
-public abstract class JdbcFlightRepository extends FlightRepository {
-
-    protected final JdbcStorageConfig config;
+public abstract class JdbcFlightRepository extends DbFlightRepository<JdbcStorageConfig> {
 
     public JdbcFlightRepository(SparkSession spark, JdbcStorageConfig config) {
-        super(spark);
-        this.config = config;
+        super(spark, config);
         checkConnectionDetails();
     }
 
     private void checkConnectionDetails() {
-        if (config.getHostname() == null || config.getHostname().isEmpty()) throw new IllegalArgumentException("Invalid JDBC URL.");
+        if (config.getHostname() == null || config.getHostname().isEmpty()) throw new IllegalArgumentException("Invalid JDBC hostname.");
         if (config.getPort() == null || config.getPort() <= 0) throw new IllegalArgumentException("Invalid JDBC port.");
         if (config.getDatabase() == null || config.getDatabase().isEmpty()) throw new IllegalArgumentException("JDBC database name cannot be empty.");
         if (config.getUser() == null || config.getUser().isEmpty()) throw new IllegalArgumentException("JDBC user cannot be empty.");
         if (config.getPassword() == null || config.getPassword().isEmpty()) throw new IllegalArgumentException("JDBC password cannot be empty.");
-        if (getDriver(config) == null || getDriver(config).isEmpty()) throw new IllegalArgumentException("JDBC driver must be provided.");
-        if (getUrl(config) == null || getUrl(config).isEmpty() || !getUrl(config).startsWith("jdbc:")) throw new IllegalArgumentException("JDBC URL must be provided and start with 'jdbc:'.");
-    }
-
-    /**
-     * Returns the specific JDBC driver class name.
-     * @param config the configuration object
-     * @return the driver class name
-     */
-    protected abstract String getDriver(JdbcStorageConfig config);
-
-    /**
-     * Return the specific JDBC URL.
-     * @param config the configuration object
-     * @return the JDBC URL
-     */
-    protected abstract String getUrl(JdbcStorageConfig config);
-
-    @Override
-    public Dataset<RawFlight> getFlights(String datasetFilename) {
-        throw new UnsupportedOperationException("Reading flight data from a JDBC source is not supported in this repository.");
-    }
-
-    @Override
-    protected String getFullPath(String filename) {
-        throw new UnsupportedOperationException("getFullPath is not applicable for JDBC connections.");
+        if (config.getDriver() == null || config.getDriver().isEmpty()) throw new IllegalArgumentException("JDBC driver must be provided or derived.");
+        if (config.getConnectionUri() == null || config.getConnectionUri().isEmpty() || !config.getConnectionUri().startsWith("jdbc:")) {
+             throw new IllegalArgumentException("JDBC URL must be provided and start with 'jdbc:'.");
+        }
     }
 
     /**
@@ -77,13 +51,13 @@ public abstract class JdbcFlightRepository extends FlightRepository {
         Properties connectionProperties = new Properties();
         connectionProperties.put("user", config.getUser());
         connectionProperties.put("password", config.getPassword());
-        connectionProperties.put("driver", getDriver(config));
+        connectionProperties.put("driver", config.getDriver());
         connectionProperties.put("batchsize", "10000");
         connectionProperties.put("rewriteBatchedStatements", "true");
 
         results.write()
                 .mode(SaveMode.Overwrite)
-                .jdbc(getUrl(config), table, connectionProperties);
+                .jdbc(config.getConnectionUri(), table, connectionProperties);
     }
 
     /**
@@ -99,7 +73,7 @@ public abstract class JdbcFlightRepository extends FlightRepository {
         if (schema == null) throw new IllegalArgumentException("Schema cannot be null when saving JavaRDD<Row>.");
         // Avoid to use .empty() for performance reasons
         // if (results.isEmpty()) return;
-        
+
         Dataset<Row> convertedResults = spark.createDataFrame(results, schema);
         saveResults(convertedResults, table);
     }
@@ -123,10 +97,10 @@ public abstract class JdbcFlightRepository extends FlightRepository {
 
         System.out.println("Saving results to JDBC database. This may take a while for large datasets...");
 
-        final String url = getUrl(config);
+        final String url = config.getConnectionUri();
         final String user = config.getUser();
         final String password = config.getPassword();
-        final String driver = getDriver(config);
+        final String driver = config.getDriver();
 
         // Ensure the table exists
         ensureTableExists(url, user, password, driver, schema, table);

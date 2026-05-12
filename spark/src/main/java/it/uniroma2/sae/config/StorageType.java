@@ -21,7 +21,16 @@ public enum StorageType implements Serializable {
     LOCAL("local"),
     
     @JsonProperty("postgres")
-    POSTGRES("postgres");
+    POSTGRES("postgres"),
+
+    @JsonProperty("mongodb")
+    MONGODB("mongodb"),
+
+    @JsonProperty("redis")
+    REDIS("redis"),
+
+    @JsonProperty("hbase")
+    HBASE("hbase");
 
     private final String type;
     private static final Map<String, StorageType> LOOKUP = Arrays

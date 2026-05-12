@@ -23,6 +23,9 @@ import java.io.Serializable;
         @JsonSubTypes.Type(value = RemoteStorageConfig.class, name = "hdfs"),
         @JsonSubTypes.Type(value = RemoteStorageConfig.class, name = "s3"),
         @JsonSubTypes.Type(value = JdbcStorageConfig.class, name = "postgres"),
+        @JsonSubTypes.Type(value = MongoStorageConfig.class, name = "mongodb"),
+        @JsonSubTypes.Type(value = RedisStorageConfig.class, name = "redis"),
+        @JsonSubTypes.Type(value = HBaseStorageConfig.class, name = "hbase"),
         @JsonSubTypes.Type(value = StorageConfig.class, name = "local") // Default for local, no 'uri' field
 })
 public class StorageConfig implements Serializable {
