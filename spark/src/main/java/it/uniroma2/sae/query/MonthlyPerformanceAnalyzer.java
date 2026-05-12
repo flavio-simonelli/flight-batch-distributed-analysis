@@ -26,21 +26,25 @@ import static org.apache.spark.sql.functions.*;
  */
 public class MonthlyPerformanceAnalyzer extends BaseQuery {
 
+    @Override
+    protected Dataset<RawFlight> loadData(FlightRepository repository, ApplicationConfig config) {
+        String datasetFilename = config.getInput().getDatasetFilename();
+        return repository.getFlightsOfAirlines(datasetFilename, "AA", "DL");
+    }
+
     /**
      * Executes the query using the Spark RDD API.
      * Computes monthly statistics including average, min, max delays, and cancellation rates.
      *
-     * @param repository the repository used to load flight data
+     * @param dataset the dataset to query
      * @param config the application configuration containing input/output paths
      * @return a list containing a single RDD with the formatted results and its schema
      */
     @Override
-    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
-
-        String datasetFilename = config.getInput().getDatasetFilename();
+    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<RawFlight> dataset, ApplicationConfig config) {
 
         // Load the dataset for specific airlines
-        JavaRDD<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL").javaRDD();
+        JavaRDD<RawFlight> flights = dataset.javaRDD();
 
         // PHASE 1: Map operation
         // Transforms each flight into a key-value pair where the key is (Airline, Month)
@@ -128,16 +132,12 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
      * Executes the query using the Spark DataFrame API.
      * Computes monthly statistics including average, min, max delays, and cancellation rates.
      *
-     * @param repository the repository used to load flight data
+     * @param flights the dataset to query
      * @param config the application configuration containing input/output paths
      * @return a list containing a single Dataset with the query results
      */
     @Override
-    protected List<Dataset<Row>> runQueryDataFrame(FlightRepository repository, ApplicationConfig config) {
-
-        String datasetFilename = config.getInput().getDatasetFilename();
-        
-        Dataset<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL");
+    protected List<Dataset<Row>> runQueryDataFrame(Dataset<RawFlight> flights, ApplicationConfig config) {
 
         Dataset<Row> result = flights
                 .groupBy("month", "opUniqueCarrier")
@@ -156,16 +156,13 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
      * Executes the query using the Spark SQL API.
      * Computes monthly statistics including average, min, max delays, and cancellation rates.
      *
-     * @param repository the repository used to load flight data
+     * @param flights the dataset to query
      * @param config the application configuration containing input/output paths
      * @param spark the active SparkSession to run SQL commands
      * @return a list containing a single Dataset with the query results
      */
     @Override
-    protected List<Dataset<Row>> runQuerySQL(FlightRepository repository, ApplicationConfig config, SparkSession spark) {
-        String datasetFilename = config.getInput().getDatasetFilename();
-        Dataset<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL");
-
+    protected List<Dataset<Row>> runQuerySQL(Dataset<RawFlight> flights, ApplicationConfig config, SparkSession spark) {
         // Create a temporary view to run SQL queries against it
         flights.createOrReplaceTempView("flights");
 

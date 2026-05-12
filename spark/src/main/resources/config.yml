@@ -7,7 +7,7 @@ queryToRun: monthly_performance
 
 # Define which Spark backend API to use for the query execution
 # Options: rdd, dataframe, sql
-appBackend: dataframe
+appBackend: rdd
 
 # Algorithm for Q3 (hourly_delay_percentiles) percentile estimation in the RDD backend
 # Options: kll, tdigest
@@ -42,13 +42,13 @@ input:
 #   resultDirectory: "output"
 
 # PostgreSQL Output
-# output:
-#   type: "postgres"
-#   hostname: "postgres"
-#   port: 5432
-#   database: "flight_db"
-#   user: "postgres"
-#   password: "postgres"
+output:
+  type: "postgres"
+  hostname: "postgres"
+  port: 5432
+  database: "flight_db"
+  user: "postgres"
+  password: "postgres"
 
 # MongoDB Output
 # output:
@@ -69,8 +69,8 @@ input:
 #   # password: "mypassword" # Optional
 
 # HBase Output
-output:
-  type: "hbase"
-  hostname: "hbase"   # Used as Zookeeper Quorum
-  port: 2181          # Used as Zookeeper Client Port
-  database: "flight_results" # Used as Table Name
+# output:
+#   type: "hbase"
+#   hostname: "hbase"   # Used as Zookeeper Quorum
+#   port: 2181          # Used as Zookeeper Client Port
+#   database: "flight_results" # Used as Table Name

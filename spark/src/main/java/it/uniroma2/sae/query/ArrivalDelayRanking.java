@@ -30,18 +30,24 @@ import static org.apache.spark.sql.functions.*;
  */
 public class ArrivalDelayRanking extends BaseQuery {
 
+    @Override
+    protected Dataset<RawFlight> loadData(FlightRepository repository, ApplicationConfig config) {
+        String datasetFilename = config.getInput().getDatasetFilename();
+        return repository.getFlights(datasetFilename);
+    }
+
     /**
      * Executes the query using the Spark RDD API.
      * Maps and reduces flight data to compute average delays and filters top offenders.
      *
-     * @param repository the repository used to load flight data
+     * @param dataset the dataset to query
      * @param config the application configuration containing input/output paths
      * @return a list containing a single RDD with the top 10 airlines ranked by arrival delay, and its schema
      */
     @Override
-    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
+    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<RawFlight> dataset, ApplicationConfig config) {
         String datasetFilename = config.getInput().getDatasetFilename();
-        JavaRDD<RawFlight> flights = repository.getFlights(datasetFilename).javaRDD();
+        JavaRDD<RawFlight> flights = dataset.javaRDD();
         JavaSparkContext jsc = new JavaSparkContext(flights.context());
 
         // Discard flights that were either cancelled or diverted
@@ -138,15 +144,12 @@ public class ArrivalDelayRanking extends BaseQuery {
      * Executes the query using the Spark DataFrame API.
      * Groups data by airline and aggregates the various types of delays.
      *
-     * @param repository the repository used to load flight data
+     * @param flights the dataset to query
      * @param config the application configuration containing input/output paths
      * @return a list containing a single Dataset with the top 10 airlines ranked by arrival delay
      */
     @Override
-    protected List<Dataset<Row>> runQueryDataFrame(FlightRepository repository, ApplicationConfig config) {
-        String datasetFilename = config.getInput().getDatasetFilename();
-
-        Dataset<RawFlight> flights = repository.getFlights(datasetFilename);
+    protected List<Dataset<Row>> runQueryDataFrame(Dataset<RawFlight> flights, ApplicationConfig config) {
 
         Dataset<Row> result = flights
                 .groupBy("opUniqueCarrier")
@@ -170,15 +173,13 @@ public class ArrivalDelayRanking extends BaseQuery {
      * Executes the query using the Spark SQL API.
      * Groups data by airline and aggregates the various types of delays.
      *
-     * @param repository the repository used to load flight data
+     * @param flights the dataset to query
      * @param config the application configuration containing input/output paths
      * @param spark the active SparkSession to run SQL commands
      * @return a list containing a single Dataset with the top 10 airlines ranked by arrival delay
      */
     @Override
-    protected List<Dataset<Row>> runQuerySQL(FlightRepository repository, ApplicationConfig config, SparkSession spark) {
-        String datasetFilename = config.getInput().getDatasetFilename();
-        Dataset<RawFlight> flights = repository.getFlights(datasetFilename);
+    protected List<Dataset<Row>> runQuerySQL(Dataset<RawFlight> flights, ApplicationConfig config, SparkSession spark) {
 
         flights.createOrReplaceTempView("flights");
 

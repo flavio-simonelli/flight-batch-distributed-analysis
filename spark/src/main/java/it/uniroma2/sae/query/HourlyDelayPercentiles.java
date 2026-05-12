@@ -31,6 +31,12 @@ import static org.apache.spark.sql.functions.*;
  */
 public class HourlyDelayPercentiles extends BaseQuery {
 
+    @Override
+    protected Dataset<RawFlight> loadData(FlightRepository repository, ApplicationConfig config) {
+        String datasetFilename = config.getInput().getDatasetFilename();
+        return repository.getFlightsOfAirlines(datasetFilename, "AA", "DL", "UA", "WN");
+    }
+
     /**
      * Executes the query using the Spark RDD API.
      * For each (airline, hour-of-day), estimates p25/p50/p75/p90 of departure delay using a
@@ -38,18 +44,14 @@ public class HourlyDelayPercentiles extends BaseQuery {
      * also computes the exact global min/max departure delay. Both pipelines operate on the
      * non-cancelled subset.
      *
-     * @param repository the repository used to load flight data
+     * @param dataset the dataset to query
      * @param config the application configuration containing input/output paths and the chosen sketch
      * @return a list with two tuples: hourly percentiles RDD+schema, then global min/max RDD+schema
      */
     @Override
-    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(FlightRepository repository, ApplicationConfig config) {
-        String datasetFilename = config.getInput().getDatasetFilename();
+    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<RawFlight> dataset, ApplicationConfig config) {
         PercentileSketch sketch = PercentileSketch.from(config.getPercentileAlgorithm());
-
-        JavaRDD<RawFlight> flights = repository
-                .getFlightsOfAirlines(datasetFilename, "AA", "DL", "UA", "WN")
-                .javaRDD();
+        JavaRDD<RawFlight> flights = dataset.javaRDD();
 
         // Single non-cancelled filter shared by both pipelines (cached to avoid double scan).
         JavaRDD<RawFlight> validFlights = flights.filter(f ->
@@ -152,15 +154,12 @@ public class HourlyDelayPercentiles extends BaseQuery {
      * Executes the query using the Spark DataFrame API.
      * Computes percentiles of delays by hour and overall min/max delays per airline.
      *
-     * @param repository the repository used to load flight data
+     * @param flights the dataset to query
      * @param config the application configuration containing input/output paths
      * @return a list containing two Datasets: the first with hourly stats, the second with global min/max delays
      */
     @Override
-    protected List<Dataset<Row>> runQueryDataFrame(FlightRepository repository, ApplicationConfig config) {
-        String datasetFilename = config.getInput().getDatasetFilename();
-
-        Dataset<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL", "UA", "WN");
+    protected List<Dataset<Row>> runQueryDataFrame(Dataset<RawFlight> flights, ApplicationConfig config) {
         flights.cache();
 
         Dataset<Row> hourlyStats = flights
@@ -192,15 +191,13 @@ public class HourlyDelayPercentiles extends BaseQuery {
      * Executes the query using the Spark SQL API.
      * Computes percentiles of delays by hour and overall min/max delays per airline.
      *
-     * @param repository the repository used to load flight data
+     * @param flights the dataset to query
      * @param config the application configuration containing input/output paths
      * @param spark the active SparkSession to run SQL commands
      * @return a list containing two Datasets: the first with hourly stats, the second with global min/max delays
      */
     @Override
-    protected List<Dataset<Row>> runQuerySQL(FlightRepository repository, ApplicationConfig config, SparkSession spark) {
-        String datasetFilename = config.getInput().getDatasetFilename();
-        Dataset<RawFlight> flights = repository.getFlightsOfAirlines(datasetFilename, "AA", "DL", "UA", "WN");
+    protected List<Dataset<Row>> runQuerySQL(Dataset<RawFlight> flights, ApplicationConfig config, SparkSession spark) {
         flights.cache();
         
         flights.createOrReplaceTempView("flights");

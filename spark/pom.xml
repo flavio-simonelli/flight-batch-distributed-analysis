@@ -15,10 +15,11 @@
         <spark.version>3.5.1</spark.version>
         <scala.compat.version>2.13</scala.compat.version>
         <jackson.version>2.15.2</jackson.version>
+        <hbase.version>2.5.4</hbase.version>
     </properties>
 
     <dependencies>
-        <!-- Spark Dependencies (PROVIDED) -->
+        <!-- Spark Dependencies (PROVIDED by the cluster) -->
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.compat.version}</artifactId>
@@ -35,6 +36,14 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-mllib_${scala.compat.version}</artifactId>
             <version>${spark.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Force Scala Library to PROVIDED -->
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>2.13.8</version>
             <scope>provided</scope>
         </dependency>
 
@@ -79,24 +88,11 @@
             </exclusions>
         </dependency>
 
+        <!-- Clean HBase Client (Replacing hbase-spark to avoid conflicts) -->
         <dependency>
-            <groupId>org.apache.hbase.connectors.spark</groupId>
-            <artifactId>hbase-spark</artifactId>
-            <version>1.0.1</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.spark</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.hadoop</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.scala-lang</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-shaded-client</artifactId>
+            <version>${hbase.version}</version>
         </dependency>
 
         <!-- Algorithms -->
@@ -130,6 +126,8 @@
                                     <exclude>org.apache.hadoop:*</exclude>
                                     <exclude>org.scala-lang:*</exclude>
                                     <exclude>org.scala-lang.modules:*</exclude>
+                                    <!-- Spark already provides Netty -->
+                                    <exclude>io.netty:*</exclude>
                                 </excludes>
                             </artifactSet>
                             <filters>
@@ -139,9 +137,18 @@
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>META-INF/LICENSE*</exclude>
+                                        <exclude>META-INF/NOTICE*</exclude>
+                                        <exclude>META-INF/DEPENDENCIES</exclude>
                                         <exclude>META-INF/maven/**</exclude>
+                                        <exclude>META-INF/native-image/**</exclude>
+                                        <exclude>META-INF/MANIFEST.MF</exclude>
+                                        <exclude>**/module-info.class</exclude>
                                         <exclude>LICENSE*</exclude>
                                         <exclude>NOTICE*</exclude>
+                                        <exclude>about.html</exclude>
+                                        <exclude>**/*.txt</exclude>
+                                        <exclude>**/*.md</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
