@@ -4,7 +4,6 @@ import it.uniroma2.sae.config.AppBackendType;
 import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.config.QueryType;
 import it.uniroma2.sae.factory.FlightRepositoryFactory;
-import it.uniroma2.sae.model.RawFlight;
 import it.uniroma2.sae.repository.FlightRepository;
 import it.uniroma2.sae.util.JobTimerListener; // Import the new listener
 import it.uniroma2.sae.util.PerformanceMetrics;
@@ -59,6 +58,12 @@ public abstract class BaseQuery {
 
             spark.sparkContext().setLogLevel("WARN");
 
+            // OPTIMIZATION: Reduce shuffle partitions for small/medium datasets.
+            // The default is 200, which is overkill for this project and causes massive task overhead.
+            spark.conf().set("spark.sql.shuffle.partitions", "8"); 
+            // Enable Adaptive Query Execution to further optimize shuffles at runtime.
+            spark.conf().set("spark.sql.adaptive.enabled", "true");
+
             // Add the custom SparkListener for job timing
             JobTimerListener timer = new JobTimerListener();
             spark.sparkContext().addSparkListener(timer);
@@ -79,10 +84,11 @@ public abstract class BaseQuery {
 
             // Load dataset
             metrics.startPhase("PLANNING");
-            Dataset<RawFlight> flights = loadData(inputRepository, config);
+            Dataset<Row> flights = loadData(inputRepository, config);
             metrics.stopPhase();
 
             // Execute the query using the configured backend API
+            metrics.startPhase("EXECUTION");
             switch (backend) {
                 case DATAFRAME:
                     dfResults = runQueryDataFrame(flights, config);
@@ -100,7 +106,6 @@ public abstract class BaseQuery {
                     throw new UnsupportedOperationException("Backend " + backend + " is not supported.");
             }
 
-            metrics.startPhase("EXECUTION");
             if(dfResults != null) {
                 for (int i = 0; i < dfResults.size(); i++) {
                     String currentTarget = dfResults.size() > 1 ? fullTargetName + "_" + (i + 1) : fullTargetName;
@@ -147,7 +152,7 @@ public abstract class BaseQuery {
      * @param config the application configuration containing input/output paths
      * @return a Dataset with the query results
      */
-    protected abstract Dataset<RawFlight> loadData(FlightRepository repository, ApplicationConfig config);
+    protected abstract Dataset<Row> loadData(FlightRepository repository, ApplicationConfig config);
 
     /**
      * Executes the query using the Spark DataFrame API.
@@ -157,7 +162,7 @@ public abstract class BaseQuery {
      * @param config the application configuration containing input/output paths
      * @return a list containing Datasets with the query results
      */
-    protected abstract List<Dataset<Row>> runQueryDataFrame(Dataset<RawFlight> dataset, ApplicationConfig config);
+    protected abstract List<Dataset<Row>> runQueryDataFrame(Dataset<Row> dataset, ApplicationConfig config);
 
     /**
      * Executes the query using Spark SQL.
@@ -169,7 +174,7 @@ public abstract class BaseQuery {
      * @param spark the active SparkSession to run SQL commands
      * @return a list containing Datasets with the query results
      */
-    protected abstract List<Dataset<Row>> runQuerySQL(Dataset<RawFlight> dataset, ApplicationConfig config, SparkSession spark);
+    protected abstract List<Dataset<Row>> runQuerySQL(Dataset<Row> dataset, ApplicationConfig config, SparkSession spark);
 
     /**
      * Executes the query using the Spark RDD API.
@@ -179,7 +184,7 @@ public abstract class BaseQuery {
      * @param config the application configuration containing input/output paths
      * @return a list containing RDDs with their corresponding schemas
      */
-    protected abstract List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<RawFlight> dataset, ApplicationConfig config);
+    protected abstract List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<Row> dataset, ApplicationConfig config);
 
     /**
      * Builds the base name used to derive output target identifiers (table names, file names).

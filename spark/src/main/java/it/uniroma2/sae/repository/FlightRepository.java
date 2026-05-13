@@ -5,6 +5,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 import java.util.Collections;
@@ -21,6 +22,40 @@ public abstract class FlightRepository {
     protected final SparkSession spark;
 
     /**
+     * Explicit schema for flight data to avoid Spark's schema inference overhead.
+     * Maps to the column names found in the Parquet files.
+     */
+    public static final StructType FLIGHT_SCHEMA = DataTypes.createStructType(new StructField[]{
+            DataTypes.createStructField("YEAR", DataTypes.IntegerType, true),
+            DataTypes.createStructField("MONTH", DataTypes.IntegerType, true),
+            DataTypes.createStructField("DAY_OF_MONTH", DataTypes.IntegerType, true),
+            DataTypes.createStructField("OP_UNIQUE_CARRIER", DataTypes.StringType, true),
+            DataTypes.createStructField("OP_CARRIER_FL_NUM", DataTypes.IntegerType, true),
+            DataTypes.createStructField("ORIGIN_AIRPORT_ID", DataTypes.IntegerType, true),
+            DataTypes.createStructField("ORIGIN_CITY_MARKET_ID", DataTypes.IntegerType, true),
+            DataTypes.createStructField("ORIGIN_STATE_ABR", DataTypes.StringType, true),
+            DataTypes.createStructField("DEST_AIRPORT_ID", DataTypes.IntegerType, true),
+            DataTypes.createStructField("DEST_CITY_MARKET_ID", DataTypes.IntegerType, true),
+            DataTypes.createStructField("DEST_STATE_ABR", DataTypes.StringType, true),
+            DataTypes.createStructField("CRS_DEP_TIME", DataTypes.IntegerType, true),
+            DataTypes.createStructField("DEP_TIME", DataTypes.IntegerType, true),
+            DataTypes.createStructField("DEP_DELAY", DataTypes.DoubleType, true),
+            DataTypes.createStructField("CRS_ARR_TIME", DataTypes.IntegerType, true),
+            DataTypes.createStructField("ARR_TIME", DataTypes.IntegerType, true),
+            DataTypes.createStructField("ARR_DELAY", DataTypes.DoubleType, true),
+            DataTypes.createStructField("CANCELLED", DataTypes.DoubleType, true),
+            DataTypes.createStructField("CANCELLATION_CODE", DataTypes.StringType, true),
+            DataTypes.createStructField("DIVERTED", DataTypes.DoubleType, true),
+            DataTypes.createStructField("ACTUAL_ELAPSED_TIME", DataTypes.FloatType, true),
+            DataTypes.createStructField("DISTANCE", DataTypes.FloatType, true),
+            DataTypes.createStructField("CARRIER_DELAY", DataTypes.DoubleType, true),
+            DataTypes.createStructField("WEATHER_DELAY", DataTypes.DoubleType, true),
+            DataTypes.createStructField("NAS_DELAY", DataTypes.DoubleType, true),
+            DataTypes.createStructField("SECURITY_DELAY", DataTypes.DoubleType, true),
+            DataTypes.createStructField("LATE_AIRCRAFT_DELAY", DataTypes.DoubleType, true)
+    });
+
+    /**
      * Constructs a new FlightRepository.
      *
      * @param spark the SparkSession to be used for data operations
@@ -30,40 +65,40 @@ public abstract class FlightRepository {
     }
 
     /**
-     * Retrieves the flights from the specified file or directory and converts them into a strongly typed Dataset.
+     * Retrieves the flights from the specified file or directory and converts them into a Dataset<Row>.
      * If the filename is not provided (null or empty), it reads all parquet files in the base path.
      *
      * @param datasetFilename the name of the Parquet file to read, or null/empty to read all files in the directory
-     * @return a Dataset of RawFlight objects
+     * @return a Dataset of Row objects
      * @throws IllegalArgumentException if the filename is invalid (when provided)
      */
-    public Dataset<RawFlight> getFlights(String datasetFilename) {
+    public Dataset<Row> getFlights(String datasetFilename) {
         return getFlights(datasetFilename, null);
     }
 
     /**
-     * Retrieves the flights from the specified file or directory for the given airlines and converts them into a strongly typed Dataset.
+     * Retrieves the flights from the specified file or directory for the given airlines and converts them into a Dataset<Row>.
      *
      * @param datasetFilename the name of the Parquet file to read, or null/empty to read all files in the directory
      * @param airlines an array of airline codes to filter the dataset
-     * @return a Dataset of RawFlight objects
+     * @return a Dataset of Row objects
      * @throws IllegalArgumentException if the filename is invalid (when provided)
      */
-    public final Dataset<RawFlight> getFlightsOfAirlines(String datasetFilename, String... airlines) {
+    public final Dataset<Row> getFlightsOfAirlines(String datasetFilename, String... airlines) {
         if(airlines == null || airlines.length == 0) throw new IllegalArgumentException("Airlines array cannot be null or empty");
         Map<String, Object[]> filters = Map.of("OP_UNIQUE_CARRIER", airlines);
         return getFlights(datasetFilename, filters);
     }
 
     /**
-     * Retrieves the flights from the specified file or directory and converts them into a strongly typed Dataset.
+     * Retrieves the flights from the specified file or directory and converts them into a Dataset<Row>.
      *
      * @param datasetFilename the name of the Parquet file to read, or null/empty to read all files in the directory
      * @param filters a map of column names to arrays of values to filter the dataset (e.g., {"OP_UNIQUE_CARRIER": ["AA", "DL"]})
-     * @return a Dataset of RawFlight objects
+     * @return a Dataset of Row objects
      * @throws IllegalArgumentException if the filename is invalid (when provided)
      */
-    protected Dataset<RawFlight> getFlights(String datasetFilename, Map<String, Object[]> filters) {
+    protected Dataset<Row> getFlights(String datasetFilename, Map<String, Object[]> filters) {
         String fullPath;
         if (datasetFilename == null || datasetFilename.trim().isEmpty()) {
             // If no filename is provided, read all Parquet files in the base path
@@ -74,7 +109,8 @@ public abstract class FlightRepository {
             fullPath = getFullPath(datasetFilename);
         }
         
-        Dataset<Row> rawRows = this.spark.read().parquet(fullPath);
+        // Use explicit schema to avoid inference job
+        Dataset<Row> rawRows = this.spark.read().schema(FLIGHT_SCHEMA).parquet(fullPath);
 
         if (filters != null) {
             for (Map.Entry<String, Object[]> filter : filters.entrySet()) {
@@ -84,7 +120,7 @@ public abstract class FlightRepository {
             }
         }
 
-        return convertToRawFlight(rawRows);
+        return rawRows;
     }
 
     /**
@@ -217,7 +253,7 @@ public abstract class FlightRepository {
      * @param rawRows the input Dataset of Row objects
      * @return a strongly typed Dataset of RawFlight objects
      */
-    protected Dataset<RawFlight> convertToRawFlight(Dataset<Row> rawRows) {
+    public Dataset<RawFlight> convertToRawFlight(Dataset<Row> rawRows) {
         // Here we explicitly cast CANCELLED and DIVERTED to Double because in the model RawFlight 
         // they are Double (as read from Parquet), NOT Boolean.
         return rawRows.select(

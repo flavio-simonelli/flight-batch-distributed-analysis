@@ -10,6 +10,7 @@ import it.uniroma2.sae.util.percentile.PercentileSketch;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SparkSession;
@@ -32,7 +33,7 @@ import static org.apache.spark.sql.functions.*;
 public class HourlyDelayPercentiles extends BaseQuery {
 
     @Override
-    protected Dataset<RawFlight> loadData(FlightRepository repository, ApplicationConfig config) {
+    protected Dataset<Row> loadData(FlightRepository repository, ApplicationConfig config) {
         String datasetFilename = config.getInput().getDatasetFilename();
         return repository.getFlightsOfAirlines(datasetFilename, "AA", "DL", "UA", "WN");
     }
@@ -49,9 +50,41 @@ public class HourlyDelayPercentiles extends BaseQuery {
      * @return a list with two tuples: hourly percentiles RDD+schema, then global min/max RDD+schema
      */
     @Override
-    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<RawFlight> dataset, ApplicationConfig config) {
+    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<Row> dataset, ApplicationConfig config) {
+        
+        // Convert to RawFlight only when needed for RDD
+        Dataset<RawFlight> flightDataset = dataset.select(
+                col("YEAR").as("year"),
+                col("MONTH").as("month"),
+                col("DAY_OF_MONTH").as("dayOfMonth"),
+                col("OP_UNIQUE_CARRIER").as("opUniqueCarrier"),
+                col("OP_CARRIER_FL_NUM").as("opCarrierFlNum"),
+                col("ORIGIN_AIRPORT_ID").as("originAirportId"),
+                col("ORIGIN_CITY_MARKET_ID").as("originCityMarketId"),
+                col("ORIGIN_STATE_ABR").as("originStateAbr"),
+                col("DEST_AIRPORT_ID").as("destAirportId"),
+                col("DEST_CITY_MARKET_ID").as("destCityMarketId"),
+                col("DEST_STATE_ABR").as("destStateAbr"),
+                col("CRS_DEP_TIME").as("crsDepTime"),
+                col("DEP_TIME").as("depTime"),
+                col("DEP_DELAY").as("depDelay"),
+                col("CRS_ARR_TIME").as("crsArrTime"),
+                col("ARR_TIME").as("arrTime"),
+                col("ARR_DELAY").as("arrDelay"),
+                col("CANCELLED").cast(DataTypes.DoubleType).as("cancelled"),
+                col("CANCELLATION_CODE").as("cancellationCode"),
+                col("DIVERTED").cast(DataTypes.DoubleType).as("diverted"),
+                col("ACTUAL_ELAPSED_TIME").as("actualElapsedTime"),
+                col("DISTANCE").as("distance"),
+                col("CARRIER_DELAY").as("carrierDelay"),
+                col("WEATHER_DELAY").as("weatherDelay"),
+                col("NAS_DELAY").as("nasDelay"),
+                col("SECURITY_DELAY").as("securityDelay"),
+                col("LATE_AIRCRAFT_DELAY").as("lateAircraftDelay")
+        ).as(Encoders.bean(RawFlight.class));
+
         PercentileSketch sketch = PercentileSketch.from(config.getPercentileAlgorithm());
-        JavaRDD<RawFlight> flights = dataset.javaRDD();
+        JavaRDD<RawFlight> flights = flightDataset.javaRDD();
 
         // Single non-cancelled filter shared by both pipelines (cached to avoid double scan).
         JavaRDD<RawFlight> validFlights = flights.filter(f ->
@@ -159,27 +192,29 @@ public class HourlyDelayPercentiles extends BaseQuery {
      * @return a list containing two Datasets: the first with hourly stats, the second with global min/max delays
      */
     @Override
-    protected List<Dataset<Row>> runQueryDataFrame(Dataset<RawFlight> flights, ApplicationConfig config) {
+    protected List<Dataset<Row>> runQueryDataFrame(Dataset<Row> flights, ApplicationConfig config) {
         flights.cache();
 
         Dataset<Row> hourlyStats = flights
-                .filter(col("cancelled").equalTo(0))
-                .withColumn("hour", col("crsDepTime").divide(100).cast("int"))
-                .groupBy("opUniqueCarrier", "hour")
+                .filter(col("CANCELLED").equalTo(0))
+                .withColumn("hour", col("CRS_DEP_TIME").divide(100).cast("int"))
+                .groupBy("OP_UNIQUE_CARRIER", "hour")
                 .agg(
-                        round(expr("percentile_approx(depDelay, 0.25)"), 2).as("p25"),
-                        round(expr("percentile_approx(depDelay, 0.50)"), 2).as("p50"),
-                        round(expr("percentile_approx(depDelay, 0.75)"), 2).as("p75"),
-                        round(expr("percentile_approx(depDelay, 0.90)"), 2).as("p90")
+                        round(expr("percentile_approx(DEP_DELAY, 0.25)"), 2).as("p25"),
+                        round(expr("percentile_approx(DEP_DELAY, 0.50)"), 2).as("p50"),
+                        round(expr("percentile_approx(DEP_DELAY, 0.75)"), 2).as("p75"),
+                        round(expr("percentile_approx(DEP_DELAY, 0.90)"), 2).as("p90")
                 )
+                .withColumnRenamed("OP_UNIQUE_CARRIER", "opUniqueCarrier")
                 .orderBy("opUniqueCarrier", "hour");
 
         Dataset<Row> globalMinMax = flights
-                .groupBy("opUniqueCarrier")
+                .groupBy("OP_UNIQUE_CARRIER")
                 .agg(
-                    min("depDelay").as("min_delay_global"),
-                    max("depDelay").as("max_delay_global")
+                    min("DEP_DELAY").as("min_delay_global"),
+                    max("DEP_DELAY").as("max_delay_global")
                 )
+                .withColumnRenamed("OP_UNIQUE_CARRIER", "opUniqueCarrier")
                 .orderBy("opUniqueCarrier");
 
         flights.unpersist();
@@ -197,26 +232,26 @@ public class HourlyDelayPercentiles extends BaseQuery {
      * @return a list containing two Datasets: the first with hourly stats, the second with global min/max delays
      */
     @Override
-    protected List<Dataset<Row>> runQuerySQL(Dataset<RawFlight> flights, ApplicationConfig config, SparkSession spark) {
+    protected List<Dataset<Row>> runQuerySQL(Dataset<Row> flights, ApplicationConfig config, SparkSession spark) {
         flights.cache();
         
         flights.createOrReplaceTempView("flights");
 
-        String hourlyStatsSql = "SELECT opUniqueCarrier, CAST(crsDepTime / 100 AS INT) AS hour, " +
-                "ROUND(percentile_approx(depDelay, 0.25), 2) AS p25, " +
-                "ROUND(percentile_approx(depDelay, 0.50), 2) AS p50, " +
-                "ROUND(percentile_approx(depDelay, 0.75), 2) AS p75, " +
-                "ROUND(percentile_approx(depDelay, 0.90), 2) AS p90 " +
+        String hourlyStatsSql = "SELECT OP_UNIQUE_CARRIER as opUniqueCarrier, CAST(CRS_DEP_TIME / 100 AS INT) AS hour, " +
+                "ROUND(percentile_approx(DEP_DELAY, 0.25), 2) AS p25, " +
+                "ROUND(percentile_approx(DEP_DELAY, 0.50), 2) AS p50, " +
+                "ROUND(percentile_approx(DEP_DELAY, 0.75), 2) AS p75, " +
+                "ROUND(percentile_approx(DEP_DELAY, 0.90), 2) AS p90 " +
                 "FROM flights " +
-                "WHERE cancelled = 0 " +
-                "GROUP BY opUniqueCarrier, hour " +
+                "WHERE CANCELLED = 0 " +
+                "GROUP BY OP_UNIQUE_CARRIER, hour " +
                 "ORDER BY opUniqueCarrier, hour";
         
         Dataset<Row> hourlyStats = spark.sql(hourlyStatsSql);
 
-        String globalMinMaxSql = "SELECT opUniqueCarrier, MIN(depDelay) AS min_delay_global, MAX(depDelay) AS max_delay_global " +
+        String globalMinMaxSql = "SELECT OP_UNIQUE_CARRIER as opUniqueCarrier, MIN(DEP_DELAY) AS min_delay_global, MAX(DEP_DELAY) AS max_delay_global " +
                 "FROM flights " +
-                "GROUP BY opUniqueCarrier " +
+                "GROUP BY OP_UNIQUE_CARRIER " +
                 "ORDER BY opUniqueCarrier";
         
         Dataset<Row> globalMinMax = spark.sql(globalMinMaxSql);

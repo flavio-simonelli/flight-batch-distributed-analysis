@@ -3,6 +3,7 @@ package it.uniroma2.sae.repository;
 import it.uniroma2.sae.config.DbStorageConfig;
 import it.uniroma2.sae.model.RawFlight;
 import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
 /**
@@ -31,7 +32,7 @@ public abstract class DbFlightRepository<T extends DbStorageConfig> extends Flig
      * Reading from database sources is currently not supported.
      */
     @Override
-    public final Dataset<RawFlight> getFlights(String datasetFilename) {
+    public final Dataset<Row> getFlights(String datasetFilename) {
         throw new UnsupportedOperationException("Reading flight data from this database source is not supported.");
     }
 

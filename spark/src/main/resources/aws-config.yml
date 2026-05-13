@@ -21,20 +21,16 @@ percentileAlgorithm: kll
 
 # Input data configuration
 input:
-  # type: "hdfs"  # Possible types: hdfs, local, s3
-  # uri: "hdfs://master:54310"
-  # path: "/data/conv/flights/full"
-  # datasetFilename: ""
   type: "s3"
-  uri: "s3://ff-sabd"
-  path: "/data/conv/flights/full"
+  uri: "s3://spark-flight-analysis"
+  path: "/data/conv"
 
 # --- Output data configuration examples ---
 
 # S3 Output
 output:
   type: "s3"
-  uri: "s3://ff-sabd"
+  uri: "s3://spark-flight-analysis"
   path: "/data"
   resultDirectory: "/res"
 

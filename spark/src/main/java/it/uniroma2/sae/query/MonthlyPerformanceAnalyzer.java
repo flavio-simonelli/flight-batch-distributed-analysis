@@ -6,6 +6,7 @@ import it.uniroma2.sae.repository.FlightRepository;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.DataTypes;
@@ -27,8 +28,9 @@ import static org.apache.spark.sql.functions.*;
 public class MonthlyPerformanceAnalyzer extends BaseQuery {
 
     @Override
-    protected Dataset<RawFlight> loadData(FlightRepository repository, ApplicationConfig config) {
+    protected Dataset<Row> loadData(FlightRepository repository, ApplicationConfig config) {
         String datasetFilename = config.getInput().getDatasetFilename();
+        // Return raw Dataset<Row> to avoid early Bean Encoder overhead
         return repository.getFlightsOfAirlines(datasetFilename, "AA", "DL");
     }
 
@@ -41,10 +43,41 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
      * @return a list containing a single RDD with the formatted results and its schema
      */
     @Override
-    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<RawFlight> dataset, ApplicationConfig config) {
+    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<Row> dataset, ApplicationConfig config) {
+        
+        // Convert to RawFlight only when needed for RDD
+        Dataset<RawFlight> flightDataset = dataset.select(
+                col("YEAR").as("year"),
+                col("MONTH").as("month"),
+                col("DAY_OF_MONTH").as("dayOfMonth"),
+                col("OP_UNIQUE_CARRIER").as("opUniqueCarrier"),
+                col("OP_CARRIER_FL_NUM").as("opCarrierFlNum"),
+                col("ORIGIN_AIRPORT_ID").as("originAirportId"),
+                col("ORIGIN_CITY_MARKET_ID").as("originCityMarketId"),
+                col("ORIGIN_STATE_ABR").as("originStateAbr"),
+                col("DEST_AIRPORT_ID").as("destAirportId"),
+                col("DEST_CITY_MARKET_ID").as("destCityMarketId"),
+                col("DEST_STATE_ABR").as("destStateAbr"),
+                col("CRS_DEP_TIME").as("crsDepTime"),
+                col("DEP_TIME").as("depTime"),
+                col("DEP_DELAY").as("depDelay"),
+                col("CRS_ARR_TIME").as("crsArrTime"),
+                col("ARR_TIME").as("arrTime"),
+                col("ARR_DELAY").as("arrDelay"),
+                col("CANCELLED").cast(DataTypes.DoubleType).as("cancelled"),
+                col("CANCELLATION_CODE").as("cancellationCode"),
+                col("DIVERTED").cast(DataTypes.DoubleType).as("diverted"),
+                col("ACTUAL_ELAPSED_TIME").as("actualElapsedTime"),
+                col("DISTANCE").as("distance"),
+                col("CARRIER_DELAY").as("carrierDelay"),
+                col("WEATHER_DELAY").as("weatherDelay"),
+                col("NAS_DELAY").as("nasDelay"),
+                col("SECURITY_DELAY").as("securityDelay"),
+                col("LATE_AIRCRAFT_DELAY").as("lateAircraftDelay")
+        ).as(Encoders.bean(RawFlight.class));
 
         // Load the dataset for specific airlines
-        JavaRDD<RawFlight> flights = dataset.javaRDD();
+        JavaRDD<RawFlight> flights = flightDataset.javaRDD();
 
         // PHASE 1: Map operation
         // Transforms each flight into a key-value pair where the key is (Airline, Month)
@@ -137,17 +170,20 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
      * @return a list containing a single Dataset with the query results
      */
     @Override
-    protected List<Dataset<Row>> runQueryDataFrame(Dataset<RawFlight> flights, ApplicationConfig config) {
+    protected List<Dataset<Row>> runQueryDataFrame(Dataset<Row> flights, ApplicationConfig config) {
 
+        // Use raw column names from Parquet to avoid any unnecessary mapping
         Dataset<Row> result = flights
-                .groupBy("month", "opUniqueCarrier")
+                .groupBy("MONTH", "OP_UNIQUE_CARRIER")
                 .agg(
-                        round(avg(when(col("cancelled").equalTo(0.0), col("depDelay"))), 2).as("dep-delay-mean"),
-                        round(min(when(col("cancelled").equalTo(0.0), col("depDelay"))), 2).as("dep-delay-min"),
-                        round(max(when(col("cancelled").equalTo(0.0), col("depDelay"))), 2).as("dep-delay-max"),
-                        round(sum(col("cancelled")).divide(count("*")).multiply(100), 2).as("cancellation-rate")
+                        round(avg(when(col("CANCELLED").equalTo(0.0), col("DEP_DELAY"))), 2).as("dep-delay-mean"),
+                        round(min(when(col("CANCELLED").equalTo(0.0), col("DEP_DELAY"))), 2).as("dep-delay-min"),
+                        round(max(when(col("CANCELLED").equalTo(0.0), col("DEP_DELAY"))), 2).as("dep-delay-max"),
+                        round(sum(col("CANCELLED")).divide(count("*")).multiply(100), 2).as("cancellation-rate")
                 )
-                .orderBy("month", "opUniqueCarrier");
+                .withColumnRenamed("MONTH", "month")
+                .withColumnRenamed("OP_UNIQUE_CARRIER", "carrier")
+                .orderBy("month", "carrier");
 
         return Collections.singletonList(result);
     }
@@ -162,18 +198,18 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
      * @return a list containing a single Dataset with the query results
      */
     @Override
-    protected List<Dataset<Row>> runQuerySQL(Dataset<RawFlight> flights, ApplicationConfig config, SparkSession spark) {
+    protected List<Dataset<Row>> runQuerySQL(Dataset<Row> flights, ApplicationConfig config, SparkSession spark) {
         // Create a temporary view to run SQL queries against it
         flights.createOrReplaceTempView("flights");
 
-        String sqlQuery = "SELECT month, opUniqueCarrier, " +
-                "ROUND(AVG(CASE WHEN cancelled = 0.0 THEN depDelay END), 2) AS `dep-delay-mean`, " +
-                "ROUND(MIN(CASE WHEN cancelled = 0.0 THEN depDelay END), 2) AS `dep-delay-min`, " +
-                "ROUND(MAX(CASE WHEN cancelled = 0.0 THEN depDelay END), 2) AS `dep-delay-max`, " +
-                "ROUND((SUM(cancelled) / COUNT(*)) * 100, 2) AS `cancellation-rate` " +
+        String sqlQuery = "SELECT MONTH as month, OP_UNIQUE_CARRIER as carrier, " +
+                "ROUND(AVG(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-mean`, " +
+                "ROUND(MIN(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-min`, " +
+                "ROUND(MAX(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-max`, " +
+                "ROUND((SUM(CANCELLED) / COUNT(*)) * 100, 2) AS `cancellation-rate` " +
                 "FROM flights " +
-                "GROUP BY month, opUniqueCarrier " +
-                "ORDER BY month, opUniqueCarrier";
+                "GROUP BY MONTH, OP_UNIQUE_CARRIER " +
+                "ORDER BY month, carrier";
 
         Dataset<Row> result = spark.sql(sqlQuery);
         return Collections.singletonList(result);

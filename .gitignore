@@ -28,6 +28,8 @@ spark/.idea/
 !.env.example
 docker-compose.override.yml
 
+keys/
+
 # ========================
 # OS / editor
 # ========================

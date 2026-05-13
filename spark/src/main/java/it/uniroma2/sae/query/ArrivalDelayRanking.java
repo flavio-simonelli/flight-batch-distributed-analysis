@@ -9,6 +9,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SparkSession;
@@ -31,7 +32,7 @@ import static org.apache.spark.sql.functions.*;
 public class ArrivalDelayRanking extends BaseQuery {
 
     @Override
-    protected Dataset<RawFlight> loadData(FlightRepository repository, ApplicationConfig config) {
+    protected Dataset<Row> loadData(FlightRepository repository, ApplicationConfig config) {
         String datasetFilename = config.getInput().getDatasetFilename();
         return repository.getFlights(datasetFilename);
     }
@@ -45,10 +46,40 @@ public class ArrivalDelayRanking extends BaseQuery {
      * @return a list containing a single RDD with the top 10 airlines ranked by arrival delay, and its schema
      */
     @Override
-    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<RawFlight> dataset, ApplicationConfig config) {
-        String datasetFilename = config.getInput().getDatasetFilename();
-        JavaRDD<RawFlight> flights = dataset.javaRDD();
-        JavaSparkContext jsc = new JavaSparkContext(flights.context());
+    protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<Row> dataset, ApplicationConfig config) {
+        
+        // Convert to RawFlight only when needed for RDD
+        Dataset<RawFlight> flightDataset = dataset.select(
+                col("YEAR").as("year"),
+                col("MONTH").as("month"),
+                col("DAY_OF_MONTH").as("dayOfMonth"),
+                col("OP_UNIQUE_CARRIER").as("opUniqueCarrier"),
+                col("OP_CARRIER_FL_NUM").as("opCarrierFlNum"),
+                col("ORIGIN_AIRPORT_ID").as("originAirportId"),
+                col("ORIGIN_CITY_MARKET_ID").as("originCityMarketId"),
+                col("ORIGIN_STATE_ABR").as("originStateAbr"),
+                col("DEST_AIRPORT_ID").as("destAirportId"),
+                col("DEST_CITY_MARKET_ID").as("destCityMarketId"),
+                col("DEST_STATE_ABR").as("destStateAbr"),
+                col("CRS_DEP_TIME").as("crsDepTime"),
+                col("DEP_TIME").as("depTime"),
+                col("DEP_DELAY").as("depDelay"),
+                col("CRS_ARR_TIME").as("crsArrTime"),
+                col("ARR_TIME").as("arrTime"),
+                col("ARR_DELAY").as("arrDelay"),
+                col("CANCELLED").cast(DataTypes.DoubleType).as("cancelled"),
+                col("CANCELLATION_CODE").as("cancellationCode"),
+                col("DIVERTED").cast(DataTypes.DoubleType).as("diverted"),
+                col("ACTUAL_ELAPSED_TIME").as("actualElapsedTime"),
+                col("DISTANCE").as("distance"),
+                col("CARRIER_DELAY").as("carrierDelay"),
+                col("WEATHER_DELAY").as("weatherDelay"),
+                col("NAS_DELAY").as("nasDelay"),
+                col("SECURITY_DELAY").as("securityDelay"),
+                col("LATE_AIRCRAFT_DELAY").as("lateAircraftDelay")
+        ).as(Encoders.bean(RawFlight.class));
+
+        JavaRDD<RawFlight> flights = flightDataset.javaRDD();
 
         // Discard flights that were either cancelled or diverted
         JavaRDD<RawFlight> validFlights = flights.filter(flight -> {
@@ -149,18 +180,18 @@ public class ArrivalDelayRanking extends BaseQuery {
      * @return a list containing a single Dataset with the top 10 airlines ranked by arrival delay
      */
     @Override
-    protected List<Dataset<Row>> runQueryDataFrame(Dataset<RawFlight> flights, ApplicationConfig config) {
+    protected List<Dataset<Row>> runQueryDataFrame(Dataset<Row> flights, ApplicationConfig config) {
 
         Dataset<Row> result = flights
-                .groupBy("opUniqueCarrier")
+                .groupBy("OP_UNIQUE_CARRIER")
                 .agg(
-                        count(when(col("cancelled").equalTo(0).and(col("diverted").equalTo(0)), 1)).as("num_flights"),
-                        round(avg(col("arrDelay")), 2).as("arrdelay_mean"),
-                        round(avg(col("carrierDelay")), 2).as("carrier_delay_mean"),
-                        round(avg(col("weatherDelay")), 2).as("weather_delay_mean"),
-                        round(avg(col("nasDelay")), 2).as("nas_delay_mean"),
-                        round(avg(col("securityDelay")), 2).as("security_delay_mean"),
-                        round(avg(col("lateAircraftDelay")), 2).as("late_aircraft_delay_mean")
+                        count(when(col("CANCELLED").equalTo(0).and(col("DIVERTED").equalTo(0)), 1)).as("num_flights"),
+                        round(avg(col("ARR_DELAY")), 2).as("arrdelay_mean"),
+                        round(avg(col("CARRIER_DELAY")), 2).as("carrier_delay_mean"),
+                        round(avg(col("WEATHER_DELAY")), 2).as("weather_delay_mean"),
+                        round(avg(col("NAS_DELAY")), 2).as("nas_delay_mean"),
+                        round(avg(col("SECURITY_DELAY")), 2).as("security_delay_mean"),
+                        round(avg(col("LATE_AIRCRAFT_DELAY")), 2).as("late_aircraft_delay_mean")
                 )
                 .filter(col("num_flights").gt(500))
                 .orderBy(col("arrdelay_mean").desc())
@@ -179,20 +210,20 @@ public class ArrivalDelayRanking extends BaseQuery {
      * @return a list containing a single Dataset with the top 10 airlines ranked by arrival delay
      */
     @Override
-    protected List<Dataset<Row>> runQuerySQL(Dataset<RawFlight> flights, ApplicationConfig config, SparkSession spark) {
+    protected List<Dataset<Row>> runQuerySQL(Dataset<Row> flights, ApplicationConfig config, SparkSession spark) {
 
         flights.createOrReplaceTempView("flights");
 
-        String sqlQuery = "SELECT opUniqueCarrier, " +
-                "COUNT(CASE WHEN cancelled = 0 AND diverted = 0 THEN 1 END) AS num_flights, " +
-                "ROUND(AVG(arrDelay), 2) AS arrdelay_mean, " +
-                "ROUND(AVG(carrierDelay), 2) AS carrier_delay_mean, " +
-                "ROUND(AVG(weatherDelay), 2) AS weather_delay_mean, " +
-                "ROUND(AVG(nasDelay), 2) AS nas_delay_mean, " +
-                "ROUND(AVG(securityDelay), 2) AS security_delay_mean, " +
-                "ROUND(AVG(lateAircraftDelay), 2) AS late_aircraft_delay_mean " +
+        String sqlQuery = "SELECT OP_UNIQUE_CARRIER as opUniqueCarrier, " +
+                "COUNT(CASE WHEN CANCELLED = 0 AND DIVERTED = 0 THEN 1 END) AS num_flights, " +
+                "ROUND(AVG(ARR_DELAY), 2) AS arrdelay_mean, " +
+                "ROUND(AVG(CARRIER_DELAY), 2) AS carrier_delay_mean, " +
+                "ROUND(AVG(WEATHER_DELAY), 2) AS weather_delay_mean, " +
+                "ROUND(AVG(NAS_DELAY), 2) AS nas_delay_mean, " +
+                "ROUND(AVG(SECURITY_DELAY), 2) AS security_delay_mean, " +
+                "ROUND(AVG(LATE_AIRCRAFT_DELAY), 2) AS late_aircraft_delay_mean " +
                 "FROM flights " +
-                "GROUP BY opUniqueCarrier " +
+                "GROUP BY OP_UNIQUE_CARRIER " +
                 "HAVING num_flights > 500 " +
                 "ORDER BY arrdelay_mean DESC " +
                 "LIMIT 10";
