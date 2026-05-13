@@ -42,14 +42,20 @@ public abstract class BaseQuery {
         metrics.reset();
 
         QueryType query = config.getQueryToRun();
-        if (query == null) throw new IllegalArgumentException("queryToRun is not defined in config.yml. Please choose monthly_performance, arrival_delay_ranking, or hourly_delay_percentiles");
+        if (query == null) throw new IllegalArgumentException("queryToRun is not defined. Please choose monthly_performance, arrival_delay_ranking, or hourly_delay_percentiles via config or CLI.");
         String queryName = query.name().toLowerCase();
 
         try {
-            spark = SparkSession.builder()
-                    .appName(config.getAppName())
-                    .master(config.getSparkCluster().getMasterUri())
-                    .getOrCreate();
+            SparkSession.Builder builder = SparkSession.builder()
+                    .appName(config.getAppName());
+
+            // If master is provided in config, use it (typically for local/docker).
+            // If not, Spark will expect it from spark-submit --master (typical for EMR/YARN).
+            if (config.getSparkCluster() != null && config.getSparkCluster().getMaster() != null) {
+                builder.master(config.getSparkCluster().getMasterUri());
+            }
+
+            spark = builder.getOrCreate();
 
             spark.sparkContext().setLogLevel("WARN");
 
@@ -62,7 +68,7 @@ public abstract class BaseQuery {
             FlightRepository outputRepository = FlightRepositoryFactory.createOutputRepository(config, spark);
 
             AppBackendType backend = config.getAppBackend();
-            if (backend == null) throw new IllegalArgumentException("appBackend is not defined in config.yml. Please choose rdd, dataframe, or sql.");
+            if (backend == null) throw new IllegalArgumentException("appBackend is not defined. Please choose rdd, dataframe, or sql via config or CLI.");
 
             // Determine output target name based on query and backend (subclasses may extend it).
             String baseTargetName = buildBaseTargetName(config);
@@ -72,7 +78,7 @@ public abstract class BaseQuery {
             List<Tuple2<JavaRDD<Row>, StructType>> rddResultsWithSchema = null;
 
             // Load dataset
-            metrics.startPhase("LOADING");
+            metrics.startPhase("PLANNING");
             Dataset<RawFlight> flights = loadData(inputRepository, config);
             metrics.stopPhase();
 
@@ -94,7 +100,7 @@ public abstract class BaseQuery {
                     throw new UnsupportedOperationException("Backend " + backend + " is not supported.");
             }
 
-            metrics.startPhase("PROCESSING & SAVING");
+            metrics.startPhase("EXECUTION");
             if(dfResults != null) {
                 for (int i = 0; i < dfResults.size(); i++) {
                     String currentTarget = dfResults.size() > 1 ? fullTargetName + "_" + (i + 1) : fullTargetName;

@@ -15,12 +15,13 @@ import java.io.InputStream;
  */
 public class ApplicationConfig {
 
-    public static final String CONFIG_FILE = "config.yml";
+    public static final String CONFIG_FILE = "compose-config.yml";
+
 
     /**
      * Loads and parses a YAML configuration file from the classpath into an ApplicationConfig object.
      *
-     * @param resourceName the name of the resource file to load (e.g., "/config.yml")
+     * @param resourceName the name of the resource file to load (e.g., "/compose-config.yml")
      * @return an instance of ApplicationConfig populated with the data from the YAML file
      * @throws Exception if the resource is not found or cannot be parsed
      */

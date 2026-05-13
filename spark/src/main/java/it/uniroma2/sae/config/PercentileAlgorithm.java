@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 /**
  * Enum defining the available percentile estimation algorithms for the RDD backend of Query 3.
- * Used to select between Apache DataSketches KLL and t-digest at runtime via config.yml.
+ * Used to select between Apache DataSketches KLL and t-digest at runtime via compose-config.yml.
  */
 public enum PercentileAlgorithm implements Serializable {
     @JsonProperty("kll")

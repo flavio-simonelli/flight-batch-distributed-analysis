@@ -48,7 +48,7 @@ public class FlightRepositoryFactory {
                 RemoteStorageConfig hdfsConfig = (RemoteStorageConfig) storageConfig;
                 String hdfsUri = hdfsConfig.getUri();
                 if (hdfsUri == null || hdfsUri.isEmpty()) {
-                    throw new IllegalArgumentException("HDFS URI is not defined in config.yml for HDFS input type.");
+                    throw new IllegalArgumentException("HDFS URI is not defined in compose-config.yml for HDFS input type.");
                 }
                 return new HdfsFlightRepository(spark, hdfsUri, storagePath);
 
@@ -59,7 +59,7 @@ public class FlightRepositoryFactory {
                 RemoteStorageConfig s3Config = (RemoteStorageConfig) storageConfig;
                 String s3Uri = s3Config.getUri();
                 if (s3Uri == null || s3Uri.isEmpty()) {
-                    throw new IllegalArgumentException("S3 URI is not defined in config.yml for S3 input type.");
+                    throw new IllegalArgumentException("S3 URI is not defined in compose-config.yml for S3 input type.");
                 }
                 return new S3FlightRepository(spark, s3Uri, storagePath);
 

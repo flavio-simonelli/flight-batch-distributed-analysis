@@ -5,21 +5,21 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>it.uniroma2.sae</groupId>
-    <artifactId>flight-analysis-spark</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <artifactId>flight-analysis</artifactId>
+    <version>1.0</version>
     <packaging>jar</packaging>
 
     <properties>
         <maven.compiler.release>11</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spark.version>3.5.1</spark.version>
-        <scala.compat.version>2.13</scala.compat.version>
+        <spark.version>3.5.4</spark.version>
+        <scala.compat.version>2.12</scala.compat.version>
         <jackson.version>2.15.2</jackson.version>
         <hbase.version>2.5.4</hbase.version>
     </properties>
 
     <dependencies>
-        <!-- Spark Dependencies (PROVIDED by the cluster) -->
+        <!-- Spark Dependencies (PROVIDED) -->
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.compat.version}</artifactId>
@@ -32,25 +32,21 @@
             <version>${spark.version}</version>
             <scope>provided</scope>
         </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-mllib_${scala.compat.version}</artifactId>
-            <version>${spark.version}</version>
-            <scope>provided</scope>
-        </dependency>
 
-        <!-- Force Scala Library to PROVIDED -->
+        <!-- Jackson (Compile & Shaded) - Esplicitiamo tutti i moduli -->
         <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-            <version>2.13.8</version>
-            <scope>provided</scope>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
-
-        <!-- Jackson (Compile) -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
             <version>${jackson.version}</version>
         </dependency>
         <dependency>
@@ -65,13 +61,11 @@
             <artifactId>postgresql</artifactId>
             <version>42.6.0</version>
         </dependency>
-
         <dependency>
             <groupId>org.mongodb.spark</groupId>
             <artifactId>mongo-spark-connector_${scala.compat.version}</artifactId>
             <version>10.3.0</version>
         </dependency>
-
         <dependency>
             <groupId>com.redislabs</groupId>
             <artifactId>spark-redis_2.12</artifactId>
@@ -81,14 +75,8 @@
                     <groupId>org.apache.spark</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
-                <exclusion>
-                    <groupId>org.scala-lang</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
             </exclusions>
         </dependency>
-
-        <!-- Clean HBase Client (Replacing hbase-spark to avoid conflicts) -->
         <dependency>
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-shaded-client</artifactId>
@@ -119,17 +107,8 @@
                         <phase>package</phase>
                         <goals><goal>shade</goal></goals>
                         <configuration>
-                            <artifactSet>
-                                <excludes>
-                                    <!-- DEFINITIVE EXCLUSION of cluster-provided libraries -->
-                                    <exclude>org.apache.spark:*</exclude>
-                                    <exclude>org.apache.hadoop:*</exclude>
-                                    <exclude>org.scala-lang:*</exclude>
-                                    <exclude>org.scala-lang.modules:*</exclude>
-                                    <!-- Spark already provides Netty -->
-                                    <exclude>io.netty:*</exclude>
-                                </excludes>
-                            </artifactSet>
+                            <shadedArtifactAttached>false</shadedArtifactAttached>
+                            <outputFile>${project.build.directory}/flight-analysis.jar</outputFile>
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
@@ -141,18 +120,16 @@
                                         <exclude>META-INF/NOTICE*</exclude>
                                         <exclude>META-INF/DEPENDENCIES</exclude>
                                         <exclude>META-INF/maven/**</exclude>
-                                        <exclude>META-INF/native-image/**</exclude>
-                                        <exclude>META-INF/MANIFEST.MF</exclude>
-                                        <exclude>**/module-info.class</exclude>
-                                        <exclude>LICENSE*</exclude>
-                                        <exclude>NOTICE*</exclude>
-                                        <exclude>about.html</exclude>
-                                        <exclude>**/*.txt</exclude>
-                                        <exclude>**/*.md</exclude>
+                                        <exclude>**/pom.xml</exclude>
+                                        <exclude>**/pom.properties</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
                             <relocations>
+                                <relocation>
+                                    <pattern>com.fasterxml.jackson</pattern>
+                                    <shadedPattern>it.uniroma2.sae.shaded.jackson</shadedPattern>
+                                </relocation>
                                 <relocation>
                                     <pattern>org.apache.datasketches</pattern>
                                     <shadedPattern>it.uniroma2.sae.shaded.datasketches</shadedPattern>
@@ -167,6 +144,10 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>it.uniroma2.sae.FlightAnalysisApp</mainClass>
                                 </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheNoticeResourceTransformer">
+                                    <addHeader>false</addHeader>
+                                </transformer>
                             </transformers>
                         </configuration>
                     </execution>
@@ -177,7 +158,11 @@
 
     <profiles>
         <profile>
-            <id>spark-submit</id>
+            <id>emr</id>
+            <activation><activeByDefault>true</activeByDefault></activation>
+        </profile>
+        <profile>
+            <id>local</id>
             <build>
                 <plugins>
                     <plugin>
@@ -185,33 +170,34 @@
                         <artifactId>exec-maven-plugin</artifactId>
                         <version>3.1.1</version>
                         <executions>
-                            <execution>
+                            <!-- <execution>
                                 <id>docker-upload</id>
-                                <phase>package</phase> <goals><goal>exec</goal></goals>
+                                <phase>package</phase><goals><goal>exec</goal></goals>
                                 <configuration>
                                     <executable>docker</executable>
                                     <arguments>
                                         <argument>cp</argument>
-                                        <argument>${project.build.directory}/${project.build.finalName}.jar</argument>
-                                        <argument>spark-master:/opt/spark/scripts/</argument>
+                                        <argument>${project.build.directory}/flight-analysis.jar</argument>
+                                        <argument>spark-master:/opt/spark/scripts/flight-analysis.jar</argument>
                                     </arguments>
                                 </configuration>
-                            </execution>
+                            </execution> -->
                             <execution>
                                 <id>run-submit</id>
-                                <phase>package</phase>
-                                <goals><goal>exec</goal></goals>
+                                <phase>package</phase><goals><goal>exec</goal></goals>
                                 <configuration>
                                     <executable>docker</executable>
                                     <arguments>
                                         <argument>exec</argument>
                                         <argument>spark-master</argument>
                                         <argument>/opt/spark/bin/spark-submit</argument>
+                                        <argument>--packages</argument>
+                                        <argument>org.apache.hadoop:hadoop-aws:3.3.4</argument>
                                         <argument>--class</argument>
                                         <argument>it.uniroma2.sae.FlightAnalysisApp</argument>
                                         <argument>--master</argument>
                                         <argument>spark://spark-master:7077</argument>
-                                        <argument>/opt/spark/scripts/${project.build.finalName}.jar</argument>
+                                        <argument>/opt/spark/scripts/target/flight-analysis.jar</argument>
                                     </arguments>
                                 </configuration>
                             </execution>

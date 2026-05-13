@@ -15,13 +15,40 @@ public class FlightAnalysisApp {
 
     public static void main(String[] args) {
         try {
-            // Load the configuration
-            ApplicationConfig config = ApplicationConfig.load(ApplicationConfig.CONFIG_FILE);
-            QueryType queryToRun = config.getQueryToRun();
+            String configFilePath = ApplicationConfig.CONFIG_FILE;
 
-            if (queryToRun == null) {
-                throw new IllegalArgumentException("queryToRun is not defined in config.yml");
+            // First pass for configuration file path
+            for (int i = 0; i < args.length; i++) {
+                if (("--config".equalsIgnoreCase(args[i]) || "-c".equalsIgnoreCase(args[i])) && i + 1 < args.length) {
+                    configFilePath = args[++i];
+                    break;
+                }
             }
+
+            // Load the configuration from the chosen YAML file
+            ApplicationConfig config = ApplicationConfig.load(configFilePath);
+
+            // Simple argument parsing: supports --query/-q and --backend/-b
+            // If provided, these override the values loaded from the YAML file.
+            for (int i = 0; i < args.length; i++) {
+                if (("--query".equalsIgnoreCase(args[i]) || "-q".equalsIgnoreCase(args[i])) && i + 1 < args.length) {
+                    config.setStringQueryToRun(args[++i]);
+                } else if (("--backend".equalsIgnoreCase(args[i]) || "-b".equalsIgnoreCase(args[i])) && i + 1 < args.length) {
+                    config.setStringAppBackend(args[++i]);
+                }
+            }
+
+            QueryType queryToRun = config.getQueryToRun();
+            if (queryToRun == null) {
+                throw new IllegalArgumentException("queryToRun is not defined. " +
+                        "Please provide it via command line argument (--query or -q) or in " + configFilePath);
+            }
+
+            if (config.getAppBackend() == null) {
+                throw new IllegalArgumentException("appBackend is not defined. " +
+                        "Please provide it via command line argument (--backend or -b) or in " + configFilePath);
+            }
+
 
             BaseQuery queryJob;
 

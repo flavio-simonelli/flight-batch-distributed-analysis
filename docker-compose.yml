@@ -25,7 +25,9 @@ x-spark-worker-base: &spark-worker-base
     volumes:
         - ./data:/opt/spark/data
     environment:
-        - HDFS_URI=hdfs://${HDFS_NAMENODE_HOST}:54310
+        - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+        - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+        - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
 
 services:
 
@@ -88,7 +90,6 @@ services:
         volumes:
             - ./data/postgres:/var/lib/postgresql/data
 
-    # Database Layer - NoSQL (MongoDB, HBase)
     mongodb:
         image: mongo:latest
         container_name: mongodb
@@ -157,7 +158,9 @@ services:
             - ./data:/opt/spark/data
             - ./spark:/opt/spark/scripts
         environment:
-            - HDFS_URI=hdfs://${HDFS_NAMENODE_HOST}:54310
+            - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+            - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+            - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
     
     spark-worker-1:
         <<: *spark-worker-base

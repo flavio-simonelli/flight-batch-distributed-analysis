@@ -1,0 +1,83 @@
+# Application configuration for Flight Analysis
+appName: Flight Analysis
+
+# Define which query to run:
+# Options: monthly_performance, arrival_delay_ranking, hourly_delay_percentiles
+queryToRun: monthly_performance
+
+# Define which Spark backend API to use for the query execution
+# Options: rdd, dataframe, sql
+appBackend: dataframe
+
+# Algorithm for Q3 (hourly_delay_percentiles) percentile estimation in the RDD backend
+# Options: kll, tdigest
+percentileAlgorithm: kll
+
+# Cluster configuration
+# sparkCluster:
+#   master:
+#     hostname: spark-master
+#     port: 7077
+
+# Input data configuration
+input:
+  type: "hdfs"  # Possible types: hdfs, local, s3
+  uri: "hdfs://master:54310"
+  path: "/data/conv/flights/full"
+  datasetFilename: ""
+
+# --- Output data configuration examples ---
+
+# S3 Output
+# output:
+#   type: "s3"
+#   uri: "s3://ff-sabd"
+#   path: "/data"
+#   resultDirectory: "/res"
+
+# HDFS Output
+output:
+   type: "hdfs"
+   uri: "hdfs://master:54310"
+   path: "/data"
+   resultDirectory: "/res"
+
+# Local Output
+# output:
+#   type: "local"
+#   path: "/opt/spark/data/res"
+#   resultDirectory: "output"
+
+# PostgreSQL Output
+# output:
+#   type: "postgres"
+#   hostname: "postgres"
+#   port: 5432
+#   database: "flight_db"
+#   user: "postgres"
+#   password: "postgres"
+
+# MongoDB Output
+# output:
+#   type: "mongodb"
+#   hostname: "mongodb"
+#   port: 27017
+#   database: "flight_db"
+#   collection: "flight_results"
+#   user: "admin"
+#   password: "admin"
+
+# Redis Output
+# output:
+#   type: "redis"
+#   hostname: "redis"
+#   port: 6379
+#   database: "0"  # Redis database index
+#   # password: "mypassword" # Optional
+
+# HBase Output
+# output:
+#   type: "hbase"
+#   hostname: "hbase"   # Used as Zookeeper Quorum
+#   port: 2181          # Used as Zookeeper Client Port
+#   database: "flight_results" # Used as Table Name
