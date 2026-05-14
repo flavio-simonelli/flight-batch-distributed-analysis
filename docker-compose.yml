@@ -53,8 +53,8 @@ services:
             fi;
             /usr/local/hadoop/sbin/start-dfs.sh;
             
-            hdfs dfs -mkdir -p /data/conv;
-            hdfs dfs -chmod -R 777 /data/conv;
+            hdfs dfs -mkdir -p /data;
+            hdfs dfs -chmod -R 777 /data;
             
             tail -f /usr/local/hadoop/logs/*.log"
         tty: true

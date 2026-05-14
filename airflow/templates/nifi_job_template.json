@@ -1,0 +1,31 @@
+{
+  "job_id": "exp_flight_analysis_2026",
+  "ingestion": {
+    "comment": "Scegli tra: HTTP, S3, LOCAL",
+    "source_type": "HTTP",
+    "http_url": "http://www.ce.uniroma2.it/courses/sabd2526/project/project-1-data.tar.gz",
+    "local_path": "/opt/nifi/nifi-current/data/project-1-data.tar.gz",
+    "s3_source_bucket": "landing-zone",
+    "s3_source_key": "raw/2026/data.tar.gz",
+    "s3_source_region": "eu-central-1",
+    "expected_sha1": "17be276b72bd987e72598b0ea4907c3b19350606"
+  },
+  "storage_raw": {
+    "comment": "Scegli tra: MINIO, HDFS, S3",
+    "type": "MINIO",
+    "bucket": "flight-data-raw",
+    "path": "/data/raw/flights",
+    "region": "us-east-1"
+  },
+  "processing": {
+    "comment": "Scegli tra: PARTITION_PRUNING, PREDICATE_PUSHDOWN",
+    "optimization_strategy": "PARTITION_PRUNING"
+  },
+  "storage_preprocessed": {
+    "comment": "Scegli tra: HDFS, S3",
+    "type": "HDFS",
+    "path": "/data/processed/parquet_results",
+    "bucket": "analytics-results-bucket",
+    "region": "us-east-1"
+  }
+}
