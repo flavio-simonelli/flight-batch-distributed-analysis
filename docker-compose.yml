@@ -186,8 +186,10 @@ services:
     redis-init:
         image: redis/redis-stack:latest
         container_name: redis-init
+        networks:
+            - sae-net
         depends_on:
-            - redis-stack
+            - redis-metrics
         command: >
             sh -c '
               sleep 5;
@@ -210,11 +212,12 @@ services:
             - POSTGRES_DB=${POSTGRES_DB}
             - POSTGRES_USER=${POSTGRES_USER}
             - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            - REDIS_PORT=${REDIS_PORT}
         volumes:
             - ./grafana/datasources:/etc/grafana/provisioning/datasources
             - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
         depends_on:
-            - redis
+            - redis-metrics
             - postgres
 
 networks:

@@ -11,3 +11,11 @@ datasources:
       database: $POSTGRES_DB
       sslmode: disable
       postgresVersion: 1500
+  - name: Redis
+    type: redis-datasource
+    uid: redis-metrics-datasource
+    access: proxy
+    url: redis://redis-stack:$REDIS_PORT
+    editable: true
+    jsonData:
+      client: standalone
