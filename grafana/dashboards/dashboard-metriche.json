@@ -4,19 +4,19 @@
   "metadata": {
     "name": "adgf2ps",
     "namespace": "default",
-    "uid": "469068cc-fd4f-4928-8845-0e0eda0b089e",
-    "resourceVersion": "1778721054145985",
+    "uid": "ae33f7a1-f221-4420-9023-46de056607ff",
+    "resourceVersion": "1778721480541983",
     "generation": 3,
-    "creationTimestamp": "2026-05-14T01:05:05Z",
+    "creationTimestamp": "2026-05-14T01:11:43Z",
     "labels": {
-      "grafana.app/deprecatedInternalID": "1088250682290176"
+      "grafana.app/deprecatedInternalID": "1089919050592256"
     },
     "annotations": {
       "grafana.app/createdBy": "user:eflzoj9yvwvswd",
       "grafana.app/folder": "",
       "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f)",
       "grafana.app/updatedBy": "user:eflzoj9yvwvswd",
-      "grafana.app/updatedTimestamp": "2026-05-14T01:10:54Z"
+      "grafana.app/updatedTimestamp": "2026-05-14T01:18:00Z"
     }
   },
   "spec": {
@@ -130,13 +130,13 @@
                         },
                         "spark-duration": {
                           "aggregations": [
-                            "sum"
+                            "mean"
                           ],
                           "operation": "aggregate"
                         },
                         "wallclock-duration": {
                           "aggregations": [
-                            "sum"
+                            "mean"
                           ],
                           "operation": "aggregate"
                         }
@@ -152,7 +152,7 @@
                       "columnField": "approach",
                       "emptyValue": "null",
                       "rowField": "query",
-                      "valueField": "wallclock-duration (sum)"
+                      "valueField": "wallclock-duration (mean)"
                     }
                   }
                 }
@@ -312,13 +312,13 @@
                         },
                         "spark-duration": {
                           "aggregations": [
-                            "sum"
+                            "mean"
                           ],
                           "operation": "aggregate"
                         },
                         "wallclock-duration": {
                           "aggregations": [
-                            "sum"
+                            "mean"
                           ],
                           "operation": "aggregate"
                         }
@@ -334,7 +334,7 @@
                       "columnField": "approach",
                       "emptyValue": "null",
                       "rowField": "query",
-                      "valueField": "spark-duration (sum)"
+                      "valueField": "spark-duration (mean)"
                     }
                   }
                 }

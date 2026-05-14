@@ -21,14 +21,13 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
         super(spark, config);
     }
 
-    @Override
-    public void saveResults(Dataset<Row> results, String table) {
+    public void saveResults(Dataset<Row> results, String table, SaveMode saveMode) {
         if (results == null) throw new IllegalArgumentException("Results dataset cannot be null.");
         if (table == null || table.isEmpty()) throw new IllegalArgumentException("Target table/key name must be provided for Redis output.");
 
         DataFrameWriter<Row> writer = results.write()
                 .format("org.apache.spark.sql.redis")
-                .mode(SaveMode.Overwrite)
+                .mode(saveMode)
                 .option("host", config.getHostname())
                 .option("port", String.valueOf(config.getPort()))
                 .option("dbNum", (config.getDatabase() != null && !config.getDatabase().isEmpty()) ? config.getDatabase() : "0")
@@ -40,6 +39,11 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
         }
 
         writer.save();
+    }
+
+    @Override
+    public void saveResults(Dataset<Row> results, String table) {
+        saveResults(results, table, SaveMode.Overwrite);
     }
 
     @Override
@@ -77,7 +81,7 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
                 DataTypes.createStructField("timestamp", DataTypes.LongType, false)
         });
         String phaseTable = "metrics:phases:" + queryName + ":" + approach;
-        saveResults(spark.createDataFrame(phaseRows, phaseSchema), phaseTable);
+        saveResults(spark.createDataFrame(phaseRows, phaseSchema), phaseTable, SaveMode.Append);
 
         // 2. SAVE STAGE METRICS
         List<Row> stageRows = new ArrayList<>();
@@ -103,7 +107,7 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
                     DataTypes.createStructField("timestamp", DataTypes.LongType, false)
             });
             String stageTable = "metrics:stages:" + queryName + ":" + approach;
-            saveResults(spark.createDataFrame(stageRows, stageSchema), stageTable);
+            saveResults(spark.createDataFrame(stageRows, stageSchema), stageTable, SaveMode.Append);
         }
 
         // 3. SAVE EXECUTOR METRICS
@@ -135,7 +139,7 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
                     DataTypes.createStructField("timestamp", DataTypes.LongType, false)
             });
             String execTable = "metrics:executors:" + queryName + ":" + approach;
-            saveResults(spark.createDataFrame(execRows, execSchema), execTable);
+            saveResults(spark.createDataFrame(execRows, execSchema), execTable, SaveMode.Append);
         }
     }
 }
