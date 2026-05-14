@@ -34,8 +34,20 @@ public class ArrivalDelayRanking extends BaseQuery {
     @Override
     protected Dataset<Row> loadData(FlightRepository repository, ApplicationConfig config) {
         String datasetFilename = config.getInput().getDatasetFilename();
-        return repository.getFlights(datasetFilename);
+        // Return raw Dataset<Row> with only needed columns
+        return repository.getFlights(datasetFilename)
+                .select("OP_UNIQUE_CARRIER", "ARR_DELAY", "CARRIER_DELAY", "WEATHER_DELAY", "NAS_DELAY", "SECURITY_DELAY", "LATE_AIRCRAFT_DELAY", "CANCELLED", "DIVERTED");
     }
+
+    private static final int OP_UNIQUE_CARRIER_IDX = 0;
+    private static final int ARR_DELAY_IDX = 1;
+    private static final int CARRIER_DELAY_IDX = 2;
+    private static final int WEATHER_DELAY_IDX = 3;
+    private static final int NAS_DELAY_IDX = 4;
+    private static final int SECURITY_DELAY_IDX = 5;
+    private static final int LATE_AIRCRAFT_DELAY_IDX = 6;
+    private static final int CANCELLED_IDX = 7;
+    private static final int DIVERTED_IDX = 8;
 
     /**
      * Executes the query using the Spark RDD API.
@@ -47,44 +59,13 @@ public class ArrivalDelayRanking extends BaseQuery {
      */
     @Override
     protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<Row> dataset, ApplicationConfig config) {
-        
-        // Convert to RawFlight only when needed for RDD
-        Dataset<RawFlight> flightDataset = dataset.select(
-                col("YEAR").as("year"),
-                col("MONTH").as("month"),
-                col("DAY_OF_MONTH").as("dayOfMonth"),
-                col("OP_UNIQUE_CARRIER").as("opUniqueCarrier"),
-                col("OP_CARRIER_FL_NUM").as("opCarrierFlNum"),
-                col("ORIGIN_AIRPORT_ID").as("originAirportId"),
-                col("ORIGIN_CITY_MARKET_ID").as("originCityMarketId"),
-                col("ORIGIN_STATE_ABR").as("originStateAbr"),
-                col("DEST_AIRPORT_ID").as("destAirportId"),
-                col("DEST_CITY_MARKET_ID").as("destCityMarketId"),
-                col("DEST_STATE_ABR").as("destStateAbr"),
-                col("CRS_DEP_TIME").as("crsDepTime"),
-                col("DEP_TIME").as("depTime"),
-                col("DEP_DELAY").as("depDelay"),
-                col("CRS_ARR_TIME").as("crsArrTime"),
-                col("ARR_TIME").as("arrTime"),
-                col("ARR_DELAY").as("arrDelay"),
-                col("CANCELLED").cast(DataTypes.DoubleType).as("cancelled"),
-                col("CANCELLATION_CODE").as("cancellationCode"),
-                col("DIVERTED").cast(DataTypes.DoubleType).as("diverted"),
-                col("ACTUAL_ELAPSED_TIME").as("actualElapsedTime"),
-                col("DISTANCE").as("distance"),
-                col("CARRIER_DELAY").as("carrierDelay"),
-                col("WEATHER_DELAY").as("weatherDelay"),
-                col("NAS_DELAY").as("nasDelay"),
-                col("SECURITY_DELAY").as("securityDelay"),
-                col("LATE_AIRCRAFT_DELAY").as("lateAircraftDelay")
-        ).as(Encoders.bean(RawFlight.class));
 
-        JavaRDD<RawFlight> flights = flightDataset.javaRDD();
+        JavaRDD<Row> flights = dataset.javaRDD();
 
         // Discard flights that were either cancelled or diverted
-        JavaRDD<RawFlight> validFlights = flights.filter(flight -> {
-            boolean isCancelled = flight.getCancelled() != null && flight.getCancelled() > 0.0;
-            boolean isDiverted = flight.getDiverted() != null && flight.getDiverted() > 0.0;
+        JavaRDD<Row> validFlights = flights.filter(flight -> {
+            boolean isCancelled = getDoubleSafe(flight, CANCELLED_IDX) > 0.0;
+            boolean isDiverted = getDoubleSafe(flight, DIVERTED_IDX) > 0.0;
             return !isCancelled && !isDiverted;
         });
 
@@ -92,16 +73,16 @@ public class ArrivalDelayRanking extends BaseQuery {
         // Maps each valid flight to a key-value pair where the key is the airline
         // and the value is an array accumulating counts and various delay components.
         JavaPairRDD<String, double[]> mappedRDD = validFlights.mapToPair(flight -> {
-            String carrier = flight.getOpUniqueCarrier();
+            String carrier = flight.getString(OP_UNIQUE_CARRIER_IDX);
             // [0: Count, 1: Arrive_delay, 2: Carrier_delay, 3: Weather_delay, 4: NAS_delay, 5: Security_delay, 6: LateAircraft_delay]
             double[] values = new double[7];
             values[0] = 1.0; // Valid flight counter
-            values[1] = flight.getArrDelay() != null ? flight.getArrDelay() : 0.0;
-            values[2] = flight.getCarrierDelay() != null ? flight.getCarrierDelay() : 0.0;
-            values[3] = flight.getWeatherDelay() != null ? flight.getWeatherDelay() : 0.0;
-            values[4] = flight.getNasDelay() != null ? flight.getNasDelay() : 0.0;
-            values[5] = flight.getSecurityDelay() != null ? flight.getSecurityDelay() : 0.0;
-            values[6] = flight.getLateAircraftDelay() != null ? flight.getLateAircraftDelay() : 0.0;
+            values[1] = getDoubleSafe(flight, ARR_DELAY_IDX);
+            values[2] = getDoubleSafe(flight, CARRIER_DELAY_IDX);
+            values[3] = getDoubleSafe(flight, WEATHER_DELAY_IDX);
+            values[4] = getDoubleSafe(flight, NAS_DELAY_IDX);
+            values[5] = getDoubleSafe(flight, SECURITY_DELAY_IDX);
+            values[6] = getDoubleSafe(flight, LATE_AIRCRAFT_DELAY_IDX);
 
             return new Tuple2<>(carrier, values);
         });

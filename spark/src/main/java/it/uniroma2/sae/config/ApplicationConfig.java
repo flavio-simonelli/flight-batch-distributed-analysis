@@ -49,6 +49,7 @@ public class ApplicationConfig {
     // --- Storage Configurations ---
     private StorageConfig input;
     private StorageConfig output;
+    private StorageConfig metrics;
 
     // --- Getters and Setters ---
 
@@ -118,5 +119,12 @@ public class ApplicationConfig {
     }
     public void setOutput(StorageConfig output) {
         this.output = output;
+    }
+
+    public StorageConfig getMetrics() {
+        return metrics;
+    }
+    public void setMetrics(StorageConfig metrics) {
+        this.metrics = metrics;
     }
 }

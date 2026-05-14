@@ -58,11 +58,9 @@ public abstract class BaseQuery {
 
             spark.sparkContext().setLogLevel("WARN");
 
-            // OPTIMIZATION: Reduce shuffle partitions for small/medium datasets.
-            // The default is 200, which is overkill for this project and causes massive task overhead.
-            spark.conf().set("spark.sql.shuffle.partitions", "8"); 
-            // Enable Adaptive Query Execution to further optimize shuffles at runtime.
             spark.conf().set("spark.sql.adaptive.enabled", "true");
+            // Set shuffle partitions to 1 to eliminate task startup overhead for small shuffles.
+            // spark.conf().set("spark.sql.shuffle.partitions", "1");
 
             // Add the custom SparkListener for job timing
             JobTimerListener timer = new JobTimerListener();
@@ -71,6 +69,7 @@ public abstract class BaseQuery {
             // Instantiate repositories
             FlightRepository inputRepository = FlightRepositoryFactory.createInputRepository(config, spark);
             FlightRepository outputRepository = FlightRepositoryFactory.createOutputRepository(config, spark);
+            FlightRepository metricsRepository = FlightRepositoryFactory.createMetricsRepository(config, spark);
 
             AppBackendType backend = config.getAppBackend();
             if (backend == null) throw new IllegalArgumentException("appBackend is not defined. Please choose rdd, dataframe, or sql via config or CLI.");
@@ -130,8 +129,10 @@ public abstract class BaseQuery {
             }
             metrics.stopPhase();
 
-
             metrics.printReport(queryName);
+            
+            // Persist metrics
+            metricsRepository.saveMetrics(queryName, backend.name());
 
         } catch (Exception e) {
             System.err.println("Fatal error during query execution:");
@@ -197,4 +198,16 @@ public abstract class BaseQuery {
         String backendName = config.getAppBackend().name().toLowerCase();
         return String.format("%s_%s", queryName, backendName);
     }
+
+    /**
+     * Null-safe extraction of a double value from a Spark SQL Row.
+     *
+     * @param row
+     * @param index
+     * @return
+     */
+    protected static double getDoubleSafe(Row row, int index) {
+        return row.isNullAt(index) ? 0.0 : row.getDouble(index);
+    }
+
 }

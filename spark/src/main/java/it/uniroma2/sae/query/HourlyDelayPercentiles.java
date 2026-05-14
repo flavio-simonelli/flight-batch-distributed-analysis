@@ -34,9 +34,16 @@ public class HourlyDelayPercentiles extends BaseQuery {
 
     @Override
     protected Dataset<Row> loadData(FlightRepository repository, ApplicationConfig config) {
+        // Return raw Dataset<Row> with only needed columns
         String datasetFilename = config.getInput().getDatasetFilename();
-        return repository.getFlightsOfAirlines(datasetFilename, "AA", "DL", "UA", "WN");
+        return repository.getFlightsOfAirlines(datasetFilename, "AA", "DL", "UA", "WN")
+                .select("OP_UNIQUE_CARRIER", "CRS_DEP_TIME", "DEP_DELAY", "CANCELLED");
     }
+
+    private static final int OP_UNIQUE_CARRIER_IDX = 0;
+    private static final int CRS_DEP_TIME_IDX = 1;
+    private static final int DEP_DELAY_IDX = 2;
+    private static final int CANCELLED_IDX = 3;
 
     /**
      * Executes the query using the Spark RDD API.
@@ -51,52 +58,21 @@ public class HourlyDelayPercentiles extends BaseQuery {
      */
     @Override
     protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<Row> dataset, ApplicationConfig config) {
-        
-        // Convert to RawFlight only when needed for RDD
-        Dataset<RawFlight> flightDataset = dataset.select(
-                col("YEAR").as("year"),
-                col("MONTH").as("month"),
-                col("DAY_OF_MONTH").as("dayOfMonth"),
-                col("OP_UNIQUE_CARRIER").as("opUniqueCarrier"),
-                col("OP_CARRIER_FL_NUM").as("opCarrierFlNum"),
-                col("ORIGIN_AIRPORT_ID").as("originAirportId"),
-                col("ORIGIN_CITY_MARKET_ID").as("originCityMarketId"),
-                col("ORIGIN_STATE_ABR").as("originStateAbr"),
-                col("DEST_AIRPORT_ID").as("destAirportId"),
-                col("DEST_CITY_MARKET_ID").as("destCityMarketId"),
-                col("DEST_STATE_ABR").as("destStateAbr"),
-                col("CRS_DEP_TIME").as("crsDepTime"),
-                col("DEP_TIME").as("depTime"),
-                col("DEP_DELAY").as("depDelay"),
-                col("CRS_ARR_TIME").as("crsArrTime"),
-                col("ARR_TIME").as("arrTime"),
-                col("ARR_DELAY").as("arrDelay"),
-                col("CANCELLED").cast(DataTypes.DoubleType).as("cancelled"),
-                col("CANCELLATION_CODE").as("cancellationCode"),
-                col("DIVERTED").cast(DataTypes.DoubleType).as("diverted"),
-                col("ACTUAL_ELAPSED_TIME").as("actualElapsedTime"),
-                col("DISTANCE").as("distance"),
-                col("CARRIER_DELAY").as("carrierDelay"),
-                col("WEATHER_DELAY").as("weatherDelay"),
-                col("NAS_DELAY").as("nasDelay"),
-                col("SECURITY_DELAY").as("securityDelay"),
-                col("LATE_AIRCRAFT_DELAY").as("lateAircraftDelay")
-        ).as(Encoders.bean(RawFlight.class));
 
         PercentileSketch sketch = PercentileSketch.from(config.getPercentileAlgorithm());
-        JavaRDD<RawFlight> flights = flightDataset.javaRDD();
+        JavaRDD<Row> flights = dataset.javaRDD();
 
         // Single non-cancelled filter shared by both pipelines (cached to avoid double scan).
-        JavaRDD<RawFlight> validFlights = flights.filter(f ->
-                f.getCancelled() != null && f.getCancelled() == 0.0 && f.getDepDelay() != null
+        JavaRDD<Row> validFlights = flights.filter(f ->
+                f.getDouble(CANCELLED_IDX) == 0.0 && !f.isNullAt(DEP_DELAY_IDX)
         ).cache();
 
         // Pipeline 1: hourly percentiles
         JavaPairRDD<Tuple2<String, Integer>, Double> hourlyPairs = validFlights
-                .filter(f -> f.getCrsDepTime() != null)
+                .filter(f -> !f.isNullAt(CRS_DEP_TIME_IDX))
                 .mapToPair(f -> {
-                    int hour = (f.getCrsDepTime() / 100) % 24; // BTS uses 2400 for end-of-day midnight
-                    return new Tuple2<>(new Tuple2<>(f.getOpUniqueCarrier(), hour), f.getDepDelay());
+                    int hour = (f.getInt(CRS_DEP_TIME_IDX) / 100) % 24; // BTS uses 2400 for end-of-day midnight
+                    return new Tuple2<>(new Tuple2<>(f.getString(OP_UNIQUE_CARRIER_IDX), hour), f.getDouble(DEP_DELAY_IDX));
                 });
 
         JavaPairRDD<Tuple2<String, Integer>, byte[]> hourlySketches = hourlyPairs.combineByKey(
@@ -137,8 +113,8 @@ public class HourlyDelayPercentiles extends BaseQuery {
         // Pipeline 2: global min/max per airline
         JavaRDD<Row> globalRows = validFlights
                 .mapToPair(f -> new Tuple2<>(
-                        f.getOpUniqueCarrier(),
-                        new double[]{f.getDepDelay(), f.getDepDelay()}
+                        f.getString(OP_UNIQUE_CARRIER_IDX),
+                        new double[]{f.getDouble(DEP_DELAY_IDX), f.getDouble(DEP_DELAY_IDX)}
                 ))
                 .reduceByKey((a, b) -> new double[]{
                         Math.min(a[0], b[0]),

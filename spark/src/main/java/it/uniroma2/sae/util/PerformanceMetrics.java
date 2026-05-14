@@ -148,36 +148,36 @@ public class PerformanceMetrics implements Serializable {
         System.out.println("\n=======================================================");
         System.out.println("--- PERFORMANCE REPORT: " + queryName + " ---");
         System.out.println("=======================================================");
-        
+
         phases.forEach((name, metrics) -> {
             System.out.printf("Phase: %s%n", name);
             System.out.printf("  - Wall Clock Time: %d ms%n", metrics.wallClockTime);
-            
+
             if (!metrics.sparkJobs.isEmpty()) {
                 System.out.println("  - Spark Job Details:");
-                metrics.sparkJobs.forEach(j -> 
-                    System.out.printf("    - Job ID: %d, Total Duration: %d ms%n", j.jobId, j.duration));
+                metrics.sparkJobs.forEach(j ->
+                        System.out.printf("    - Job ID: %d, Total Duration: %d ms%n", j.jobId, j.duration));
             }
 
             if (!metrics.sparkStages.isEmpty()) {
                 System.out.println("  - Spark Stage Details:");
-                metrics.sparkStages.forEach(s -> 
-                    System.out.printf("    - Stage ID: %d, Duration: %d ms, GC Time: %d ms, Read: %d bytes, Written: %d bytes, Shuffle Read: %d bytes, Shuffle Write: %d bytes%n", 
-                        s.stageId, s.duration, s.gcTime, s.bytesRead, s.bytesWritten, s.shuffleRead, s.shuffleWrite));
+                metrics.sparkStages.forEach(s ->
+                        System.out.printf("    - Stage ID: %d, Duration: %d ms, GC Time: %d ms, Read: %d bytes, Written: %d bytes, Shuffle Read: %d bytes, Shuffle Write: %d bytes%n",
+                                s.stageId, s.duration, s.gcTime, s.bytesRead, s.bytesWritten, s.shuffleRead, s.shuffleWrite));
             }
 
             if (!metrics.executorMetrics.isEmpty()) {
                 System.out.println("  - Worker Node (Executor) Metrics:");
                 metrics.executorMetrics.values().forEach(e -> {
                     System.out.printf("    - Executor %s (%s):%n", e.executorId, e.host);
-                    System.out.printf("      Tasks: %d, RunTime: %d ms, CPU Time: %d ms, GC Time: %d ms%n", 
-                        e.taskCount, e.totalRunTime, e.totalCpuTime, e.totalGcTime);
-                    System.out.printf("      Deserialization: %d ms, Serialization: %d ms%n", 
-                        e.totalDeserializeTime, e.totalSerializeTime);
-                    System.out.printf("      I/O Read: %d bytes, I/O Written: %d bytes%n", 
-                        e.totalBytesRead, e.totalBytesWritten);
-                    System.out.printf("      Shuffle Read: %d bytes, Shuffle Written: %d bytes%n", 
-                        e.totalShuffleRead, e.totalShuffleWritten);
+                    System.out.printf("      Tasks: %d, RunTime: %d ms, CPU Time: %d ms, GC Time: %d ms%n",
+                            e.taskCount, e.totalRunTime, e.totalCpuTime, e.totalGcTime);
+                    System.out.printf("      Deserialization: %d ms, Serialization: %d ms%n",
+                            e.totalDeserializeTime, e.totalSerializeTime);
+                    System.out.printf("      I/O Read: %d bytes, I/O Written: %d bytes%n",
+                            e.totalBytesRead, e.totalBytesWritten);
+                    System.out.printf("      Shuffle Read: %d bytes, Shuffle Written: %d bytes%n",
+                            e.totalShuffleRead, e.totalShuffleWritten);
                 });
             }
 
@@ -193,31 +193,49 @@ public class PerformanceMetrics implements Serializable {
         System.out.println("=======================================================\n");
     }
 
-    private static class PhaseMetrics implements Serializable {
-        long wallClockTime;
-        final List<SparkJobMetric> sparkJobs = new ArrayList<>();
-        final List<SparkStageMetric> sparkStages = new ArrayList<>();
-        final Map<String, ExecutorMetric> executorMetrics = new LinkedHashMap<>();
+    /**
+     * Returns the raw phases data for external persistence.
+     *
+     * @return map of phase names to their metrics
+     */
+    public Map<String, PhaseMetrics> getPhases() {
+        return phases;
     }
 
-    private static class SparkJobMetric implements Serializable {
-        final int jobId;
-        final long duration;
+    public static class PhaseMetrics implements Serializable {
+        public long wallClockTime;
+        public final List<SparkJobMetric> sparkJobs = new ArrayList<>();
+        public final List<SparkStageMetric> sparkStages = new ArrayList<>();
+        public final Map<String, ExecutorMetric> executorMetrics = new LinkedHashMap<>();
+
+        public long getWallClockTime() { return wallClockTime; }
+        public long getSparkTime() { return sparkJobs.stream().mapToLong(j -> j.duration).sum(); }
+        public List<SparkJobMetric> getSparkJobs() { return sparkJobs; }
+        public List<SparkStageMetric> getSparkStages() { return sparkStages; }
+        public Map<String, ExecutorMetric> getExecutorMetrics() { return executorMetrics; }
+    }
+
+    public static class SparkJobMetric implements Serializable {
+        public final int jobId;
+        public final long duration;
 
         SparkJobMetric(int jobId, long duration) {
             this.jobId = jobId;
             this.duration = duration;
         }
+
+        public int getJobId() { return jobId; }
+        public long getDuration() { return duration; }
     }
 
-    private static class SparkStageMetric implements Serializable {
-        final int stageId;
-        final long duration;
-        final long gcTime;
-        final long bytesRead;
-        final long bytesWritten;
-        final long shuffleRead;
-        final long shuffleWrite;
+    public static class SparkStageMetric implements Serializable {
+        public final int stageId;
+        public final long duration;
+        public final long gcTime;
+        public final long bytesRead;
+        public final long bytesWritten;
+        public final long shuffleRead;
+        public final long shuffleWrite;
 
         SparkStageMetric(int stageId, long duration, long gcTime, long bytesRead, long bytesWritten, long shuffleRead, long shuffleWrite) {
             this.stageId = stageId;
@@ -228,21 +246,29 @@ public class PerformanceMetrics implements Serializable {
             this.shuffleRead = shuffleRead;
             this.shuffleWrite = shuffleWrite;
         }
+
+        public int getStageId() { return stageId; }
+        public long getDuration() { return duration; }
+        public long getGcTime() { return gcTime; }
+        public long getBytesRead() { return bytesRead; }
+        public long getBytesWritten() { return bytesWritten; }
+        public long getShuffleRead() { return shuffleRead; }
+        public long getShuffleWrite() { return shuffleWrite; }
     }
 
-    private static class ExecutorMetric implements Serializable {
-        final String executorId;
-        final String host;
-        int taskCount = 0;
-        long totalRunTime = 0;
-        long totalCpuTime = 0;
-        long totalGcTime = 0;
-        long totalDeserializeTime = 0;
-        long totalSerializeTime = 0;
-        long totalBytesRead = 0;
-        long totalBytesWritten = 0;
-        long totalShuffleRead = 0;
-        long totalShuffleWritten = 0;
+    public static class ExecutorMetric implements Serializable {
+        public final String executorId;
+        public final String host;
+        public int taskCount = 0;
+        public long totalRunTime = 0;
+        public long totalCpuTime = 0;
+        public long totalGcTime = 0;
+        public long totalDeserializeTime = 0;
+        public long totalSerializeTime = 0;
+        public long totalBytesRead = 0;
+        public long totalBytesWritten = 0;
+        public long totalShuffleRead = 0;
+        public long totalShuffleWritten = 0;
 
         ExecutorMetric(String executorId, String host) {
             this.executorId = executorId;
@@ -262,5 +288,18 @@ public class PerformanceMetrics implements Serializable {
             this.totalShuffleRead += shuffleRead;
             this.totalShuffleWritten += shuffleWrite;
         }
+
+        public String getExecutorId() { return executorId; }
+        public String getHost() { return host; }
+        public int getTaskCount() { return taskCount; }
+        public long getTotalRunTime() { return totalRunTime; }
+        public long getTotalCpuTime() { return totalCpuTime; }
+        public long getTotalGcTime() { return totalGcTime; }
+        public long getTotalDeserializeTime() { return totalDeserializeTime; }
+        public long getTotalSerializeTime() { return totalSerializeTime; }
+        public long getTotalBytesRead() { return totalBytesRead; }
+        public long getTotalBytesWritten() { return totalBytesWritten; }
+        public long getTotalShuffleRead() { return totalShuffleRead; }
+        public long getTotalShuffleWritten() { return totalShuffleWritten; }
     }
 }

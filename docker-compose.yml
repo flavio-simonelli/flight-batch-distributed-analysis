@@ -173,14 +173,27 @@ services:
         hostname: spark-worker-2
 
     # Visualization Layer - Redis + Grafana
-    redis:
-        image: redis:latest
+    redis-metrics:
+        image: redis/redis-stack:latest
         container_name: redis
         hostname: redis
         networks:
             - sae-net
         ports:
             - "${REDIS_PORT}:6379" # Redis Port
+            - "${REDIS_INSIGHT_PORT}:8001" # RedisInsight Port
+
+    redis-init:
+        image: redis/redis-stack:latest
+        container_name: redis-init
+        depends_on:
+            - redis-stack
+        command: >
+            sh -c '
+              sleep 5;
+              redis-cli -h redis -p 6379 FT.CREATE metricsIdx ON HASH PREFIX 1 metrics:phases: SCHEMA query TAG phase TAG approach TAG duration NUMERIC timestamp NUMERIC SORTABLE || true;
+              echo "Indice RediSearch configurato con successo!";
+            '
 
     grafana:
         image: grafana/grafana:latest

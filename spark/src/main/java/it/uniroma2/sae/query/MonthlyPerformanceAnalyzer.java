@@ -30,9 +30,15 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
     @Override
     protected Dataset<Row> loadData(FlightRepository repository, ApplicationConfig config) {
         String datasetFilename = config.getInput().getDatasetFilename();
-        // Return raw Dataset<Row> to avoid early Bean Encoder overhead
-        return repository.getFlightsOfAirlines(datasetFilename, "AA", "DL");
+        // Return raw Dataset<Row> with only needed columns
+        return repository.getFlightsOfAirlines(datasetFilename, "AA", "DL")
+                .select("MONTH", "OP_UNIQUE_CARRIER", "DEP_DELAY", "CANCELLED");
     }
+
+    private static final int MONTH_IDX = 0;
+    private static final int OP_UNIQUE_CARRIER_IDX = 1;
+    private static final int DEP_DELAY_IDX = 2;
+    private static final int CANCELLED_IDX = 3;
 
     /**
      * Executes the query using the Spark RDD API.
@@ -44,52 +50,21 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
      */
     @Override
     protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<Row> dataset, ApplicationConfig config) {
-        
-        // Convert to RawFlight only when needed for RDD
-        Dataset<RawFlight> flightDataset = dataset.select(
-                col("YEAR").as("year"),
-                col("MONTH").as("month"),
-                col("DAY_OF_MONTH").as("dayOfMonth"),
-                col("OP_UNIQUE_CARRIER").as("opUniqueCarrier"),
-                col("OP_CARRIER_FL_NUM").as("opCarrierFlNum"),
-                col("ORIGIN_AIRPORT_ID").as("originAirportId"),
-                col("ORIGIN_CITY_MARKET_ID").as("originCityMarketId"),
-                col("ORIGIN_STATE_ABR").as("originStateAbr"),
-                col("DEST_AIRPORT_ID").as("destAirportId"),
-                col("DEST_CITY_MARKET_ID").as("destCityMarketId"),
-                col("DEST_STATE_ABR").as("destStateAbr"),
-                col("CRS_DEP_TIME").as("crsDepTime"),
-                col("DEP_TIME").as("depTime"),
-                col("DEP_DELAY").as("depDelay"),
-                col("CRS_ARR_TIME").as("crsArrTime"),
-                col("ARR_TIME").as("arrTime"),
-                col("ARR_DELAY").as("arrDelay"),
-                col("CANCELLED").cast(DataTypes.DoubleType).as("cancelled"),
-                col("CANCELLATION_CODE").as("cancellationCode"),
-                col("DIVERTED").cast(DataTypes.DoubleType).as("diverted"),
-                col("ACTUAL_ELAPSED_TIME").as("actualElapsedTime"),
-                col("DISTANCE").as("distance"),
-                col("CARRIER_DELAY").as("carrierDelay"),
-                col("WEATHER_DELAY").as("weatherDelay"),
-                col("NAS_DELAY").as("nasDelay"),
-                col("SECURITY_DELAY").as("securityDelay"),
-                col("LATE_AIRCRAFT_DELAY").as("lateAircraftDelay")
-        ).as(Encoders.bean(RawFlight.class));
 
         // Load the dataset for specific airlines
-        JavaRDD<RawFlight> flights = flightDataset.javaRDD();
+        JavaRDD<Row> flights = dataset.javaRDD();
 
         // PHASE 1: Map operation
         // Transforms each flight into a key-value pair where the key is (Airline, Month)
         // and the value is an array of statistics needed for aggregation.
         JavaPairRDD<Tuple2<String, Integer>, double[]> mappedRDD = flights.mapToPair(flight -> {
             // Key: (Airline, Month)
-            Tuple2<String, Integer> key = new Tuple2<>(flight.getOpUniqueCarrier(), flight.getMonth());
+            Tuple2<String, Integer> key = new Tuple2<>(flight.getString(OP_UNIQUE_CARRIER_IDX), flight.getInt(MONTH_IDX));
             
             // Values array holds statistics:
             // [0: SumDelay, 1: MaxDelay, 2: MinDelay, 3: NotCancelledCount, 4: TotalCount]
             double[] values = new double[5];
-            boolean isCancelled = (flight.getCancelled() != null && flight.getCancelled() > 0.0);
+            boolean isCancelled = flight.getDouble(CANCELLED_IDX) > 0.0;
             
             values[4] = 1.0; // Increment TotalCount for every flight
             
@@ -99,7 +74,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
                 values[2] = Double.MAX_VALUE;  // Neutral element for MIN calculation
                 values[3] = 0.0; // NotCancelledCount is 0
             } else {
-                double delay = (flight.getDepDelay() != null) ? flight.getDepDelay() : 0.0;
+                double delay = flight.getDouble(DEP_DELAY_IDX);
                 values[0] = delay;
                 values[1] = delay;
                 values[2] = delay;

@@ -198,6 +198,18 @@ public abstract class FlightRepository {
     }
 
     /**
+     * Saves the performance metrics collected during the application run.
+     * By default, this operation is not supported. Subclasses that support metric persistence
+     * (like Redis) should override this method.
+     *
+     * @param queryName the name of the query executed
+     * @param approach the approach used for the query
+     */
+    public void saveMetrics(String queryName, String approach) {
+        throw new UnsupportedOperationException("Metric persistence is not supported by this repository: " + this.getClass().getSimpleName());
+    }
+
+    /**
      * Constructs the full path to the input file.
      * Must be implemented by subclasses to provide the specific URI scheme (e.g., file://, hdfs://, s3a://).
      *
@@ -253,7 +265,7 @@ public abstract class FlightRepository {
      * @param rawRows the input Dataset of Row objects
      * @return a strongly typed Dataset of RawFlight objects
      */
-    public Dataset<RawFlight> convertToRawFlight(Dataset<Row> rawRows) {
+    public static Dataset<RawFlight> convertToRawFlight(Dataset<Row> rawRows) {
         // Here we explicitly cast CANCELLED and DIVERTED to Double because in the model RawFlight 
         // they are Double (as read from Parquet), NOT Boolean.
         return rawRows.select(

@@ -67,7 +67,7 @@ public class FlightAnalysisApp {
                     throw new IllegalArgumentException("Unknown query type: " + queryToRun);
             }
 
-            System.out.println("Starting execution of query: " + queryToRun);
+            // System.out.println("Starting execution of query: " + queryToRun + " with backend: " + config.getAppBackend());
             
             // Execute the selected query, passing the configuration object.
             queryJob.execute(config);

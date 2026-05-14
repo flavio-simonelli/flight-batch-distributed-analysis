@@ -36,6 +36,19 @@ public class FlightRepositoryFactory {
         return createRepository(outputConfig, spark);
     }
 
+    /**
+     * Creates the metrics repository based on the provided configuration.
+     *
+     * @param config the ApplicationConfig object
+     * @param spark the initialized SparkSession
+     * @return an instance of FlightRepository
+     * @throws IllegalArgumentException if the storage type is not supported or configuration is invalid
+     */
+    public static FlightRepository createMetricsRepository(ApplicationConfig config, SparkSession spark) {
+        StorageConfig metricsConfig = config.getMetrics();
+        return createRepository(metricsConfig, spark);
+    }
+
     private static FlightRepository createRepository(StorageConfig storageConfig, SparkSession spark) {
         StorageType storageType = storageConfig.getType();
         String storagePath = storageConfig.getPath();
