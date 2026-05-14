@@ -116,6 +116,23 @@ services:
             - "16020:16020"            # RegionServer RPC
             - "8765:8765"              # Phoenix Query Server
 
+    # Object Storage Layer - MinIO
+    minio:
+        image: quay.io/minio/minio:latest
+        container_name: minio
+        hostname: minio
+        networks:
+            - sae-net
+        ports:
+            - "${MINIO_PORT}:9000"
+            - "${MINIO_CONSOLE_PORT}:9001"
+        environment:
+            - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+            - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+        volumes:
+            - ./data/minio:/data
+        command: server /data --console-address ":9001"
+
     # Ingestion Layer - NiFi
     nifi:
         image: apache/nifi:latest
@@ -126,6 +143,7 @@ services:
         ports:
             - "8443:8443" # NiFi Web UI https
             - "${NIFI_WEB_HTTP_PORT}:8081" # NiFi Web UI http
+            - "8085:8085" # Port for Airflow Site-to-Site
         environment:
             - NIFI_WEB_HTTP_PORT=8081
             - SINGLE_USER_CREDENTIALS_USERNAME=${NIFI_USER}
