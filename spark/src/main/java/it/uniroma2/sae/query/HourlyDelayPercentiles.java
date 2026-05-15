@@ -111,15 +111,23 @@ public class HourlyDelayPercentiles extends BaseQuery {
         });
 
         // Pipeline 2: global min/max per airline
+        // Using aggregateByKey to avoid creating millions of double[2] arrays.
         JavaRDD<Row> globalRows = validFlights
-                .mapToPair(f -> new Tuple2<>(
-                        f.getString(OP_UNIQUE_CARRIER_IDX),
-                        new double[]{f.getDouble(DEP_DELAY_IDX), f.getDouble(DEP_DELAY_IDX)}
-                ))
-                .reduceByKey((a, b) -> new double[]{
-                        Math.min(a[0], b[0]),
-                        Math.max(a[1], b[1])
-                })
+                .mapToPair(f -> new Tuple2<>(f.getString(OP_UNIQUE_CARRIER_IDX), f))
+                .aggregateByKey(
+                    new double[]{Double.MAX_VALUE, -Double.MAX_VALUE}, // [0: min, 1: max]
+                    (acc, flight) -> {
+                        double delay = getDoubleSafe(flight, DEP_DELAY_IDX);
+                        acc[0] = Math.min(acc[0], delay);
+                        acc[1] = Math.max(acc[1], delay);
+                        return acc;
+                    },
+                    (acc1, acc2) -> {
+                        acc1[0] = Math.min(acc1[0], acc2[0]);
+                        acc1[1] = Math.max(acc1[1], acc2[1]);
+                        return acc1;
+                    }
+                )
                 .map(t -> RowFactory.create(t._1, t._2[0], t._2[1]))
                 .sortBy(r -> r.getString(0), true, 1)
                 .coalesce(1);

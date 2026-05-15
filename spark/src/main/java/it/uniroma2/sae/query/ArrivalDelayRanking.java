@@ -69,33 +69,33 @@ public class ArrivalDelayRanking extends BaseQuery {
             return !isCancelled && !isDiverted;
         });
 
-        // PHASE 1: Map operation
-        // Maps each valid flight to a key-value pair where the key is the airline
-        // and the value is an array accumulating counts and various delay components.
-        JavaPairRDD<String, double[]> mappedRDD = validFlights.mapToPair(flight -> {
-            String carrier = flight.getString(OP_UNIQUE_CARRIER_IDX);
-            // [0: Count, 1: Arrive_delay, 2: Carrier_delay, 3: Weather_delay, 4: NAS_delay, 5: Security_delay, 6: LateAircraft_delay]
-            double[] values = new double[7];
-            values[0] = 1.0; // Valid flight counter
-            values[1] = getDoubleSafe(flight, ARR_DELAY_IDX);
-            values[2] = getDoubleSafe(flight, CARRIER_DELAY_IDX);
-            values[3] = getDoubleSafe(flight, WEATHER_DELAY_IDX);
-            values[4] = getDoubleSafe(flight, NAS_DELAY_IDX);
-            values[5] = getDoubleSafe(flight, SECURITY_DELAY_IDX);
-            values[6] = getDoubleSafe(flight, LATE_AIRCRAFT_DELAY_IDX);
-
-            return new Tuple2<>(carrier, values);
-        });
-
-        // PHASE 2: Reduce operation
-        // Aggregates the arrays for each airline by summing up the corresponding positions.
-        JavaPairRDD<String, double[]> reducedRDD = mappedRDD.reduceByKey((a, b) -> {
-            double[] res = new double[7];
-            for (int i = 0; i < 7; i++) {
-                res[i] = a[i] + b[i];
-            }
-            return res;
-        });
+        // PHASE 1 & 2: Map-Side Aggregation (Combiner) and Reduction
+        // Using aggregateByKey to avoid creating millions of double[7] arrays.
+        // It performs an initial aggregation locally in each partition (Combiner phase)
+        // and then merges results across the cluster (Reduce phase).
+        JavaPairRDD<String, double[]> reducedRDD = validFlights
+                .mapToPair(flight -> new Tuple2<>(flight.getString(OP_UNIQUE_CARRIER_IDX), flight))
+                .aggregateByKey(
+                        new double[7], // [0: Count, 1: Arrive, 2: Carrier, 3: Weather, 4: NAS, 5: Security, 6: LateAircraft]
+                        (acc, flight) -> {
+                            // SEQ OP: Aggregation within a partition (The "Combiner")
+                            acc[0] += 1.0;
+                            acc[1] += getDoubleSafe(flight, ARR_DELAY_IDX);
+                            acc[2] += getDoubleSafe(flight, CARRIER_DELAY_IDX);
+                            acc[3] += getDoubleSafe(flight, WEATHER_DELAY_IDX);
+                            acc[4] += getDoubleSafe(flight, NAS_DELAY_IDX);
+                            acc[5] += getDoubleSafe(flight, SECURITY_DELAY_IDX);
+                            acc[6] += getDoubleSafe(flight, LATE_AIRCRAFT_DELAY_IDX);
+                            return acc;
+                        },
+                        (acc1, acc2) -> {
+                            // COMB OP: Merging results between partitions
+                            for (int i = 0; i < 7; i++) {
+                                acc1[i] += acc2[i];
+                            }
+                            return acc1;
+                        }
+                );
 
         // PHASE 3: Filter and Map to Rows
         // Retains airlines with at least 500 flights and computes the averages.
