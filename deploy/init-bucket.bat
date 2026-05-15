@@ -19,6 +19,8 @@ echo ----------------------------------------------------
 set SPARK_JAR=../spark/target/flight-analysis.jar
 set DEPLOY_FOLDER=.
 set RAW_DATA_FOLDER=../data/raw
+set NIFI_FOLDER=../nifi
+set GRAFANA_FOLDER=../grafana
 
 :: Check if the bucket already exists
 :: '2>nul' hides the error output if the bucket is missing
@@ -54,13 +56,24 @@ if exist "%DEPLOY_FOLDER%\" (
      echo [WARN] Directory %DEPLOY_FOLDER% non trovata.
 )
 
-if exist "%RAW_FOLDER_NAME%\" (
+if exist "%NIFI_FOLDER%/\" (
+    echo [INFO] Syncing NiFi...
+    aws s3 sync "%NIFI_FOLDER%/" "s3://%BUCKET_NAME%/nifi/"
+)
+
+if exist "%GRAFANA_FOLDER%\" (
+    echo [INFO] Syncing Grafana...
+    aws s3 sync "%GRAFANA_FOLDER%" "s3://%BUCKET_NAME%/grafana/"
+)
+
+
+if exist "%RAW_DATA_FOLDER%\" (
     :: Upload folder using sync
-    echo [INFO] Syncing directory: %RAW_FOLDER_NAME%...
-    aws s3 sync "%RAW_FOLDER_NAME%" "s3://%BUCKET_NAME%/%DATA_FOLDER_NAME%/%RAW_FOLDER_NAME%/" --exclude "*.bat" --exclude ".env" --exclude "template/*"
+    echo [INFO] Syncing directory: %RAW_DATA_FOLDER%...
+    aws s3 sync "%RAW_DATA_FOLDER%" "s3://%BUCKET_NAME%/%DATA_FOLDER_NAME%/%RAW_FOLDER_NAME%/" --exclude "*.bat" --exclude ".env" --exclude "template/*"
     echo [INFO] Directory synced successfully.
 ) else (
-     echo [WARN] Directory %RAW_FOLDER_NAME% non trovata.
+     echo [WARN] Directory %RAW_DATA_FOLDER% non trovata.
 )
 
 if exist "%SPARK_JAR%" (

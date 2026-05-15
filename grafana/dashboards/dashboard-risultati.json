@@ -54,7 +54,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PCC52D03280B7034C"
+                        "name": "postgres-datasource-uid"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -159,7 +159,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PCC52D03280B7034C"
+                        "name": "postgres-datasource-uid"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -281,7 +281,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PCC52D03280B7034C"
+                        "name": "postgres-datasource-uid"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -403,7 +403,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PCC52D03280B7034C"
+                        "name": "postgres-datasource-uid"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -580,14 +580,14 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PCC52D03280B7034C"
+                        "name": "postgres-datasource-uid"
                       },
                       "spec": {
                         "dataset": "flight_db",
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\n  LPAD(hour::text, 2, '0') || ':00' AS hour_label,\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p25::numeric,1) END) AS \"AA p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p50::numeric,1) END) AS \"AA p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p75::numeric,1) END) AS \"AA p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p90::numeric,1) END) AS \"AA p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p25::numeric,1) END) AS \"DL p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p50::numeric,1) END) AS \"DL p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p75::numeric,1) END) AS \"DL p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p90::numeric,1) END) AS \"DL p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p25::numeric,1) END) AS \"UA p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p50::numeric,1) END) AS \"UA p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p75::numeric,1) END) AS \"UA p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p90::numeric,1) END) AS \"UA p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p25::numeric,1) END) AS \"WN p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p50::numeric,1) END) AS \"WN p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p75::numeric,1) END) AS \"WN p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p90::numeric,1) END) AS \"WN p90\"\nFROM hourly_delay_percentiles_rdd_1\nWHERE \"opUniqueCarrier\" IN ($TargetCarrier)\nGROUP BY hour\nORDER BY hour"
+                        "rawSql": "SELECT\n  LPAD(hour::text, 2, '0') || ':00' AS hour_label,\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p25::numeric,1) END) AS \"AA p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p50::numeric,1) END) AS \"AA p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p75::numeric,1) END) AS \"AA p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p90::numeric,1) END) AS \"AA p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p25::numeric,1) END) AS \"DL p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p50::numeric,1) END) AS \"DL p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p75::numeric,1) END) AS \"DL p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p90::numeric,1) END) AS \"DL p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p25::numeric,1) END) AS \"UA p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p50::numeric,1) END) AS \"UA p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p75::numeric,1) END) AS \"UA p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p90::numeric,1) END) AS \"UA p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p25::numeric,1) END) AS \"WN p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p50::numeric,1) END) AS \"WN p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p75::numeric,1) END) AS \"WN p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p90::numeric,1) END) AS \"WN p90\"\nFROM hourly_delay_percentiles_rdd_kll_1\nWHERE \"opUniqueCarrier\" IN ($TargetCarrier)\nGROUP BY hour\nORDER BY hour"
                       }
                     },
                     "refId": "A",
@@ -789,14 +789,14 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PCC52D03280B7034C"
+                        "name": "postgres-datasource-uid"
                       },
                       "spec": {
                         "dataset": "flight_db",
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\n  LPAD(hour::text, 2, '0') || ':00' AS hour_label,\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p50::numeric,1) END) AS \"AA\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p50::numeric,1) END) AS \"DL\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p50::numeric,1) END) AS \"UA\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p50::numeric,1) END) AS \"WN\"\nFROM hourly_delay_percentiles_rdd_1\nWHERE \"opUniqueCarrier\" IN ($TargetCarrier)\nGROUP BY hour\nORDER BY hour"
+                        "rawSql": "SELECT\n  LPAD(hour::text, 2, '0') || ':00' AS hour_label,\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p50::numeric,1) END) AS \"AA\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p50::numeric,1) END) AS \"DL\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p50::numeric,1) END) AS \"UA\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p50::numeric,1) END) AS \"WN\"\nFROM hourly_delay_percentiles_rdd_kll_1\nWHERE \"opUniqueCarrier\" IN ($TargetCarrier)\nGROUP BY hour\nORDER BY hour"
                       }
                     },
                     "refId": "A",
@@ -950,14 +950,14 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PCC52D03280B7034C"
+                        "name": "postgres-datasource-uid"
                       },
                       "spec": {
                         "dataset": "flight_db",
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \"opUniqueCarrier\", min_delay_global, max_delay_global\nFROM hourly_delay_percentiles_rdd_2\nWHERE \"opUniqueCarrier\" IN ($TargetCarrier)\nORDER BY \"opUniqueCarrier\""
+                        "rawSql": "SELECT \"opUniqueCarrier\", min_delay_global, max_delay_global\nFROM hourly_delay_percentiles_rdd_kll_2\nWHERE \"opUniqueCarrier\" IN ($TargetCarrier)\nORDER BY \"opUniqueCarrier\""
                       }
                     },
                     "refId": "A",

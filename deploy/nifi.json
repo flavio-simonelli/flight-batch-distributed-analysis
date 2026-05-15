@@ -1,0 +1,26 @@
+{
+  "job_id": "exp_http_to_minio_001",
+  "ingestion": {
+    "source_type": "HTTP",
+    "http_url": "http://www.ce.uniroma2.it/courses/sabd2526/project/project-1-data.tar.gz",
+    "expected_sha1": "17be276b72bd987e72598b0ea4907c3b19350606"
+  },
+  "storage_raw": {
+    "type": "S3",
+    "bucket": "spark-flight-analysis",
+    "path": "data/raw",
+    "region": "us-east-1"
+  },
+  "processing": {
+    "optimization_strategy": "PREDICATE_PUSHDOWN"
+  },
+  "storage_preprocessed": {
+    "type": "HDFS",
+    "path": "/data/conv"
+  },
+  "callback": {
+    "run_id": "exp_http_to_minio_001",
+    "url": "http://airflow-apiserver:8080/api/v2/variables/nifi_done_exp_http_to_minio_001",
+    "method": "PATCH"
+  }
+}

@@ -14,25 +14,8 @@ echo ----------------------------------------------------
 echo [INFO] Starting Pre-Deployment Checks...
 
 :: --- SSH KEY CHECK ---
-:: Check if the local directory for keys exists
-if not exist "%SSH_KEY_DIR%" mkdir "%SSH_KEY_DIR%"
-
-:: Check if the key pair exists in AWS EC2
-aws ec2 describe-key-pairs --key-names %SSH_KEY_NAME% 2>nul
-if %ERRORLEVEL% neq 0 (
-    echo [INFO] SSH Key %SSH_KEY_NAME% not found in AWS. Creating...
-    aws ec2 create-key-pair --key-name %SSH_KEY_NAME% --query "KeyMaterial" --output text > "%SSH_KEY_DIR%\%SSH_KEY_NAME%.pem"
-    icacls "%SSH_KEY_DIR%\%SSH_KEY_NAME%.pem" /inheritance:r
-    icacls "%SSH_KEY_DIR%\%SSH_KEY_NAME%.pem" /grant:r "${env:UserName}:(R)"
-    echo [INFO] Key created and saved locally to %SSH_KEY_DIR%.
-) else (
-    if not exist "%SSH_KEY_DIR%\%SSH_KEY_NAME%.pem" (
-        echo [WARNING] Key exists in AWS but the .pem file is missing in %SSH_KEY_DIR%.
-        echo [WARNING] Ensure you have the correct file to access instances.
-    ) else (
-        echo [INFO] SSH Key is ready both locally and in AWS.
-    )
-)
+call setup-ssh-key.bat
+if %ERRORLEVEL% neq 0 exit /b 1
 
 :: --- NETWORK CHECK ---
 echo [INFO] Searching for Subnet by Name: %SUBNET_NAME%...

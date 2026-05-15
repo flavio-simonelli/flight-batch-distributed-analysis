@@ -21,4 +21,7 @@ mv /home/ec2-user/.env .env
 echo "[DEPLOY] Launching containers..."
 docker-compose up -d
 
+# Fix ownership
+sudo chown -R ec2-user:ec2-user /home/ec2-user
+
 echo "[DEPLOY] Worker Node deployed successfully."
