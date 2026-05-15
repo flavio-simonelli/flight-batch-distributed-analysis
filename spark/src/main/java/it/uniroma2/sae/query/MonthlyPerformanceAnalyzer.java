@@ -121,7 +121,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         });
 
         // Sort the RDD by month and then by airline
-        JavaRDD<Row> sortedRDD = rowRDD.sortBy(row -> String.format("%02d-%s", row.getInt(0), row.getString(1)), true, rowRDD.getNumPartitions());
+        JavaRDD<Row> sortedRDD = rowRDD.sortBy(row -> (row.getInt(0) < 10 ? "0" : "") + row.getInt(0) + "-" + row.getString(1), true, rowRDD.getNumPartitions());
         
         // Define the schema for the RDD
         StructType schema = DataTypes.createStructType(new StructField[]{

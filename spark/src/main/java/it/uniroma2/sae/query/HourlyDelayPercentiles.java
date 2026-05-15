@@ -97,7 +97,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
         SparkDiagnostics.checkSkew(hourlyRows, "Q3 hourly percentiles", 3.0);
 
         JavaRDD<Row> hourlySorted = hourlyRows
-                .sortBy(r -> r.getString(0) + String.format("_%02d", r.getInt(1)),
+                .sortBy(r -> r.getString(0) + (r.getInt(1) < 10 ? "_0" : "_") + r.getInt(1),
                         true, hourlyRows.getNumPartitions())
                 .coalesce(1);
 
