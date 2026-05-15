@@ -29,6 +29,32 @@ x-spark-worker-base: &spark-worker-base
         - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
         - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
 
+x-airflow-common: &airflow-common
+    image: apache/airflow:latest
+    networks:
+        - sae-net
+    user: "${AIRFLOW_UID:-50000}:0"
+    environment: &airflow-common-env
+        AIRFLOW__CORE__EXECUTOR: LocalExecutor
+        AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+        AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+        AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+        AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+        AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER}:${AIRFLOW_POSTGRES_PASSWORD}@airflow-postgres:5432/${AIRFLOW_POSTGRES_DB}
+        AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
+        AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET}
+        AIRFLOW__API_AUTH__JWT_ISSUER: airflow
+        AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+        AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    volumes:
+        - ./airflow/dags:/opt/airflow/dags
+        - ./airflow/logs:/opt/airflow/logs
+        - ./airflow/plugins:/opt/airflow/plugins
+        - ./airflow/config:/opt/airflow/config
+    depends_on: &airflow-common-depends-on
+        airflow-postgres:
+            condition: service_healthy
+
 services:
 
     # Storage Layer - HDFS
@@ -237,6 +263,118 @@ services:
         depends_on:
             - redis-metrics
             - postgres
+
+    airflow-postgres:
+        image: postgres:15
+        container_name: airflow-postgres
+        hostname: airflow-postgres
+        networks:
+            - sae-net
+        environment:
+            - POSTGRES_USER=${AIRFLOW_POSTGRES_USER}
+            - POSTGRES_PASSWORD=${AIRFLOW_POSTGRES_PASSWORD}
+            - POSTGRES_DB=${AIRFLOW_POSTGRES_DB}
+        volumes:
+            - ./data/airflow-postgres:/var/lib/postgresql/data
+        healthcheck:
+            test: [ "CMD", "pg_isready", "-U", "${AIRFLOW_POSTGRES_USER}" ]
+            interval: 10s
+            retries: 5
+
+    airflow-init:
+        <<: *airflow-common
+        container_name: airflow-init
+        entrypoint: /bin/bash
+        user: "0:0"
+        command:
+            - -c
+            - |
+                mkdir -p /opt/airflow/{logs,dags,plugins,config}
+                chown -R "${AIRFLOW_UID:-50000}:0" /opt/airflow/
+                /entrypoint airflow version
+                /entrypoint airflow config list > /dev/null
+        depends_on:
+            airflow-postgres:
+                condition: service_healthy
+        environment:
+            <<: *airflow-common-env
+            _AIRFLOW_DB_MIGRATE: 'true'
+            _AIRFLOW_WWW_USER_CREATE: 'true'
+            _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_USER}
+            _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_PASSWORD}
+            _AIRFLOW_WWW_USER_ROLE: Admin
+            _AIRFLOW_WWW_USER_EMAIL: ${AIRFLOW_EMAIL}
+            _PIP_ADDITIONAL_REQUIREMENTS: ''
+
+    airflow-scheduler:
+        <<: *airflow-common
+        container_name: airflow-scheduler
+        hostname: airflow-scheduler
+        command: scheduler
+        healthcheck:
+            test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 30s
+        restart: always
+        depends_on:
+            <<: *airflow-common-depends-on
+            airflow-init:
+                condition: service_completed_successfully
+
+    airflow-dag-processor:
+        <<: *airflow-common
+        container_name: airflow-dag-processor
+        hostname: airflow-dag-processor
+        command: dag-processor
+        healthcheck:
+            test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 30s
+        restart: always
+        depends_on:
+            <<: *airflow-common-depends-on
+            airflow-init:
+                condition: service_completed_successfully
+
+    airflow-triggerer:
+        <<: *airflow-common
+        container_name: airflow-triggerer
+        hostname: airflow-triggerer
+        command: triggerer
+        healthcheck:
+            test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 30s
+        restart: always
+        depends_on:
+            <<: *airflow-common-depends-on
+            airflow-init:
+                condition: service_completed_successfully
+
+    airflow-apiserver:
+        <<: *airflow-common
+        container_name: airflow-apiserver
+        hostname: airflow-apiserver
+        command: api-server
+        ports:
+            - "${AIRFLOW_WEB_PORT}:8080" # Airflow Web UI
+        healthcheck:
+            test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 30s
+        restart: always
+        depends_on:
+            <<: *airflow-common-depends-on
+            airflow-init:
+                condition: service_completed_successfully
 
 networks:
     sae-net:
