@@ -27,5 +27,11 @@
     "path": "/data/processed/parquet_results",
     "bucket": "analytics-results-bucket",
     "region": "us-east-1"
+  },
+  "callback": {
+    "comment": "Compilato automaticamente da Airflow a runtime — non modificare",
+    "run_id": null,
+    "url": null,
+    "method": "PATCH"
   }
 }
