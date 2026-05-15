@@ -54,49 +54,43 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         // Load the dataset for specific airlines
         JavaRDD<Row> flights = dataset.javaRDD();
 
-        // PHASE 1: Map operation
+        // PHASE 1 & 2: Map-Side Aggregation (Combiner) and Reduction
         // Transforms each flight into a key-value pair where the key is (Airline, Month)
-        // and the value is an array of statistics needed for aggregation.
-        JavaPairRDD<Tuple2<String, Integer>, double[]> mappedRDD = flights.mapToPair(flight -> {
-            // Key: (Airline, Month)
-            Tuple2<String, Integer> key = new Tuple2<>(flight.getString(OP_UNIQUE_CARRIER_IDX), flight.getInt(MONTH_IDX));
-            
-            // Values array holds statistics:
-            // [0: SumDelay, 1: MaxDelay, 2: MinDelay, 3: NotCancelledCount, 4: TotalCount]
-            double[] values = new double[5];
-            boolean isCancelled = flight.getDouble(CANCELLED_IDX) > 0.0;
-            
-            values[4] = 1.0; // Increment TotalCount for every flight
-            
-            if (isCancelled) {
-                values[0] = 0.0; // SumDelay is 0 if the flight was cancelled
-                values[1] = -Double.MAX_VALUE; // Neutral element for MAX calculation
-                values[2] = Double.MAX_VALUE;  // Neutral element for MIN calculation
-                values[3] = 0.0; // NotCancelledCount is 0
-            } else {
-                double delay = flight.getDouble(DEP_DELAY_IDX);
-                values[0] = delay;
-                values[1] = delay;
-                values[2] = delay;
-                values[3] = 1.0; // Increment NotCancelledCount
-            }
+        // and uses aggregateByKey to aggregate statistics efficiently without creating
+        // millions of temporary arrays.
+        JavaPairRDD<Tuple2<String, Integer>, Row> pairs = flights.mapToPair(flight ->
+                new Tuple2<>(new Tuple2<>(flight.getString(OP_UNIQUE_CARRIER_IDX), flight.getInt(MONTH_IDX)), flight)
+        );
 
-            return new Tuple2<>(key, values);
-        });
+        // Zero value for the accumulator: [0: SumDelay, 1: MaxDelay, 2: MinDelay, 3: NotCancelledCount, 4: TotalCount]
+        double[] zeroValue = {0.0, -Double.MAX_VALUE, Double.MAX_VALUE, 0.0, 0.0};
 
-        // PHASE 2: Reduce operation
-        // Aggregates the statistics for each (Airline, Month) combination by summing up counts and delays,
-        // and finding the absolute min and max delays.
-        JavaPairRDD<Tuple2<String, Integer>, double[]> reducedRDD = mappedRDD.reduceByKey((a, b) -> {
-            double[] res = new double[5];
-            res[0] = a[0] + b[0]; // Sum of delays
-            res[1] = Math.max(a[1], b[1]); // Maximum delay
-            res[2] = Math.min(a[2], b[2]); // Minimum delay
-            res[3] = a[3] + b[3]; // Sum of not cancelled flights
-            res[4] = a[4] + b[4]; // Sum of total flights
+        JavaPairRDD<Tuple2<String, Integer>, double[]> reducedRDD = pairs.aggregateByKey(
+                zeroValue,
+                (acc, flight) -> {
+                    // SEQ OP: Aggregation within a partition (The "Combiner")
+                    boolean isCancelled = getDoubleSafe(flight, CANCELLED_IDX) > 0.0;
+                    acc[4] += 1.0; // Increment TotalCount for every flight
 
-            return res;
-        });
+                    if (!isCancelled) {
+                        double delay = getDoubleSafe(flight, DEP_DELAY_IDX);
+                        acc[0] += delay; // Sum delay
+                        acc[1] = Math.max(acc[1], delay); // Max delay
+                        acc[2] = Math.min(acc[2], delay); // Min delay
+                        acc[3] += 1.0; // Increment NotCancelledCount
+                    }
+                    return acc;
+                },
+                (acc1, acc2) -> {
+                    // COMB OP: Merging results between partitions
+                    acc1[0] += acc2[0]; // Sum of delays
+                    acc1[1] = Math.max(acc1[1], acc2[1]); // Maximum delay
+                    acc1[2] = Math.min(acc1[2], acc2[2]); // Minimum delay
+                    acc1[3] += acc2[3]; // Sum of not cancelled flights
+                    acc1[4] += acc2[4]; // Sum of total flights
+                    return acc1;
+                }
+        );
 
         // PHASE 3: Final Map operation
         // Converts the aggregated statistics into Spark SQL Rows, computing the final averages and rates.
@@ -121,7 +115,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         });
 
         // Sort the RDD by month and then by airline
-        JavaRDD<Row> sortedRDD = rowRDD.sortBy(row -> String.format("%02d-%s", row.getInt(0), row.getString(1)), true, rowRDD.getNumPartitions());
+        JavaRDD<Row> sortedRDD = rowRDD.sortBy(row -> (row.getInt(0) < 10 ? "0" : "") + row.getInt(0) + "-" + row.getString(1), true, rowRDD.getNumPartitions());
         
         // Define the schema for the RDD
         StructType schema = DataTypes.createStructType(new StructField[]{
