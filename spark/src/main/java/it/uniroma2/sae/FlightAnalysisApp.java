@@ -6,6 +6,7 @@ import it.uniroma2.sae.query.ArrivalDelayRanking;
 import it.uniroma2.sae.query.BaseQuery;
 import it.uniroma2.sae.query.HourlyDelayPercentiles;
 import it.uniroma2.sae.query.MonthlyPerformanceAnalyzer;
+import it.uniroma2.sae.query.AirlineClustering;
 
 /**
  * The main entry point for the Flight Analysis application.
@@ -62,6 +63,9 @@ public class FlightAnalysisApp {
                     break;
                 case HOURLY_DELAY_PERCENTILES:
                     queryJob = new HourlyDelayPercentiles();
+                    break;
+                case AIRLINE_CLUSTERING:
+                    queryJob = new AirlineClustering();
                     break;
                 default:
                     throw new IllegalArgumentException("Unknown query type: " + queryToRun);

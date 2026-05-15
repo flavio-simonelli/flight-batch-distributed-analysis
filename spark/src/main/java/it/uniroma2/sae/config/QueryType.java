@@ -18,7 +18,10 @@ public enum QueryType implements Serializable {
     ARRIVAL_DELAY_RANKING("arrival_delay_ranking"),
 
     @JsonProperty("hourly_delay_percentiles")
-    HOURLY_DELAY_PERCENTILES("hourly_delay_percentiles");
+    HOURLY_DELAY_PERCENTILES("hourly_delay_percentiles"),
+
+    @JsonProperty("airline_clustering")
+    AIRLINE_CLUSTERING("airline_clustering");
 
     private final String type;
     private static final Map<String, QueryType> LOOKUP = Arrays.stream(values())
