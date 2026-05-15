@@ -2,6 +2,8 @@
 data/conv
 data/postgres
 
+data/minio/.minio.sys
+
 # ========================
 # Maven / Java (spark/)
 # ========================
