@@ -1,30 +1,47 @@
 @echo off
+setlocal enabledelayedexpansion
 
+:: --- LOAD ENVIRONMENT VARIABLES ---
+call load_env.bat
+if %ERRORLEVEL% neq 0 exit /b 1
+
+:: --- PARAMETER CHECK ---
 if "%~1"=="" (
-    echo ERRORE: Devi passare il Cluster ID come primo parametro.
-    echo Esempio di utilizzo: lancia-fasi.bat j-1ZT8KX6GGLVLW
-    exit /b
+    echo [ERROR] Cluster ID is missing.
+    echo Usage: run-step.bat j-XXXXXXXXXXXXX
+    exit /b 1
 )
 
-set CLUSTER_ID=%~1
+set "CLUSTER_ID=%~1"
+set "SPARK_JAR_PATH=s3://%BUCKET_NAME%/flight-analysis.jar"
 
-echo Invio della fase Spark al cluster EMR %CLUSTER_ID% in corso...
+echo ----------------------------------------------------
+echo SUBMITTING SPARK STEPS TO EMR
+echo Cluster ID: %CLUSTER_ID%
+echo JAR Path:   %SPARK_JAR_PATH%
+echo ----------------------------------------------------
 
-set SPARK_SCRIPT=s3://spark-flight-analysis/flight-analysis.jar
+:: %%Q represents the Query type
+:: %%B represents the Execution Backend
+for %%Q in (monthly_performance arrival_delay_ranking hourly_delay_percentiles) do (
+    for %%B in (rdd dataframe sql) do (
 
-:: %%Q rappresenta la Query
-:: %%B rappresenta il Backend
-FOR %%Q IN (monthly_performance arrival_delay_ranking hourly_delay_percentiles) DO (
-    FOR %%B IN (rdd dataframe sql) DO (
+        echo [INFO] Submitting Step: Query=%%Q ^| Backend=%%B
 
-        echo Inviando fase: Query = %%Q ^| Backend = %%B
-
+        :: Add step to the EMR cluster
         aws emr add-steps ^
           --cluster-id %CLUSTER_ID% ^
-          --steps Type=Spark,Name="Flight Analysis - %%Q - %%B",ActionOnFailure=CONTINUE,Args=[%SPARK_SCRIPT%,--config,aws-config.yml,--query,%%Q,--backend,%%B]
+          --steps Type=Spark,Name="Flight Analysis - %%Q - %%B",ActionOnFailure=CONTINUE,Args=[%SPARK_JAR_PATH%,--config,aws-config.yml,--query,%%Q,--backend,%%B] >nul
 
+        if !ERRORLEVEL! equ 0 (
+            echo [INFO] Step submitted successfully.
+        ) else (
+            echo [ERROR] Failed to submit step: %%Q with %%B.
+        )
     )
 )
 
 echo.
-echo Tutti gli step sono stati inviati con successo!
+echo ----------------------------------------------------
+echo [INFO] All steps have been submitted to the cluster!
+echo ----------------------------------------------------

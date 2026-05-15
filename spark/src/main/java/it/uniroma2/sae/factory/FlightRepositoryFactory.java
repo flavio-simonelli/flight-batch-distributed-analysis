@@ -46,6 +46,10 @@ public class FlightRepositoryFactory {
      */
     public static FlightRepository createMetricsRepository(ApplicationConfig config, SparkSession spark) {
         StorageConfig metricsConfig = config.getMetrics();
+        if(metricsConfig == null) {
+            System.out.println("Metric repository not configured. Skipping...");
+            return null;
+        }
         return createRepository(metricsConfig, spark);
     }
 

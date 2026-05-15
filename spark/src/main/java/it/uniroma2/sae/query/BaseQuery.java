@@ -132,7 +132,10 @@ public abstract class BaseQuery {
             metrics.printReport(queryName);
             
             // Persist metrics
-            metricsRepository.saveMetrics(queryName, backend.name());
+            if(metricsRepository != null) {
+                System.out.println("Saving performance metrics to repository...");
+                metricsRepository.saveMetrics(queryName, backend.name());
+            }
 
         } catch (Exception e) {
             System.err.println("Fatal error during query execution:");

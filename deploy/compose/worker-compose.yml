@@ -1,0 +1,28 @@
+name: flight-analytics-worker
+
+services:
+  hdfs-worker:
+    image: matnar/hadoop:3.3.2
+    container_name: hdfs-worker
+    user: root
+    network_mode: host
+    volumes:
+      - ./core-site.xml:/usr/local/hadoop/etc/hadoop/core-site.xml
+      - ./hdfs-site.xml:/usr/local/hadoop/etc/hadoop/hdfs-site.xml
+    environment:
+      - NODE_TYPE=worker
+      - HDFS_NAMENODE_HOST=${MASTER_PRIVATE_IP}
+    command: >
+      sh -c "/usr/local/hadoop/bin/hdfs datanode & wait"
+
+  spark-worker:
+    image: apache/spark:3.5.1
+    container_name: spark-worker
+    user: root
+    network_mode: host
+    volumes:
+      - ./data:/opt/spark/data
+    environment:
+      - SPARK_MASTER_HOST=${MASTER_PRIVATE_IP}
+    # Connection to master via DNS name
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://${MASTER_PRIVATE_IP}:7077

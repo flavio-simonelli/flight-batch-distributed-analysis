@@ -1,0 +1,54 @@
+name: flight-analytics-master
+
+services:
+
+  # Storage Layer - HDFS
+  hdfs-master:
+    image: matnar/hadoop:3.3.2
+    container_name: hdfs-master
+    user: root
+    network_mode: host
+    ports:
+      - "${HDFS_WEB_UI_PORT}:9870" # HDFS Web UI
+      - "${HDFS_NAMENODE_PORT}:54310" # HDFS RPC NameNode
+    volumes:
+      - ./workers:/usr/local/hadoop/etc/hadoop/workers
+      - ./core-site.xml:/usr/local/hadoop/etc/hadoop/core-site.xml
+      - ./hdfs-site.xml:/usr/local/hadoop/etc/hadoop/hdfs-site.xml
+    environment:
+      - NODE_TYPE=master
+    command: >
+      sh -c "if [ ! -d /tmp/hadoop-root/dfs/name ]; then
+        /usr/local/hadoop/bin/hdfs namenode -format -force;
+      fi;
+
+      /usr/local/hadoop/bin/hdfs namenode &
+
+      echo '[INFO] Wait for NameNode to be ready...';
+      until /usr/local/hadoop/bin/hdfs dfsadmin -safemode wait; do
+        echo '[INFO] NameNode non ancora pronto, riprovo tra 2 secondi...';
+        sleep 2;
+      done;
+
+      echo '[INFO] NameNode ready! Creating folders...';
+      /usr/local/hadoop/bin/hdfs dfs -mkdir -p /data/conv;
+      /usr/local/hadoop/bin/hdfs dfs -chmod -R 777 /data/conv;
+
+      echo '[INFO] HDFS Master is up and running.';
+      wait"
+    tty: true
+    stdin_open: true
+
+  # Processing Layer - Spark
+  spark-master:
+    image: apache/spark:3.5.1
+    container_name: spark-master
+    user: root
+    network_mode: host
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      - '${SPARK_MASTER_WEBUI_PORT}:8080' # Spark Master Web UI
+      - '${SPARK_MASTER_PORT}:7077' # Spark Master Port
+    volumes:
+      - ./data:/opt/spark/data
+      - ./spark:/opt/spark/scripts

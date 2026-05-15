@@ -3,28 +3,28 @@ appName: Flight Analysis
 
 # Define which query to run:
 # Options: monthly_performance, arrival_delay_ranking, hourly_delay_percentiles
-queryToRun: monthly_performance
+# queryToRun: monthly_performance
 
 # Define which Spark backend API to use for the query execution
 # Options: rdd, dataframe, sql
-appBackend: dataframe
+# appBackend: rdd
 
 # Algorithm for Q3 (hourly_delay_percentiles) percentile estimation in the RDD backend
 # Options: kll, tdigest
 percentileAlgorithm: kll
 
 # Cluster configuration
-sparkCluster:
-  master:
-    hostname: spark-master
-    port: 7077
+# sparkCluster:
+#   master:
+#     hostname: spark-master
+#     port: 7077
 
 # --- Input data configuration examples ---
 
 input:
   type: "hdfs"  # Possible types: hdfs, local, s3
-  uri: "hdfs://master:54310"
-  path: "/data/conv/flights/full"
+  uri: "hdfs://master.flight-analysis.local:54310"
+  path: "/data/conv"
   datasetFilename: ""
 
 # --- Output data configuration examples ---
@@ -39,7 +39,7 @@ input:
 # HDFS Output
 output:
    type: "hdfs"
-   uri: "hdfs://master:54310"
+   uri: "hdfs://master.flight-analysis.local:54310"
    path: "/data"
    resultDirectory: "/res"
 
@@ -86,9 +86,9 @@ output:
 # --- Metrics configuration examples ---
 
 # Redis Output
-metrics:
-  type: "redis"
-  hostname: "redis"
-  port: 6379
-  database: "0"  # Redis database index
-  # password: "mypassword" # Optional
+# metrics:
+#   type: "redis"
+#   hostname: "redis"
+#   port: 6379
+#   database: "0"  # Redis database index
+#   # password: "mypassword" # Optional
