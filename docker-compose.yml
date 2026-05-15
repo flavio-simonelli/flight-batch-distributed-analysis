@@ -30,7 +30,10 @@ x-spark-worker-base: &spark-worker-base
         - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
 
 x-airflow-common: &airflow-common
-    image: apache/airflow:latest
+    build:
+        context: ./airflow
+        dockerfile: Dockerfile
+    image: sky-analytics-airflow:latest
     networks:
         - sae-net
     user: "${AIRFLOW_UID:-50000}:0"
@@ -46,6 +49,8 @@ x-airflow-common: &airflow-common
         AIRFLOW__API_AUTH__JWT_ISSUER: airflow
         AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
         AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+        AIRFLOW_CONN_LIVY_DEFAULT: ${AIRFLOW_CONN_LIVY_DEFAULT}
+        AIRFLOW_CONN_NIFI_HTTP: ${AIRFLOW_CONN_NIFI_HTTP}
     volumes:
         - ./airflow/dags:/opt/airflow/dags
         - ./airflow/logs:/opt/airflow/logs
@@ -263,6 +268,26 @@ services:
         depends_on:
             - redis-metrics
             - postgres
+
+    livy:
+        build:
+            context: ./livy
+            dockerfile: Dockerfile
+        image: sky-analytics-livy:latest
+        container_name: livy
+        hostname: livy
+        networks:
+            - sae-net
+        ports:
+            - "8998:8998"
+        volumes:
+            - ./spark:/opt/spark/scripts
+        depends_on:
+            - spark-master
+            - spark-worker-1
+            - spark-worker-2
+        links:
+            - spark-master:${SPARK_MASTER_HOST}
 
     airflow-postgres:
         image: postgres:15
