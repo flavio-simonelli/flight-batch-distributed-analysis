@@ -4,7 +4,7 @@ Description: 'EC2 Node for Sky Analytics Engine with Docker and Private DNS'
 Parameters:
   InstanceType:
     Type: String
-    Default: t3.small
+    Default: t4g.small
   ImageId:
     Type: AWS::EC2::Image::Id
     Default: ami-0c02fb55956c7d316

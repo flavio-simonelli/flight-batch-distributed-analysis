@@ -1,70 +1,89 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: --- DEPLOYMENT ORCHESTRATOR FOR SKY ANALYTICS ENGINE ---
+:: This script manages the deployment of various node types across the EC2 cluster.
+:: It supports targeted deployment (master, worker, metrics, databases, nifi, airflow)
+:: or full cluster deployment (all).
+
 :: --- PARAMETER CHECK ---
-:: Target can be: master, worker, metrics, databases, nifi, or all (default)
+:: The first argument defines the deployment target. Defaults to 'all' if omitted.
 set "TARGET=%~1"
 if "%TARGET%"=="" set "TARGET=all"
 
-:: Validate input target
-if /I "%TARGET%" NEQ "master" if /I "%TARGET%" NEQ "worker" if /I "%TARGET%" NEQ "metrics" if /I "%TARGET%" NEQ "databases" if /I "%TARGET%" NEQ "nifi" if /I "%TARGET%" NEQ "all" (
-    echo [ERROR] Invalid target: %TARGET%
-    echo Usage: deploy-node.bat [master ^| worker ^| metrics ^| databases ^| nifi ^| all]
+:: Validate the provided target against supported node types.
+if /I "%TARGET%" NEQ "master" if /I "%TARGET%" NEQ "worker" if /I "%TARGET%" NEQ "metrics" if /I "%TARGET%" NEQ "databases" if /I "%TARGET%" NEQ "nifi" if /I "%TARGET%" NEQ "airflow" if /I "%TARGET%" NEQ "all" (
+    echo [ERROR] Invalid deployment target: %TARGET%
+    echo Usage: deploy-node.bat [master ^^| worker ^| metrics ^| databases ^| nifi ^| airflow ^| all]
     exit /b 1
 )
 
-:: --- LOAD ENVIRONMENT VARIABLES ---
+:: --- ENVIRONMENT INITIALIZATION ---
+:: Load configuration variables from the .env file.
 call load_env.bat
-if %ERRORLEVEL% neq 0 exit /b 1
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Failed to load environment variables. Ensure .env exists in the current directory.
+    exit /b 1
+)
 
-:: --- SSH KEY CHECK ---
-:: Ensure the key exists in AWS and locally with correct permissions
+:: --- SSH KEY PROVISIONING ---
+:: Ensure the SSH key pair exists in AWS and is saved locally with restrictive permissions.
 call setup-ssh-key.bat
-if %ERRORLEVEL% neq 0 exit /b 1
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] SSH key setup failed. Deployment aborted.
+    exit /b 1
+)
 
-echo [INFO] Searching for Infrastructure components by Name...
+echo [INFO] Retrieving Cloud Infrastructure context...
 
-:: Retrieve SubnetId using the Name Tag
+:: --- INFRASTRUCTURE DISCOVERY ---
+:: Retrieve the Subnet ID using its Name tag to target the correct VPC segment.
 set "SUBNET_ID=None"
 for /f "tokens=*" %%i in ('aws ec2 describe-subnets --filters "Name=tag:Name,Values=%SUBNET_NAME%" --query "Subnets[0].SubnetId" --output text') do set "SUBNET_ID=%%i"
 
-:: Retrieve Security Group ID using the Group Name
+:: Retrieve the Security Group ID to allow traffic between cluster nodes.
 set "SG_ID=None"
 for /f "tokens=*" %%i in ('aws ec2 describe-security-groups --filters "Name=group-name,Values=%SG_NAME%" --query "SecurityGroups[0].GroupId" --output text') do set "SG_ID=%%i"
 
-:: Retrieve Hosted Zone ID using the Domain Name (e.g., flight-analysis.local.)
-:: Note: Route53 appends a trailing dot to the zone name
+:: Retrieve the Route53 Hosted Zone ID to manage private DNS records for the cluster.
 set "ZONE_ID=None"
 for /f "tokens=*" %%i in ('aws route53 list-hosted-zones-by-name --dns-name %PRIVATE_DOMAIN_NAME% --query "HostedZones[0].Id" --output text') do (
     set "RAW_ZONE_ID=%%i"
     set "ZONE_ID=!RAW_ZONE_ID:/hostedzone/=!"
 )
 
-echo [INFO] Subnet Found: %SUBNET_ID%
-echo [INFO] SG Found:     %SG_ID%
-echo [INFO] Zone Found:   %ZONE_ID%
+echo [INFO] Infrastructure Discovery Results:
+echo        Subnet: %SUBNET_ID%
+echo        Security Group: %SG_ID%
+echo        DNS Zone: %ZONE_ID%
 
-:: Check if required infrastructure is present
-if "%SUBNET_ID%"=="None" ( echo [ERROR] Network infrastructure missing. & pause & exit /b 1 )
+:: Verify that all required network components were successfully identified.
+if "%SUBNET_ID%"=="None" (
+    echo [ERROR] Required network infrastructure is missing. Run deploy-network.bat first.
+    pause
+    exit /b 1
+)
 
-:: --- DEPLOY NODES ---
-echo [INFO] Deploying Cluster Nodes for target: %TARGET%...
+:: --- NODE DEPLOYMENT PHASE ---
+echo [INFO] Initiating deployment for target: %TARGET%...
 
-:: Define known_hosts path for PowerShell command
-set "KH_PATH=%USERPROFILE%\\.ssh\\known_hosts"
+:: Define the local path to the SSH known_hosts file for cleanup operations.
+set "KH_PATH=%USERPROFILE%\.ssh\known_hosts"
 
-:: --- DEPLOY MASTER NODE ---
+:: --- MASTER NODE DEPLOYMENT ---
+:: Contains HDFS NameNode and Spark Master.
 if /I "%TARGET%"=="worker" goto :skip_master
 if /I "%TARGET%"=="metrics" goto :skip_master
 if /I "%TARGET%"=="databases" goto :skip_master
 if /I "%TARGET%"=="nifi" goto :skip_master
+if /I "%TARGET%"=="airflow" goto :skip_master
 
 set MASTER_STACK_NAME="%SPARK_CLUSTER_NAME%-master-node"
 
-echo [INFO] Cleaning up known_hosts for master-node...
-powershell -Command "if (Test-Path '%KH_PATH%') { (Get-Content '%KH_PATH%') | Where-Object { $_ -notmatch (Select-String -Path '%KH_PATH%' -Pattern 'master-node' | Select-Object -ExpandProperty Line) } | Set-Content '%KH_PATH%' }"
+echo [INFO] Cleaning up stale SSH host keys for master-node...
+powershell -Command "if (Test-Path '%KH_PATH%') { $c = Get-Content '%KH_PATH%'; $c | Where-Object { $_ -notmatch 'master-node' } | Set-Content '%KH_PATH%' }"
 
-echo [INFO] Deploying MASTER Node...
+echo [INFO] Deploying Master Node via CloudFormation...
 aws cloudformation deploy ^
   --stack-name "%MASTER_STACK_NAME%" ^
   --template-file "template/cluster-node.yaml" ^
@@ -83,21 +102,23 @@ aws cloudformation deploy ^
 
 :skip_master
 
-:: --- DEPLOY WORKER NODES ---
+:: --- WORKER NODES DEPLOYMENT ---
+:: Distributed instances for HDFS DataNodes and Spark Workers.
 if /I "%TARGET%"=="master" if /I "%TARGET%" NEQ "all" goto :skip_worker
 if /I "%TARGET%"=="metrics" goto :skip_worker
 if /I "%TARGET%"=="databases" goto :skip_worker
 if /I "%TARGET%"=="nifi" goto :skip_worker
+if /I "%TARGET%"=="airflow" goto :skip_worker
 
 set WORKER_STACK_NAME="%SPARK_CLUSTER_NAME%-worker-node"
 
-echo [INFO] Deploying WORKER Nodes...
+echo [INFO] Deploying %WORKER_COUNT% Worker Nodes...
 
 for /L %%N in (1,1,%WORKER_COUNT%) do (
-    echo [INFO] Cleaning up known_hosts for worker-node-%%N...
-    powershell -Command "if (Test-Path '%KH_PATH%') { (Get-Content '%KH_PATH%') | Where-Object { $_ -notmatch (Select-String -Path '%KH_PATH%' -Pattern 'worker-node-%%N' | Select-Object -ExpandProperty Line) } | Set-Content '%KH_PATH%' }"
+    echo [INFO] Cleaning up stale SSH host keys for worker-node-%%N...
+    powershell -Command "if (Test-Path '%KH_PATH%') { $c = Get-Content '%KH_PATH%'; $c | Where-Object { $_ -notmatch 'worker-node-%%N' } | Set-Content '%KH_PATH%' }"
 
-    echo [INFO] Launching Worker %%N...
+    echo [INFO] Launching Worker Instance %%N...
     aws cloudformation deploy ^
       --stack-name "%WORKER_STACK_NAME%-%%N" ^
       --template-file "template/cluster-node.yaml" ^
@@ -117,18 +138,20 @@ for /L %%N in (1,1,%WORKER_COUNT%) do (
 
 :skip_worker
 
-:: --- DEPLOY METRICS NODE ---
+:: --- METRICS NODE DEPLOYMENT ---
+:: Visualization layer with Redis Stack and Grafana.
 if /I "%TARGET%"=="master" goto :skip_metrics
 if /I "%TARGET%"=="worker" goto :skip_metrics
 if /I "%TARGET%"=="databases" goto :skip_metrics
 if /I "%TARGET%"=="nifi" goto :skip_metrics
+if /I "%TARGET%"=="airflow" goto :skip_metrics
 
 set METRICS_STACK_NAME="%SPARK_CLUSTER_NAME%-metrics-node"
 
-echo [INFO] Cleaning up known_hosts for metrics-node...
-powershell -Command "if (Test-Path '%KH_PATH%') { (Get-Content '%KH_PATH%') | Where-Object { $_ -notmatch (Select-String -Path '%KH_PATH%' -Pattern 'metrics-node' | Select-Object -ExpandProperty Line) } | Set-Content '%KH_PATH%' }"
+echo [INFO] Cleaning up stale SSH host keys for metrics-node...
+powershell -Command "if (Test-Path '%KH_PATH%') { $c = Get-Content '%KH_PATH%'; $c | Where-Object { $_ -notmatch 'metrics-node' } | Set-Content '%KH_PATH%' }"
 
-echo [INFO] Deploying METRICS Node...
+echo [INFO] Deploying Metrics Node via CloudFormation...
 aws cloudformation deploy ^
   --stack-name "%METRICS_STACK_NAME%" ^
   --template-file "template/cluster-node.yaml" ^
@@ -147,18 +170,20 @@ aws cloudformation deploy ^
 
 :skip_metrics
 
-:: --- DEPLOY NIFI NODE ---
+:: --- NIFI NODE DEPLOYMENT ---
+:: Ingestion layer with Apache NiFi and local raw datasets.
 if /I "%TARGET%"=="master" goto :skip_nifi
 if /I "%TARGET%"=="worker" goto :skip_nifi
 if /I "%TARGET%"=="metrics" goto :skip_nifi
 if /I "%TARGET%"=="databases" goto :skip_nifi
+if /I "%TARGET%"=="airflow" goto :skip_nifi
 
 set NIFI_STACK_NAME="%SPARK_CLUSTER_NAME%-nifi-node"
 
-echo [INFO] Cleaning up known_hosts for nifi-node...
-powershell -Command "if (Test-Path '%KH_PATH%') { (Get-Content '%KH_PATH%') | Where-Object { $_ -notmatch (Select-String -Path '%KH_PATH%' -Pattern 'nifi-node' | Select-Object -ExpandProperty Line) } | Set-Content '%KH_PATH%' }"
+echo [INFO] Cleaning up stale SSH host keys for nifi-node...
+powershell -Command "if (Test-Path '%KH_PATH%') { $c = Get-Content '%KH_PATH%'; $c | Where-Object { $_ -notmatch 'nifi-node' } | Set-Content '%KH_PATH%' }"
 
-echo [INFO] Deploying NIFI Node...
+echo [INFO] Deploying NiFi Node via CloudFormation...
 aws cloudformation deploy ^
   --stack-name "%NIFI_STACK_NAME%" ^
   --template-file "template/cluster-node.yaml" ^
@@ -177,18 +202,52 @@ aws cloudformation deploy ^
 
 :skip_nifi
 
-:: --- DEPLOY DATABASES NODE ---
+:: --- AIRFLOW NODE DEPLOYMENT ---
+:: Orchestration layer with Apache Airflow and Livy server.
+if /I "%TARGET%"=="master" goto :skip_airflow
+if /I "%TARGET%"=="worker" goto :skip_airflow
+if /I "%TARGET%"=="metrics" goto :skip_airflow
+if /I "%TARGET%"=="databases" goto :skip_airflow
+if /I "%TARGET%"=="nifi" goto :skip_airflow
+
+set AIRFLOW_STACK_NAME="%SPARK_CLUSTER_NAME%-airflow-node"
+
+echo [INFO] Cleaning up stale SSH host keys for airflow-node...
+powershell -Command "if (Test-Path '%KH_PATH%') { $c = Get-Content '%KH_PATH%'; $c | Where-Object { $_ -notmatch 'airflow-node' } | Set-Content '%KH_PATH%' }"
+
+echo [INFO] Deploying Airflow Node via CloudFormation...
+aws cloudformation deploy ^
+  --stack-name "%AIRFLOW_STACK_NAME%" ^
+  --template-file "template/cluster-node.yaml" ^
+  --parameter-overrides ^
+      SubnetId=%SUBNET_ID% ^
+      SecurityGroupId=%SG_ID% ^
+      HostedZoneId=%ZONE_ID% ^
+      KeyName=%SSH_KEY_NAME% ^
+      NodeHostname="airflow.flight-analysis.local" ^
+      InstanceName="Airflow-Node" ^
+      S3Bucket=%BUCKET_NAME% ^
+      EnvironmentFile="airflow.env" ^
+      DeployScripts="deploy-airflow.sh" ^
+  --capabilities CAPABILITY_IAM ^
+  --no-fail-on-empty-changeset
+
+:skip_airflow
+
+:: --- DATABASES NODE DEPLOYMENT ---
+:: Persistence layer with PostgreSQL, MongoDB, HBase, and Redis Output.
 if /I "%TARGET%"=="master" goto :skip_databases
 if /I "%TARGET%"=="worker" goto :skip_databases
 if /I "%TARGET%"=="metrics" goto :skip_databases
 if /I "%TARGET%"=="nifi" goto :skip_databases
+if /I "%TARGET%"=="airflow" goto :skip_databases
 
 set DATABASES_STACK_NAME="%SPARK_CLUSTER_NAME%-databases-node"
 
-echo [INFO] Cleaning up known_hosts for databases-node...
-powershell -Command "if (Test-Path '%KH_PATH%') { (Get-Content '%KH_PATH%') | Where-Object { $_ -notmatch (Select-String -Path '%KH_PATH%' -Pattern 'databases-node' | Select-Object -ExpandProperty Line) } | Set-Content '%KH_PATH%' }"
+echo [INFO] Cleaning up stale SSH host keys for databases-node...
+powershell -Command "if (Test-Path '%KH_PATH%') { $c = Get-Content '%KH_PATH%'; $c | Where-Object { $_ -notmatch 'databases-node' } | Set-Content '%KH_PATH%' }"
 
-echo [INFO] Deploying DATABASES Node...
+echo [INFO] Deploying Databases Node via CloudFormation...
 aws cloudformation deploy ^
   --stack-name "%DATABASES_STACK_NAME%" ^
   --template-file "template/cluster-node.yaml" ^
@@ -207,4 +266,6 @@ aws cloudformation deploy ^
 
 :skip_databases
 
+echo ----------------------------------------------------
 echo [SUCCESS] Deployment completed for target: %TARGET%
+echo ----------------------------------------------------

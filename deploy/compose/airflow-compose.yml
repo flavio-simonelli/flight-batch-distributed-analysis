@@ -1,0 +1,129 @@
+name: flight-analytics-airflow
+
+# Common configuration for Airflow services
+x-airflow-common: &airflow-common
+    build:
+        context: ./airflow
+        dockerfile: Dockerfile
+    image: flight-analytics-airflow:latest
+    network_mode: host
+    user: "${AIRFLOW_UID:-50000}:0"
+    environment: &airflow-common-env
+        AIRFLOW__CORE__EXECUTOR: LocalExecutor
+        AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+        AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+        AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+        AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+        AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER}:${AIRFLOW_POSTGRES_PASSWORD}@localhost:5432/${AIRFLOW_POSTGRES_DB}
+        AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://localhost:8088/execution/'
+        AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET}
+        AIRFLOW__API_AUTH__JWT_ISSUER: airflow
+        AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+        AIRFLOW__API__PORT: ${AIRFLOW_WEB_PORT}
+        AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+        AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+        AIRFLOW_CONN_LIVY_DEFAULT: ${AIRFLOW_CONN_LIVY_DEFAULT}
+        AIRFLOW_CONN_NIFI_HTTP: ${AIRFLOW_CONN_NIFI_HTTP}
+    volumes:
+        - ./airflow/dags:/opt/airflow/dags
+        - ./airflow/logs:/opt/airflow/logs
+        - ./airflow/plugins:/opt/airflow/plugins
+        - ./airflow/config:/opt/airflow/config
+    depends_on: &airflow-common-depends-on
+        airflow-postgres:
+            condition: service_healthy
+
+services:
+    # Dedicated PostgreSQL instance for Airflow metadata
+    airflow-postgres:
+        image: postgres:15
+        container_name: airflow-postgres
+        network_mode: host
+        environment:
+            - POSTGRES_USER=${AIRFLOW_POSTGRES_USER}
+            - POSTGRES_PASSWORD=${AIRFLOW_POSTGRES_PASSWORD}
+            - POSTGRES_DB=${AIRFLOW_POSTGRES_DB}
+        volumes:
+            - ./data/airflow-postgres:/var/lib/postgresql/data
+        healthcheck:
+            test: [ "CMD", "pg_isready", "-U", "${AIRFLOW_POSTGRES_USER}" ]
+            interval: 10s
+            retries: 5
+
+    # Initialization service to setup database and users
+    airflow-init:
+        <<: *airflow-common
+        container_name: airflow-init
+        entrypoint: /bin/bash
+        user: "0:0"
+        command:
+            - -c
+            - |
+                mkdir -p /opt/airflow/{logs,dags,plugins,config}
+                chown -R "${AIRFLOW_UID:-50000}:0" /opt/airflow/
+                /entrypoint airflow version
+                /entrypoint airflow db migrate
+                /entrypoint airflow users create --username ${AIRFLOW_USER} --password ${AIRFLOW_PASSWORD} --firstname Admin --lastname User --role Admin --email ${AIRFLOW_EMAIL} || true
+        depends_on:
+            airflow-postgres:
+                condition: service_healthy
+        environment:
+            <<: *airflow-common-env
+            _AIRFLOW_DB_MIGRATE: 'true'
+            _AIRFLOW_WWW_USER_CREATE: 'true'
+            _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_USER}
+            _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_PASSWORD}
+            _AIRFLOW_WWW_USER_ROLE: Admin
+            _AIRFLOW_WWW_USER_EMAIL: ${AIRFLOW_EMAIL}
+
+    airflow-scheduler:
+        <<: *airflow-common
+        container_name: airflow-scheduler
+        command: scheduler
+        restart: always
+        depends_on:
+            <<: *airflow-common-depends-on
+            airflow-init:
+                condition: service_completed_successfully
+
+    airflow-dag-processor:
+        <<: *airflow-common
+        container_name: airflow-dag-processor
+        command: dag-processor
+        restart: always
+        depends_on:
+            <<: *airflow-common-depends-on
+            airflow-init:
+                condition: service_completed_successfully
+
+    airflow-triggerer:
+        <<: *airflow-common
+        container_name: airflow-triggerer
+        command: triggerer
+        restart: always
+        depends_on:
+            <<: *airflow-common-depends-on
+            airflow-init:
+                condition: service_completed_successfully
+
+    airflow-webserver:
+        <<: *airflow-common
+        container_name: airflow-webserver
+        command: api-server
+        restart: always
+        depends_on:
+            <<: *airflow-common-depends-on
+            airflow-init:
+                condition: service_completed_successfully
+
+    # Livy Server for submitting Spark jobs via REST API
+    livy:
+        build:
+            context: ./livy
+            dockerfile: Dockerfile
+        container_name: livy
+        network_mode: host
+        ports:
+            - "8998:8998"
+        volumes:
+            - ./spark:/opt/spark/scripts

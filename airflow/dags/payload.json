@@ -1,0 +1,26 @@
+{
+  "job_id": "FLIGHT_INGEST",
+  "ingestion": {
+    "source_type": "HTTP",
+    "http_url": "http://www.ce.uniroma2.it/courses/sabd2526/project/project-1-data.tar.gz",
+    "expected_sha1": "17be276b72bd987e72598b0ea4907c3b19350606"
+  },
+  "storage_raw": {
+    "type": "REPLACEME",
+    "bucket": "REPLACEME",
+    "path": "REPLACEME"
+  },
+  "processing": {
+    "optimization_strategy": "REPLACEME"
+  },
+  "storage_preprocessed": {
+    "type": "REPLACEME",
+    "bucket": "REPLACEME",
+    "path": "REPLACEME"
+  },
+  "callback": {
+    "run_id": "REPLACEME",
+    "url": "REPLACEME",
+    "method": "PATCH"
+  }
+}

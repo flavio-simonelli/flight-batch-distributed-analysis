@@ -1,98 +1,105 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: --- LOAD ENVIRONMENT VARIABLES ---
-:: Call the external library script
-call load_env.bat
+:: --- ENVIRONMENT INITIALIZATION ---
+:: Determine the location of the deployment scripts to ensure all relative 
+:: path resolutions are consistent regardless of the working directory.
+set "SCRIPTS_DIR=%~dp0"
+set "PROJECT_ROOT=%SCRIPTS_DIR%..\"
+
+:: Load environment variables from the .env file located in the deploy folder.
+:: This provides the script with required S3 bucket names and AWS region settings.
+call "%SCRIPTS_DIR%load_env.bat"
 if %ERRORLEVEL% neq 0 (
-    echo [FATAL] Failed to initialize environment.
+    echo [ERROR] Failed to initialize environment variables. Ensure .env exists.
+    exit /b 1
+)
+
+:: Validate that essential AWS variables are properly defined before proceeding.
+if "%BUCKET_NAME%"=="" (
+    echo [ERROR] BUCKET_NAME is not defined in the environment.
     exit /b 1
 )
 
 echo ----------------------------------------------------
-echo S3 BUCKET MANAGEMENT
+echo [INFO] AWS S3 BUCKET PROVISIONING
 echo ----------------------------------------------------
 echo BUCKET: %BUCKET_NAME%
 echo REGION: %REGION%
 echo ----------------------------------------------------
 
-set SPARK_JAR=../spark/target/flight-analysis.jar
-set DEPLOY_FOLDER=.
-set RAW_DATA_FOLDER=../data/raw
-set NIFI_FOLDER=../nifi
-set GRAFANA_FOLDER=../grafana
-
-:: Check if the bucket already exists
-:: '2>nul' hides the error output if the bucket is missing
+:: --- BUCKET VALIDATION AND CREATION ---
+:: Check if the target S3 bucket exists; create it if it is missing in the specified region.
 aws s3api head-bucket --bucket %BUCKET_NAME% 2>nul
-
 if %ERRORLEVEL% equ 0 (
     echo [INFO] Bucket already exists. Skipping creation.
 ) else (
-    echo [INFO] Bucket does not exist. Creating it now...
+    echo [INFO] Bucket does not exist. Creating it now in %REGION%...
     aws s3 mb s3://%BUCKET_NAME% --region %REGION%
-
-    :: Wait 1 seconds for AWS propagation
-    timeout /t 1 /nobreak >nul
-
-    :: Double check if it actually exists now
-    aws s3api head-bucket --bucket %BUCKET_NAME% 2>nul
     if !ERRORLEVEL! neq 0 (
-        echo [ERROR] Failed to create bucket. Check permissions or naming rules.
+        echo [ERROR] Failed to create bucket. Verify IAM permissions or naming rules.
         exit /b 1
     )
-    echo [OK] Bucket is ready.
+    echo [INFO] Bucket created successfully.
 )
 
-:: Check and create specific folder inside bucket
-call create_bucket_folders.bat "%LOGS_FOLDER_NAME%" "%DEPLOY_FOLDER_NAME%" "%DATA_FOLDER_NAME%" "%DATA_FOLDER_NAME%/%RAW_FOLDER_NAME%" "%DATA_FOLDER_NAME%/%CONV_FOLDER_NAME%" "%DATA_FOLDER_NAME%/%RES_FOLDER_NAME%"
+:: --- FOLDER STRUCTURE PROVISIONING ---
+:: Create the logical folder structure within the bucket to support logs, data, and deployment scripts.
+:: These variables are usually defined in .env or passed via CLI.
+call "%SCRIPTS_DIR%create_bucket_folders.bat" "logs" "deploy" "data" "data/conv" "data/res"
 
-if exist "%DEPLOY_FOLDER%\" (
-    :: Upload folder using sync
-    echo [INFO] Syncing directory: %DEPLOY_FOLDER%...
-    aws s3 sync "%DEPLOY_FOLDER%" "s3://%BUCKET_NAME%/%DEPLOY_FOLDER_NAME%/" --exclude "*.bat" --exclude ".env" --exclude "template/*"
-    echo [INFO] Directory synced successfully.
-) else (
-     echo [WARN] Directory %DEPLOY_FOLDER% non trovata.
+:: --- DEPLOYMENT ASSETS SYNCHRONIZATION ---
+:: Sync the local deploy directory containing templates, compose files, and bash scripts.
+echo [INFO] Syncing deployment scripts and configurations...
+aws s3 sync "%SCRIPTS_DIR%." "s3://%BUCKET_NAME%/deploy/" --exclude "*.bat" --exclude ".env" --exclude "template/*"
+
+:: Sync NiFi custom extensions, flows and configurations from the project structure.
+if exist "%PROJECT_ROOT%nifi\" (
+    echo [INFO] Syncing NiFi application assets...
+    aws s3 sync "%PROJECT_ROOT%nifi/" "s3://%BUCKET_NAME%/nifi/"
 )
 
-if exist "%NIFI_FOLDER%/\" (
-    echo [INFO] Syncing NiFi...
-    aws s3 sync "%NIFI_FOLDER%/" "s3://%BUCKET_NAME%/nifi/"
+:: Sync Grafana dashboard and datasource provisioning configurations.
+if exist "%PROJECT_ROOT%grafana\" (
+    echo [INFO] Syncing Grafana dashboards and datasources...
+    aws s3 sync "%PROJECT_ROOT%grafana/" "s3://%BUCKET_NAME%/grafana/"
 )
 
-if exist "%GRAFANA_FOLDER%\" (
-    echo [INFO] Syncing Grafana...
-    aws s3 sync "%GRAFANA_FOLDER%" "s3://%BUCKET_NAME%/grafana/"
+:: Sync Airflow DAGs, plugins, and custom configurations.
+if exist "%PROJECT_ROOT%airflow\" (
+    echo [INFO] Syncing Airflow orchestration assets...
+    aws s3 sync "%PROJECT_ROOT%airflow/" "s3://%BUCKET_NAME%/airflow/"
 )
 
-
-if exist "%RAW_DATA_FOLDER%\" (
-    :: Upload folder using sync
-    echo [INFO] Syncing directory: %RAW_DATA_FOLDER%...
-    aws s3 sync "%RAW_DATA_FOLDER%" "s3://%BUCKET_NAME%/%DATA_FOLDER_NAME%/%RAW_FOLDER_NAME%/" --exclude "*.bat" --exclude ".env" --exclude "template/*"
-    echo [INFO] Directory synced successfully.
-) else (
-     echo [WARN] Directory %RAW_DATA_FOLDER% non trovata.
+:: Sync Livy server custom configurations and Docker files.
+if exist "%PROJECT_ROOT%livy\" (
+    echo [INFO] Syncing Livy server assets...
+    aws s3 sync "%PROJECT_ROOT%livy/" "s3://%BUCKET_NAME%/livy/"
 )
 
-if exist "%SPARK_JAR%" (
-    :: Upload file using cp
-    echo [INFO] Copying file: %SPARK_JAR%...
-    aws s3 cp "%SPARK_JAR%" "s3://%BUCKET_NAME%/"
-    echo [INFO] File copied successfully.
-) else (
-    echo [WARN] File %SPARK_JAR% non trovato.
+:: Upload the Spark application JAR and configuration files.
+:: We avoid syncing the entire 'spark/' directory to exclude source code and build overhead.
+if exist "%PROJECT_ROOT%spark\target\flight-analysis.jar" (
+    echo [INFO] Uploading Spark application JAR...
+    aws s3 cp "%PROJECT_ROOT%spark/target/flight-analysis.jar" "s3://%BUCKET_NAME%/spark/flight-analysis.jar"
 )
 
-if %ERRORLEVEL% equ 0 (
-    echo.
-    echo ----------------------------------------------------
-    echo [INFO] Operation completed!
-    echo Files are available at: s3://%BUCKET_NAME%/
-    echo ----------------------------------------------------
-) else (
-    echo [ERROR] An error occurred during the sync process.
+if exist "%PROJECT_ROOT%spark\src\main\resources\" (
+    echo [INFO] Syncing Spark configuration files...
+    aws s3 sync "%PROJECT_ROOT%spark/src/main/resources/" "s3://%BUCKET_NAME%/spark/" --exclude "*" --include "*.yml"
 )
+
+:: --- DATASET SYNCHRONIZATION ---
+:: Upload the raw project data used as input for the processing pipeline.
+if exist "%PROJECT_ROOT%data\raw\" (
+    echo [INFO] Syncing raw input datasets to the storage layer...
+    aws s3 sync "%PROJECT_ROOT%data/raw/" "s3://%BUCKET_NAME%/data/raw/"
+)
+
+echo.
+echo ----------------------------------------------------
+echo [INFO] S3 Synchronization completed successfully!
+echo Assets location: s3://%BUCKET_NAME%/
+echo ----------------------------------------------------
 
 exit /b 0
