@@ -16,15 +16,15 @@ percentileAlgorithm: kll
 # Cluster configuration
 sparkCluster:
   master:
-    hostname: spark-master
+    hostname: master.flight-analysis.local
     port: 7077
 
 # --- Input data configuration examples ---
 
 input:
   type: "hdfs"  # Possible types: hdfs, local, s3
-  uri: "hdfs://master:54310"
-  path: "/data/conv/flights/full"
+  uri: "hdfs://hdfs-master.flight-analysis.local:54310"
+  path: "/data/conv"
   datasetFilename: ""
 
 # --- Output data configuration examples ---
@@ -39,7 +39,7 @@ input:
 # HDFS Output
 output:
    type: "hdfs"
-   uri: "hdfs://master:54310"
+   uri: "hdfs://hdfs-master.flight-analysis.local:54310"
    path: "/data"
    resultDirectory: "/res"
 
@@ -88,7 +88,7 @@ output:
 # Redis Output
 metrics:
   type: "redis"
-  hostname: "redis"
+  hostname: "redis-metrics"
   port: 6379
   database: "0"  # Redis database index
   # password: "mypassword" # Optional

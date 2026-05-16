@@ -17,11 +17,12 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+
+import static org.apache.spark.sql.functions.*;
 
 /**
- * A robust implementation of {@link DbFlightRepository} for HBase.
- * Uses a unique Row Key strategy (Value + UUID) to handle duplicates.
+ * A simplified implementation of {@link DbFlightRepository} for HBase.
+ * Uses foreachPartition with a Timestamp + Monotonic ID Row Key strategy.
  */
 public class HBaseFlightRepository extends DbFlightRepository<HBaseStorageConfig> implements Serializable {
 
@@ -40,13 +41,26 @@ public class HBaseFlightRepository extends DbFlightRepository<HBaseStorageConfig
 
         final String quorum = config.getZookeeperQuorum();
         final String port = String.valueOf(config.getZookeeperClientPort());
-        final StructType schema = results.schema();
-
-        // Ensure table exists
+        
+        // Ensure table exists on the Driver
         ensureTableExists(quorum, port, targetTable);
 
-        // 2Perform distributed insertion
-        results.toJavaRDD().foreachPartition(partition -> {
+        // STRATEGY: Use a Timestamp + Monotonic ID to identify the run.
+        // We use Spark native functions to generate the row key column.
+        final String queryId = String.valueOf(System.currentTimeMillis());
+        Dataset<Row> preparedResults = results.withColumn("hbase_row_key", 
+                concat(
+                    lit(queryId),
+                    lit("_"), 
+                    monotonically_increasing_id().cast("string")
+                )
+        );
+
+        final StructType schema = preparedResults.schema();
+        final int rowKeyIndex = schema.fieldIndex("hbase_row_key");
+
+        // Distributed insertion using foreachPartition
+        preparedResults.toJavaRDD().foreachPartition(partition -> {
             Configuration hbaseConfig = HBaseConfiguration.create();
             hbaseConfig.set("hbase.zookeeper.quorum", quorum);
             hbaseConfig.set("hbase.zookeeper.property.clientPort", port);
@@ -56,25 +70,22 @@ public class HBaseFlightRepository extends DbFlightRepository<HBaseStorageConfig
 
                 List<Put> batch = new ArrayList<>();
                 StructField[] fields = schema.fields();
+                byte[] cf = Bytes.toBytes("cf");
 
                 while (partition.hasNext()) {
                     Row row = partition.next();
-                    if (row.get(0) == null) continue;
-
-                    // STRATEGY: Handle duplicates by creating a unique Row Key.
-                    // Format: [OriginalValue]_[RandomUUID]
-                    // This keeps records grouped by the first column but ensures uniqueness.
-                    String uniqueId = UUID.randomUUID().toString().substring(0, 8);
-                    String rowKeyStr = row.get(0).toString() + "_" + uniqueId;
+                    String rowKeyStr = row.getString(rowKeyIndex);
                     
                     Put put = new Put(Bytes.toBytes(rowKeyStr));
 
-                    // Add all columns (including the first one) to the 'cf' family
+                    // Add all original columns to the 'cf' family
                     for (int i = 0; i < fields.length; i++) {
+                        if (i == rowKeyIndex) continue; // Skip technical column
+                        
                         Object value = row.get(i);
                         if (value != null) {
                             put.addColumn(
-                                    Bytes.toBytes("cf"),
+                                    cf,
                                     Bytes.toBytes(fields[i].name().replaceAll("[^a-zA-Z0-9]", "_")),
                                     Bytes.toBytes(value.toString())
                             );
@@ -82,6 +93,7 @@ public class HBaseFlightRepository extends DbFlightRepository<HBaseStorageConfig
                     }
                     batch.add(put);
 
+                    // Periodically flush batch to HBase
                     if (batch.size() >= 1000) {
                         hbaseTable.put(batch);
                         batch.clear();

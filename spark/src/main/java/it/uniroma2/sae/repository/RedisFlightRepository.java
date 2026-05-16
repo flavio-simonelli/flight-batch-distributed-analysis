@@ -74,7 +74,7 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
 
         StructType phaseSchema = DataTypes.createStructType(new StructField[]{
                 DataTypes.createStructField("query", DataTypes.StringType, false),
-                DataTypes.createStructField("approach", DataTypes.StringType, false), // NUOVO CAMPO
+                DataTypes.createStructField("approach", DataTypes.StringType, false),
                 DataTypes.createStructField("phase", DataTypes.StringType, false),
                 DataTypes.createStructField("wallclock-duration", DataTypes.LongType, false),
                 DataTypes.createStructField("spark-duration", DataTypes.LongType, false),
@@ -95,7 +95,7 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
         if (!stageRows.isEmpty()) {
             StructType stageSchema = DataTypes.createStructType(new StructField[]{
                     DataTypes.createStructField("query", DataTypes.StringType, false),
-                    DataTypes.createStructField("approach", DataTypes.StringType, false), // NUOVO CAMPO
+                    DataTypes.createStructField("approach", DataTypes.StringType, false),
                     DataTypes.createStructField("phase", DataTypes.StringType, false),
                     DataTypes.createStructField("stageId", DataTypes.IntegerType, false),
                     DataTypes.createStructField("duration", DataTypes.LongType, false),
@@ -124,7 +124,7 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
         if (!execRows.isEmpty()) {
             StructType execSchema = DataTypes.createStructType(new StructField[]{
                     DataTypes.createStructField("query", DataTypes.StringType, false),
-                    DataTypes.createStructField("approach", DataTypes.StringType, false), // NUOVO CAMPO
+                    DataTypes.createStructField("approach", DataTypes.StringType, false),
                     DataTypes.createStructField("phase", DataTypes.StringType, false),
                     DataTypes.createStructField("execId", DataTypes.StringType, false),
                     DataTypes.createStructField("host", DataTypes.StringType, false),

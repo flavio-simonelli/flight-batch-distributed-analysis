@@ -19,7 +19,9 @@ services:
     command: >
       sh -c '
         sleep 5;
-        redis-cli -h localhost -p ${REDIS_PORT} FT.CREATE metricsIdx ON HASH PREFIX 1 metrics:phases: SCHEMA query TAG phase TAG approach TAG duration NUMERIC timestamp NUMERIC SORTABLE || true;
+        redis-cli -h localhost -p ${REDIS_PORT} FT.CREATE phaseIdx ON HASH PREFIX 1 metrics:phases: SCHEMA query TAG phase TAG approach TAG duration NUMERIC timestamp NUMERIC SORTABLE || true;
+        redis-cli -h localhost -p ${REDIS_PORT} FT.CREATE stagesIdx ON HASH PREFIX 1 metrics:stages: SCHEMA query TAG approach TAG phase TAG stageId NUMERIC duration NUMERIC gcTime NUMERIC read NUMERIC written NUMERIC shuffleRead NUMERIC shuffleWrite NUMERIC timestamp NUMERIC SORTABLE || true;
+        redis-cli -h localhost -p ${REDIS_PORT} FT.CREATE executorsIdx ON HASH PREFIX 1 metrics:executors: SCHEMA query TAG approach TAG phase TAG execId TAG host TAG tasks NUMERIC runTime NUMERIC cpuTime NUMERIC gcTime NUMERIC read NUMERIC written NUMERIC shuffleRead NUMERIC shuffleWrite NUMERIC timestamp NUMERIC SORTABLE || true;
         echo "RediSearch index configured successfully!";
       '
 
@@ -33,6 +35,7 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_INSTALL_PLUGINS=redis-datasource
     volumes:
       - ./grafana/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards

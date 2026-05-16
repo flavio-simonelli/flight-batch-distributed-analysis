@@ -15,7 +15,7 @@ import java.io.InputStream;
  */
 public class ApplicationConfig {
 
-    public static final String CONFIG_FILE = "compose-config.yml";
+    public static final String CONFIG_FILE = "local-config.yml";
 
 
     /**

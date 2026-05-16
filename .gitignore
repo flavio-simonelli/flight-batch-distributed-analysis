@@ -1,8 +1,10 @@
 # Datasets
 data/conv
 data/postgres
-
+data/airflow-postgres
 data/minio/.minio.sys
+
+airflow/logs
 
 # ========================
 # Maven / Java (spark/)

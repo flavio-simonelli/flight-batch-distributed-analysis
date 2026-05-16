@@ -33,6 +33,9 @@ services:
       echo '[INFO] NameNode ready! Creating folders...';
       /usr/local/hadoop/bin/hdfs dfs -mkdir -p /data/conv;
       /usr/local/hadoop/bin/hdfs dfs -chmod -R 777 /data/conv;
+      
+      /usr/local/hadoop/bin/hdfs dfs -mkdir -p /data/raw;
+      /usr/local/hadoop/bin/hdfs dfs -chmod -R 777 /data/raw;
 
       echo '[INFO] HDFS Master is up and running.';
       wait"

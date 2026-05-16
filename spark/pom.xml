@@ -202,7 +202,7 @@
                                         <argument>--class</argument>
                                         <argument>it.uniroma2.sae.FlightAnalysisApp</argument>
                                         <argument>--master</argument>
-                                        <argument>spark://spark-master:7077</argument>
+                                        <argument>spark://master.flight-analysis.local:7077</argument>
                                         <argument>/opt/spark/scripts/target/flight-analysis.jar</argument>
                                     </arguments>
                                 </configuration>
