@@ -35,5 +35,7 @@ docker-compose up --build -d
 # Fix ownership of all files to ec2-user to allow easier management without sudo
 echo "[DEPLOY] Finalizing file permissions..."
 sudo chown -R ec2-user:ec2-user /home/ec2-user
+sudo chmod 777 data -R
+sudo chmod 777 airflow -R
 
 echo "[DEPLOY] Airflow Node deployed successfully."

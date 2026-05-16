@@ -47,10 +47,13 @@ x-airflow-common: &airflow-common
         AIRFLOW__CORE__LOAD_EXAMPLES: "false"
         AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
         AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+        # AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: 'true'
         AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER}:${AIRFLOW_POSTGRES_PASSWORD}@airflow-postgres:5432/${AIRFLOW_POSTGRES_DB}
-        AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
+        AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8088/execution/'
         AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET}
         AIRFLOW__API_AUTH__JWT_ISSUER: airflow
+        AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.default'
+        AIRFLOW__API__PORT: ${AIRFLOW_WEB_PORT}
         AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
         AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
         AIRFLOW_CONN_LIVY_DEFAULT: ${AIRFLOW_CONN_LIVY_DEFAULT}
@@ -230,8 +233,6 @@ services:
             - ./data/conv:/opt/nifi/nifi-current/res
             - ./hadoop/config:/opt/nifi/nifi-current/conf/hadoop-config:ro
             - ./nifi/extensions:/opt/nifi/nifi-current/nar_extensions
-        links:
-            - hdfs-master:${HDFS_NAMENODE_HOST}
 
     # Processing Layer - Spark
     spark-master:
@@ -353,7 +354,9 @@ services:
         container_name: livy
         hostname: livy
         networks:
-            - sae-net
+            sae-net:
+                aliases:
+                    - nifi.flight-analysis.local
         ports:
             - "8998:8998"
         volumes:
@@ -460,9 +463,13 @@ services:
         <<: *airflow-common
         container_name: airflow-apiserver
         hostname: airflow-apiserver
+        networks:
+            sae-net:
+                aliases:
+                    - airflow.flight-analysis.local
         command: api-server
         ports:
-            - "${AIRFLOW_WEB_PORT}:8080" # Airflow Web UI
+            - "${AIRFLOW_WEB_PORT}:8088" # Airflow Web UI
         healthcheck:
             test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
             interval: 30s

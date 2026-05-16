@@ -20,6 +20,7 @@
   },
   "callback": {
     "run_id": "REPLACEME",
+    "variable_key": "REPLACEME",
     "url": "REPLACEME",
     "method": "PATCH"
   }
