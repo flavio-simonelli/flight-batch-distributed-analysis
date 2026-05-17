@@ -1,10 +1,6 @@
 # Datasets
-data/conv
-data/postgres
-data/airflow-postgres
-data/minio/.minio.sys
-
-airflow/logs
+data/
+!data/raw
 
 # ========================
 # Maven / Java (spark/)
