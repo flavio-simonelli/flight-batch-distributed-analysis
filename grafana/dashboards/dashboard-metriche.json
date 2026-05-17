@@ -49,7 +49,7 @@
         "spec": {
           "id": 2,
           "title": "Execution Phase Duration",
-          "description": "",
+          "description": "Total wall clock duration vs Spark duration for the execution phase.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -305,8 +305,8 @@
         "kind": "Panel",
         "spec": {
           "id": 3,
-          "title": "Movimentazione dati",
-          "description": "",
+          "title": "Data Movement",
+          "description": "Total bytes read and written by executors.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -594,8 +594,8 @@
         "kind": "Panel",
         "spec": {
           "id": 4,
-          "title": "Movimentazione dati",
-          "description": "",
+          "title": "Data Movement",
+          "description": "Shuffle bytes read and written by executors.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -765,9 +765,10 @@
                       },
                       "orderByMode": "manual",
                       "renameByName": {
-                        "read (mean)": "Mean Read",
-                        "read (sum)": "Max Read",
-                        "written (mean)": ""
+                        "shuffleRead (mean)": "Mean Shuffle Read",
+                        "shuffleRead (max)": "Max Shuffle Read",
+                        "shuffleWrite (mean)": "Mean Shuffle Write",
+                        "shuffleWrite (max)": "Max Shuffle Write"
                       }
                     }
                   }
@@ -883,8 +884,8 @@
         "kind": "Panel",
         "spec": {
           "id": 5,
-          "title": "Sbilanciamento Carico Lettura",
-          "description": "",
+          "title": "Read Load Imbalance",
+          "description": "Difference between maximum and mean read load across executors.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1153,8 +1154,8 @@
         "kind": "Panel",
         "spec": {
           "id": 6,
-          "title": "Numero medio di Executor",
-          "description": "",
+          "title": "Average Number of Executors",
+          "description": "Mean number of executors participating in the execution phase.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1379,7 +1380,7 @@
         "spec": {
           "id": 7,
           "title": "Execution Phase Duration",
-          "description": "",
+          "description": "Duration of different stages in the execution phase.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1644,8 +1645,8 @@
         "kind": "Panel",
         "spec": {
           "id": 8,
-          "title": "Numero medio di Stage",
-          "description": "",
+          "title": "Average Number of Stages",
+          "description": "Mean number of stages executed in the execution phase.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1901,7 +1902,7 @@
           {
             "kind": "RowsLayoutRow",
             "spec": {
-              "title": "Tempo di esecuzione",
+              "title": "Execution Time",
               "collapse": false,
               "layout": {
                 "kind": "GridLayout",
@@ -1967,7 +1968,7 @@
           {
             "kind": "RowsLayoutRow",
             "spec": {
-              "title": "Carichi in lettura",
+              "title": "Read Loads",
               "collapse": false,
               "layout": {
                 "kind": "GridLayout",
@@ -2044,7 +2045,7 @@
       "hideTimepicker": false,
       "fiscalYearStartMonth": 0
     },
-    "title": "Flight Analysis — Mterics Results",
+    "title": "Flight Analysis — Performance Metrics",
     "variables": [
       {
         "kind": "CustomVariable",
