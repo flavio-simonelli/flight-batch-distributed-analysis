@@ -16,6 +16,8 @@
         <scala.compat.version>2.12</scala.compat.version>
         <jackson.version>2.15.2</jackson.version>
         <hbase.version>2.5.4</hbase.version>
+        <log4j2.version>2.20.0</log4j2.version>
+        <slf4j.version>2.0.7</slf4j.version>
         <!-- HDFS Upload Properties with defaults for local testing if env is missing -->
         <hdfs.namenode.host>localhost</hdfs.namenode.host>
         <hdfs.namenode.port>54310</hdfs.namenode.port>
@@ -102,6 +104,33 @@
             <groupId>com.tdunning</groupId>
             <artifactId>t-digest</artifactId>
             <version>3.3</version>
+        </dependency>
+
+        <!-- Logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j2-impl</artifactId>
+            <version>${log4j2.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>${log4j2.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>${log4j2.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lmax</groupId>
+            <artifactId>disruptor</artifactId>
+            <version>3.4.4</version>
         </dependency>
     </dependencies>
 
@@ -255,7 +284,7 @@
                         <artifactId>exec-maven-plugin</artifactId>
                         <version>3.1.1</version>
                         <executions>
-                            <!-- <execution>
+                            <execution>
                                 <id>docker-upload</id>
                                 <phase>package</phase><goals><goal>exec</goal></goals>
                                 <configuration>
@@ -263,10 +292,10 @@
                                     <arguments>
                                         <argument>cp</argument>
                                         <argument>${project.build.directory}/flight-analysis.jar</argument>
-                                        <argument>spark-master:/opt/spark/scripts/flight-analysis.jar</argument>
+                                        <argument>spark-master:/opt/spark/jars/flight-analysis.jar</argument>
                                     </arguments>
                                 </configuration>
-                            </execution> -->
+                            </execution>
                             <execution>
                                 <id>run-submit</id>
                                 <phase>package</phase><goals><goal>exec</goal></goals>
@@ -282,7 +311,7 @@
                                         <argument>it.uniroma2.sae.FlightAnalysisApp</argument>
                                         <argument>--master</argument>
                                         <argument>spark://spark-master.flight-analysis.local:7077</argument>
-                                        <argument>/opt/spark/scripts/target/flight-analysis.jar</argument>
+                                        <argument>/opt/spark/jars/flight-analysis.jar</argument>
                                     </arguments>
                                 </configuration>
                             </execution>

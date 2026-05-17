@@ -7,6 +7,8 @@ import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +18,7 @@ import java.util.List;
  * Supports saving results and performance metrics.
  */
 public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig> {
+    private static final Logger logger = LoggerFactory.getLogger(RedisFlightRepository.class);
 
     public RedisFlightRepository(SparkSession spark, RedisStorageConfig config) {
         super(spark, config);
@@ -24,6 +27,8 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
     public void saveResults(Dataset<Row> results, String table, SaveMode saveMode) {
         if (results == null) throw new IllegalArgumentException("Results dataset cannot be null.");
         if (table == null || table.isEmpty()) throw new IllegalArgumentException("Target table/key name must be provided for Redis output.");
+
+        logger.debug("Writing results to Redis | table={} | mode={} | host={}:{}", table, saveMode, config.getHostname(), config.getPort());
 
         DataFrameWriter<Row> writer = results.write()
                 .format("org.apache.spark.sql.redis")
@@ -66,6 +71,8 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
         PerformanceMetrics pm = PerformanceMetrics.getInstance();
         long timestamp = System.currentTimeMillis();
 
+        logger.info("Persisting metrics to Redis | query={} | approach={}", queryName, approach);
+
         // 1. SAVE PHASE METRICS
         List<Row> phaseRows = new ArrayList<>();
         pm.getPhases().forEach((name, m) -> {
@@ -81,7 +88,10 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
                 DataTypes.createStructField("timestamp", DataTypes.LongType, false)
         });
         String phaseTable = "metrics:phases:" + queryName + ":" + approach;
-        saveResults(spark.createDataFrame(phaseRows, phaseSchema), phaseTable, SaveMode.Append);
+        if (!phaseRows.isEmpty()) {
+            logger.debug("Saving phase metrics | count={}", phaseRows.size());
+            saveResults(spark.createDataFrame(phaseRows, phaseSchema), phaseTable, SaveMode.Append);
+        }
 
         // 2. SAVE STAGE METRICS
         List<Row> stageRows = new ArrayList<>();
@@ -107,6 +117,7 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
                     DataTypes.createStructField("timestamp", DataTypes.LongType, false)
             });
             String stageTable = "metrics:stages:" + queryName + ":" + approach;
+            logger.debug("Saving stage metrics | count={}", stageRows.size());
             saveResults(spark.createDataFrame(stageRows, stageSchema), stageTable, SaveMode.Append);
         }
 
@@ -139,7 +150,9 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
                     DataTypes.createStructField("timestamp", DataTypes.LongType, false)
             });
             String execTable = "metrics:executors:" + queryName + ":" + approach;
+            logger.debug("Saving executor metrics | count={}", execRows.size());
             saveResults(spark.createDataFrame(execRows, execSchema), execTable, SaveMode.Append);
         }
+        logger.info("Metrics successfully persisted to Redis.");
     }
 }

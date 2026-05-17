@@ -320,7 +320,7 @@ services:
             
               echo "RediSearch completely loaded! Executing index creation script..."
             
-              redis-cli -h metrics.flight-analysis.local -p ${REDIS_PORT} FT.CREATE phaseIdx ON HASH PREFIX 1 metrics:phases: SCHEMA query TAG phase TAG approach TAG duration NUMERIC timestamp NUMERIC SORTABLE || true;
+              redis-cli -h metrics.flight-analysis.local -p ${REDIS_PORT} FT.CREATE phaseIdx ON HASH PREFIX 1 metrics:phases: SCHEMA query TAG approach TAG phase TAG duration NUMERIC wallclock-duration NUMERIC spark-duration NUMERIC timestamp NUMERIC SORTABLE || true;
               sleep 1;
             
               redis-cli -h metrics.flight-analysis.local -p ${REDIS_PORT} FT.CREATE stagesIdx ON HASH PREFIX 1 metrics:stages: SCHEMA query TAG approach TAG phase TAG stageId NUMERIC duration NUMERIC gcTime NUMERIC read NUMERIC written NUMERIC shuffleRead NUMERIC shuffleWrite NUMERIC timestamp NUMERIC SORTABLE || true;

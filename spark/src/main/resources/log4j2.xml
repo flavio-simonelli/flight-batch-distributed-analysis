@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{ISO8601} %-5p [%t] %c{1}: %m%n" />
+        </Console>
+
+        <!-- Structured Logging Appender (could be a file or socket in production) -->
+        <RollingFile name="StructuredLog" fileName="/opt/spark/logs/app-structured.log"
+                     filePattern="/opt/spark/logs/app-structured-%d{yyyy-MM-dd}-%i.log.gz">
+            <JsonLayout complete="false" compact="true" eventEol="true" properties="true" />
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="100 MB" />
+            </Policies>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <!-- Asynchronous Root Logger for maximum performance -->
+        <AsyncRoot level="info">
+            <AppenderRef ref="Console" />
+        </AsyncRoot>
+
+        <!-- Silence excessive Spark noise -->
+        <AsyncLogger name="org.apache.spark" level="warn" additivity="false">
+            <AppenderRef ref="Console" />
+        </AsyncLogger>
+        <AsyncLogger name="org.apache.hadoop" level="warn" additivity="false">
+            <AppenderRef ref="Console" />
+        </AsyncLogger>
+        <AsyncLogger name="org.sparkproject" level="warn" additivity="false">
+            <AppenderRef ref="Console" />
+        </AsyncLogger>
+
+        <!-- App specific logger -->
+        <AsyncLogger name="it.uniroma2.sae" level="info" additivity="false">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="StructuredLog" />
+        </AsyncLogger>
+    </Loggers>
+</Configuration>

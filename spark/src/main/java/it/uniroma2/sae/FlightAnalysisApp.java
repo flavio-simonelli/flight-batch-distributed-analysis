@@ -2,17 +2,17 @@ package it.uniroma2.sae;
 
 import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.config.QueryType;
-import it.uniroma2.sae.query.ArrivalDelayRanking;
-import it.uniroma2.sae.query.BaseQuery;
-import it.uniroma2.sae.query.HourlyDelayPercentiles;
-import it.uniroma2.sae.query.MonthlyPerformanceAnalyzer;
-import it.uniroma2.sae.query.AirlineClustering;
+import it.uniroma2.sae.query.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /**
  * The main entry point for the Flight Analysis application.
  * It reads the configuration and executes the selected query.
  */
 public class FlightAnalysisApp {
+    private static final Logger logger = LoggerFactory.getLogger(FlightAnalysisApp.class);
 
     public static void main(String[] args) {
         try {
@@ -50,6 +50,11 @@ public class FlightAnalysisApp {
                         "Please provide it via command line argument (--backend or -b) or in " + configFilePath);
             }
 
+            // Structured logging context
+            MDC.put("query", queryToRun.toString());
+            MDC.put("backend", config.getAppBackend().toString());
+
+            logger.info("Initializing flight analysis job | query={} | backend={}", queryToRun, config.getAppBackend());
 
             BaseQuery queryJob;
 
@@ -71,15 +76,16 @@ public class FlightAnalysisApp {
                     throw new IllegalArgumentException("Unknown query type: " + queryToRun);
             }
 
-            // System.out.println("Starting execution of query: " + queryToRun + " with backend: " + config.getAppBackend());
-            
             // Execute the selected query, passing the configuration object.
             queryJob.execute(config);
 
+            logger.info("Flight analysis job completed successfully.");
+
         } catch (Exception e) {
-            System.err.println("Failed to start the application.");
-            e.printStackTrace();
+            logger.error("Fatal error during application execution: {}", e.getMessage(), e);
             System.exit(1);
+        } finally {
+            MDC.clear();
         }
     }
 }

@@ -1,5 +1,8 @@
 package it.uniroma2.sae.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -11,6 +14,7 @@ import java.util.Map;
  * It tracks wall-clock time and associated Spark job durations for each phase.
  */
 public class PerformanceMetrics implements Serializable {
+    private static final Logger logger = LoggerFactory.getLogger(PerformanceMetrics.class);
 
     private static PerformanceMetrics instance;
 
@@ -145,52 +149,55 @@ public class PerformanceMetrics implements Serializable {
      * @param queryName the name of the query being reported
      */
     public void printReport(String queryName) {
-        System.out.println("\n=======================================================");
-        System.out.println("--- PERFORMANCE REPORT: " + queryName + " ---");
-        System.out.println("=======================================================");
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n=======================================================\n");
+        sb.append("--- PERFORMANCE REPORT: ").append(queryName).append(" ---\n");
+        sb.append("=======================================================\n");
 
         phases.forEach((name, metrics) -> {
-            System.out.printf("Phase: %s%n", name);
-            System.out.printf("  - Wall Clock Time: %d ms%n", metrics.wallClockTime);
+            sb.append(String.format("Phase: %s%n", name));
+            sb.append(String.format("  - Wall Clock Time: %d ms%n", metrics.wallClockTime));
 
             if (!metrics.sparkJobs.isEmpty()) {
-                System.out.println("  - Spark Job Details:");
+                sb.append("  - Spark Job Details:\n");
                 metrics.sparkJobs.forEach(j ->
-                        System.out.printf("    - Job ID: %d, Total Duration: %d ms%n", j.jobId, j.duration));
+                        sb.append(String.format("    - Job ID: %d, Total Duration: %d ms%n", j.jobId, j.duration)));
             }
 
             if (!metrics.sparkStages.isEmpty()) {
-                System.out.println("  - Spark Stage Details:");
+                sb.append("  - Spark Stage Details:\n");
                 metrics.sparkStages.forEach(s ->
-                        System.out.printf("    - Stage ID: %d, Duration: %d ms, GC Time: %d ms, Read: %d bytes, Written: %d bytes, Shuffle Read: %d bytes, Shuffle Write: %d bytes%n",
-                                s.stageId, s.duration, s.gcTime, s.bytesRead, s.bytesWritten, s.shuffleRead, s.shuffleWrite));
+                        sb.append(String.format("    - Stage ID: %d, Duration: %d ms, GC Time: %d ms, Read: %d bytes, Written: %d bytes, Shuffle Read: %d bytes, Shuffle Write: %d bytes%n",
+                                s.stageId, s.duration, s.gcTime, s.bytesRead, s.bytesWritten, s.shuffleRead, s.shuffleWrite)));
             }
 
             if (!metrics.executorMetrics.isEmpty()) {
-                System.out.println("  - Worker Node (Executor) Metrics:");
+                sb.append("  - Worker Node (Executor) Metrics:\n");
                 metrics.executorMetrics.values().forEach(e -> {
-                    System.out.printf("    - Executor %s (%s):%n", e.executorId, e.host);
-                    System.out.printf("      Tasks: %d, RunTime: %d ms, CPU Time: %d ms, GC Time: %d ms%n",
-                            e.taskCount, e.totalRunTime, e.totalCpuTime, e.totalGcTime);
-                    System.out.printf("      Deserialization: %d ms, Serialization: %d ms%n",
-                            e.totalDeserializeTime, e.totalSerializeTime);
-                    System.out.printf("      I/O Read: %d bytes, I/O Written: %d bytes%n",
-                            e.totalBytesRead, e.totalBytesWritten);
-                    System.out.printf("      Shuffle Read: %d bytes, Shuffle Written: %d bytes%n",
-                            e.totalShuffleRead, e.totalShuffleWritten);
+                    sb.append(String.format("    - Executor %s (%s):%n", e.executorId, e.host));
+                    sb.append(String.format("      Tasks: %d, RunTime: %d ms, CPU Time: %d ms, GC Time: %d ms%n",
+                            e.taskCount, e.totalRunTime, e.totalCpuTime, e.totalGcTime));
+                    sb.append(String.format("      Deserialization: %d ms, Serialization: %d ms%n",
+                            e.totalDeserializeTime, e.totalSerializeTime));
+                    sb.append(String.format("      I/O Read: %d bytes, I/O Written: %d bytes%n",
+                            e.totalBytesRead, e.totalBytesWritten));
+                    sb.append(String.format("      Shuffle Read: %d bytes, Shuffle Written: %d bytes%n",
+                            e.totalShuffleRead, e.totalShuffleWritten));
                 });
             }
 
             if (metrics.sparkJobs.isEmpty() && metrics.sparkStages.isEmpty()) {
-                System.out.println("  - No Spark operations triggered in this phase.");
+                sb.append("  - No Spark operations triggered in this phase.\n");
             }
-            System.out.println("-------------------------------------------------------");
+            sb.append("-------------------------------------------------------\n");
         });
 
-        System.out.printf("TOTAL RUNTIME:%n");
-        System.out.printf("  - Wall Clock Time: %d ms%n", getTotalWallTime());
-        System.out.printf("  - Spark Execution Time: %d ms%n", getTotalSparkTime());
-        System.out.println("=======================================================\n");
+        sb.append(String.format("TOTAL RUNTIME:%n"));
+        sb.append(String.format("  - Wall Clock Time: %d ms%n", getTotalWallTime()));
+        sb.append(String.format("  - Spark Execution Time: %d ms%n", getTotalSparkTime()));
+        sb.append("=======================================================\n");
+
+        logger.info(sb.toString());
     }
 
     /**

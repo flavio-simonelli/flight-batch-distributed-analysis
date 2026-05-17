@@ -3,12 +3,15 @@ package it.uniroma2.sae.factory;
 import it.uniroma2.sae.config.*;
 import it.uniroma2.sae.repository.*;
 import org.apache.spark.sql.SparkSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Factory class to create instances of FlightRepository.
  * It uses the ApplicationConfig to decide which implementation to instantiate.
  */
 public class FlightRepositoryFactory {
+    protected static final Logger logger = LoggerFactory.getLogger(FlightRepositoryFactory.class);
 
     /**
      * Creates the input repository based on the provided configuration.
@@ -20,6 +23,7 @@ public class FlightRepositoryFactory {
      */
     public static FlightRepository createInputRepository(ApplicationConfig config, SparkSession spark) {
         StorageConfig inputConfig = config.getInput();
+        logger.info("Input repository config | type={} | path={} | filename={}", inputConfig.getType(), inputConfig.getPath(), inputConfig.getDatasetFilename());
         return createRepository(inputConfig, spark);
     }
 
@@ -33,6 +37,7 @@ public class FlightRepositoryFactory {
      */
     public static FlightRepository createOutputRepository(ApplicationConfig config, SparkSession spark) {
         StorageConfig outputConfig = config.getOutput();
+        logger.info("Output repository config | type={} | path={} | directory={}", outputConfig.getType(), outputConfig.getPath(), outputConfig.getResultDirectory());
         return createRepository(outputConfig, spark);
     }
 
@@ -47,9 +52,10 @@ public class FlightRepositoryFactory {
     public static FlightRepository createMetricsRepository(ApplicationConfig config, SparkSession spark) {
         StorageConfig metricsConfig = config.getMetrics();
         if(metricsConfig == null) {
-            System.out.println("Metric repository not configured. Skipping...");
+            logger.warn("Metric repository not configured. Skipping...");
             return null;
         }
+        logger.info("Metrics repository config | type={}", metricsConfig.getType());
         return createRepository(metricsConfig, spark);
     }
 

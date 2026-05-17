@@ -1,8 +1,6 @@
 package it.uniroma2.sae.query;
 
-import it.uniroma2.sae.config.AppBackendType;
-import it.uniroma2.sae.config.ApplicationConfig;
-import it.uniroma2.sae.config.QueryType;
+import it.uniroma2.sae.config.*;
 import it.uniroma2.sae.factory.FlightRepositoryFactory;
 import it.uniroma2.sae.repository.FlightRepository;
 import it.uniroma2.sae.util.JobTimerListener; // Import the new listener
@@ -12,6 +10,8 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.StructType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
 import java.util.List;
@@ -27,6 +27,7 @@ import java.util.List;
  * depending on which backend APIs they support.
  */
 public abstract class BaseQuery {
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     /**
      * The main execution flow for the query.
@@ -45,12 +46,13 @@ public abstract class BaseQuery {
         String queryName = query.name().toLowerCase();
 
         try {
+            logger.info("Setting up Spark session | appName={}", config.getAppName());
             SparkSession.Builder builder = SparkSession.builder()
                     .appName(config.getAppName());
 
             // If master is provided in config, use it (typically for local/docker).
-            // If not, Spark will expect it from spark-submit --master (typical for EMR/YARN).
             if (config.getSparkCluster() != null && config.getSparkCluster().getMaster() != null) {
+                logger.info("Using explicit master from config | master={}", config.getSparkCluster().getMasterUri());
                 builder.master(config.getSparkCluster().getMasterUri());
             }
 
@@ -67,6 +69,7 @@ public abstract class BaseQuery {
             spark.sparkContext().addSparkListener(timer);
 
             // Instantiate repositories
+            logger.debug("Initializing repositories...");
             FlightRepository inputRepository = FlightRepositoryFactory.createInputRepository(config, spark);
             FlightRepository outputRepository = FlightRepositoryFactory.createOutputRepository(config, spark);
             FlightRepository metricsRepository = FlightRepositoryFactory.createMetricsRepository(config, spark);
@@ -82,11 +85,13 @@ public abstract class BaseQuery {
             List<Tuple2<JavaRDD<Row>, StructType>> rddResultsWithSchema = null;
 
             // Load dataset
+            logger.info("Phase: PLANNING | loading data...");
             metrics.startPhase("PLANNING");
             Dataset<Row> flights = loadData(inputRepository, config);
             metrics.stopPhase();
 
             // Execute the query using the configured backend API
+            logger.info("Phase: EXECUTION | query={} | backend={}", queryName, backend);
             metrics.startPhase("EXECUTION");
             switch (backend) {
                 case DATAFRAME:
@@ -105,6 +110,7 @@ public abstract class BaseQuery {
                     throw new UnsupportedOperationException("Backend " + backend + " is not supported.");
             }
 
+            logger.info("Saving results | target={}", fullTargetName);
             if(dfResults != null) {
                 for (int i = 0; i < dfResults.size(); i++) {
                     String currentTarget = dfResults.size() > 1 ? fullTargetName + "_" + (i + 1) : fullTargetName;
@@ -133,13 +139,12 @@ public abstract class BaseQuery {
             
             // Persist metrics
             if(metricsRepository != null) {
-                System.out.println("Saving performance metrics to repository...");
+                logger.info("Persisting performance metrics to repository...");
                 metricsRepository.saveMetrics(queryName, backend.name());
             }
 
         } catch (Exception e) {
-            System.err.println("Fatal error during query execution:");
-            e.printStackTrace();
+            logger.error("Fatal error during query execution: {}", e.getMessage(), e);
             System.exit(1);
         } finally {
             if (spark != null) {
