@@ -16,7 +16,7 @@ percentileAlgorithm: kll
 # Cluster configuration
 sparkCluster:
   master:
-    hostname: master.flight-analysis.local
+    hostname: spark-master.flight-analysis.local
     port: 7077
 
 # --- Input data configuration examples ---
@@ -88,7 +88,7 @@ output:
 # Redis Output
 metrics:
   type: "redis"
-  hostname: "redis-metrics"
+  hostname: "metrics.flight-analysis.local"
   port: 6379
   database: "0"  # Redis database index
   # password: "mypassword" # Optional

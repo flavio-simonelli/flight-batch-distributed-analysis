@@ -100,6 +100,18 @@ aws cloudformation deploy ^
   --capabilities CAPABILITY_IAM ^
   --no-fail-on-empty-changeset
 
+echo [INFO] Creating additional DNS aliases for Master (hdfs-master, spark-master)...
+set "DNS_BATCH_FILE=%TEMP%\dns-master-aliases.json"
+echo { "Comment": "Creating aliases for HDFS and Spark", "Changes": [ { "Action": "UPSERT", "ResourceRecordSet": { "Name": "hdfs-master.%PRIVATE_DOMAIN_NAME%", "Type": "CNAME", "TTL": 300, "ResourceRecords": [{ "Value": "master.%PRIVATE_DOMAIN_NAME%" }] } }, { "Action": "UPSERT", "ResourceRecordSet": { "Name": "spark-master.%PRIVATE_DOMAIN_NAME%", "Type": "CNAME", "TTL": 300, "ResourceRecords": [{ "Value": "master.%PRIVATE_DOMAIN_NAME%" }] } } ] } > "!DNS_BATCH_FILE!"
+
+aws route53 change-resource-record-sets --hosted-zone-id %ZONE_ID% --change-batch file://"!DNS_BATCH_FILE!"
+if !ERRORLEVEL! equ 0 (
+    echo [INFO] DNS aliases created successfully.
+) else (
+    echo [WARN] Failed to create DNS aliases.
+)
+del "!DNS_BATCH_FILE!"
+
 :skip_master
 
 :: --- WORKER NODES DEPLOYMENT ---
@@ -132,12 +144,23 @@ for /L %%N in (1,1,%WORKER_COUNT%) do (
           S3Bucket=%BUCKET_NAME% ^
           EnvironmentFile="worker.env" ^
           DeployScripts="deploy-worker.sh" ^
-      --capabilities CAPABILITY_IAM ^
-      --no-fail-on-empty-changeset
-)
+          --capabilities CAPABILITY_IAM ^
+          --no-fail-on-empty-changeset
 
-:skip_worker
+          echo [INFO] Creating DNS aliases for Worker %%N (hdfs-worker-%%N, spark-worker-%%N)...
+          set "DNS_BATCH_FILE=%TEMP%\dns-worker-%%N-aliases.json"
+          echo { "Comment": "Creating aliases for Worker %%N", "Changes": [ { "Action": "UPSERT", "ResourceRecordSet": { "Name": "hdfs-worker-%%N.%PRIVATE_DOMAIN_NAME%", "Type": "CNAME", "TTL": 300, "ResourceRecords": [{ "Value": "worker-%%N.%PRIVATE_DOMAIN_NAME%" }] } }, { "Action": "UPSERT", "ResourceRecordSet": { "Name": "spark-worker-%%N.%PRIVATE_DOMAIN_NAME%", "Type": "CNAME", "TTL": 300, "ResourceRecords": [{ "Value": "worker-%%N.%PRIVATE_DOMAIN_NAME%" }] } } ] } > "!DNS_BATCH_FILE!"
 
+          aws route53 change-resource-record-sets --hosted-zone-id %ZONE_ID% --change-batch file://"!DNS_BATCH_FILE!"
+          if !ERRORLEVEL! equ 0 (
+            echo [INFO] DNS aliases for Worker %%N created successfully.
+          ) else (
+            echo [WARN] Failed to create DNS aliases for Worker %%N.
+          )
+          del "!DNS_BATCH_FILE!"
+          )
+
+          :skip_worker
 :: --- METRICS NODE DEPLOYMENT ---
 :: Visualization layer with Redis Stack and Grafana.
 if /I "%TARGET%"=="master" goto :skip_metrics

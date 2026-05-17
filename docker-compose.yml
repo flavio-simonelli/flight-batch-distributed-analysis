@@ -56,7 +56,7 @@ x-airflow-common: &airflow-common
         AIRFLOW__API__PORT: ${AIRFLOW_WEB_PORT}
         AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
         AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
-        AIRFLOW_CONN_LIVY_DEFAULT: ${AIRFLOW_CONN_LIVY_DEFAULT}
+        AIRFLOW_CONN_LIVY_DEFAULT: http://livy-${AIRFLOW_CONN_LIVY_HOST}:${AIRFLOW_CONN_LIVY_PORT}
         AIRFLOW_CONN_NIFI_HTTP: ${AIRFLOW_CONN_NIFI_HTTP}
     volumes:
         - ./airflow/dags:/opt/airflow/dags
@@ -78,7 +78,6 @@ services:
         networks:
             sae-net:
                 aliases:
-                    - hdfs-${HDFS_NAMENODE_HOST}
                     - ${HDFS_NAMENODE_HOST}
         ports:
             - "${HDFS_WEB_UI_PORT}:9870" # HDFS Web UI
@@ -106,6 +105,9 @@ services:
           /usr/local/hadoop/bin/hdfs dfs -mkdir -p /data/raw;
           /usr/local/hadoop/bin/hdfs dfs -chmod -R 777 /data/raw;
             
+          /usr/local/hadoop/bin/hdfs dfs -mkdir -p /bin;
+          /usr/local/hadoop/bin/hdfs dfs -chmod -R 777 /bin;
+            
           wait"
         tty: true
         stdin_open: true
@@ -113,22 +115,22 @@ services:
     hdfs-worker-1:
         <<: *hdfs-worker-base
         container_name: hdfs-worker-1
-        hostname: worker-1.flight-analysis.local
+        hostname: hdfs-worker-1
         networks:
             sae-net:
                 aliases:
-                    - worker-1.flight-analysis.local
+                    - hdfs-worker-1.flight-analysis.local
         depends_on:
             - hdfs-master
 
     hdfs-worker-2:
         <<: *hdfs-worker-base
         container_name: hdfs-worker-2
-        hostname: worker-2.flight-analysis.local
+        hostname: hdfs-worker-2
         networks:
             sae-net:
                 aliases:
-                    - worker-2.flight-analysis.local
+                    - hdfs-worker-2.flight-analysis.local
         depends_on:
             - hdfs-master
 
@@ -243,7 +245,6 @@ services:
         networks:
             sae-net:
                 aliases:
-                    - spark-${SPARK_MASTER_HOST}
                     - ${SPARK_MASTER_HOST}
         # Use absolute paths to the binaries
         command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
@@ -253,8 +254,9 @@ services:
             - '4040:4040'
         volumes:
             - ./data:/opt/spark/data
-            - ./spark:/opt/spark/scripts
         environment:
+            - SPARK_MASTER_HOST=${SPARK_MASTER_HOST}
+            - SPARK_LOCAL_HOSTNAME=${SPARK_MASTER_HOST}
             - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
             - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
             - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
@@ -262,12 +264,20 @@ services:
     spark-worker-1:
         <<: *spark-worker-base
         container_name: spark-worker-1
-        hostname: worker-1.flight-analysis.local
+        hostname: spark-worker-1
+        networks:
+            sae-net:
+                aliases:
+                    - spark-worker-1.flight-analysis.local
 
     spark-worker-2:
         <<: *spark-worker-base
         container_name: spark-worker-2
-        hostname: worker-2.flight-analysis.local
+        hostname: spark-worker-2
+        networks:
+            sae-net:
+                aliases:
+                    - spark-worker-2.flight-analysis.local
 
     # Visualization Layer - Redis + Grafana
     redis-metrics:
@@ -356,15 +366,9 @@ services:
         networks:
             sae-net:
                 aliases:
-                    - nifi.flight-analysis.local
+                    - livy-${AIRFLOW_CONN_LIVY_HOST}
         ports:
-            - "8998:8998"
-        volumes:
-            - ./spark:/opt/spark/scripts
-        depends_on:
-            - spark-master
-        links:
-            - spark-master:${SPARK_MASTER_HOST}
+            - "${AIRFLOW_CONN_LIVY_PORT}:8998"
 
     airflow-postgres:
         image: postgres:15

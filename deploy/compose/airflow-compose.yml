@@ -125,5 +125,3 @@ services:
         network_mode: host
         ports:
             - "8998:8998"
-        volumes:
-            - ./spark:/opt/spark/scripts

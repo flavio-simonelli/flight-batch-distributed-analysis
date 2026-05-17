@@ -24,9 +24,9 @@ DAGS_DIR = os.path.dirname(__file__)
 PAYLOAD_TEMPLATE_PATH = os.path.join(DAGS_DIR, "payload.json")
 
 # Spark application parameters and paths within the distributed nodes
-JAR_PATH = "/opt/spark/scripts/flight-analysis.jar"
+JAR_PATH = "hdfs://hdfs-master.flight-analysis.local:54310/bin/flight-analysis.jar"
 JAR_CLASS = "it.uniroma2.sae.FlightAnalysisApp"
-SPARK_CONFIG_PATH = "/opt/spark/scripts/ec2-config.yml"
+SPARK_CONFIG_PATH = "local-config.yml"
 
 # Hardcoded storage configurations
 STORAGE_MAPPINGS = {
@@ -34,7 +34,8 @@ STORAGE_MAPPINGS = {
     "S3": {"bucket": "spark-flight-analysis", "raw_path": "/data/raw", "preprocessed_path": "/data/conv"}
 }
 
-QUERIES = ["monthly_performance", "arrival_delay_ranking", "hourly_delay_percentiles"]
+AVAILABLE_QUERIES = ["monthly_performance", "arrival_delay_ranking", "hourly_delay_percentiles", "airline_clustering"]
+AVAILABLE_BACKENDS = ["rdd", "dataframe", "sql"]
 
 @dag(
     dag_id="flight_analysis",
@@ -43,13 +44,26 @@ QUERIES = ["monthly_performance", "arrival_delay_ranking", "hourly_delay_percent
     catchup=False,
     tags=["distributed", "spark", "nifi", "orchestration", "airflow-3"],
     params={
-        "run_mode": Param("Both", type="string", enum=["Both", "Ingest Only", "Execution Only"]),
-        "nifi_hostname": Param("nifi.flight-analysis.local:8085", type="string"),
-        "airflow_hostname": Param("airflow.flight-analysis.local:8088", type="string"),
-        "ingestion_http_url": Param("http://www.ce.uniroma2.it/courses/sabd2526/project/project-1-data.tar.gz", type="string"),
-        "raw_storage_type": Param("HDFS", type="string", enum=["HDFS", "S3"]),
-        "preprocessed_storage_type": Param("HDFS", type="string", enum=["HDFS", "S3"]),
-        "optimization_strategy": Param("PREDICATE_PUSHDOWN", type="string", enum=["PREDICATE_PUSHDOWN", "PARTITION_PRUNING"])
+        "run_mode": Param(
+            "Both", 
+            enum=["Both", "Ingest Only", "Execution Only"],
+            description="[MANDATORY] Execution scope."
+        ),
+        "selected_query": Param(
+            "monthly_performance", 
+            enum=AVAILABLE_QUERIES,
+            description="[MANDATORY] Select the Spark query to execute."
+        ),
+        "spark_backend": Param(
+            "dataframe", 
+            enum=AVAILABLE_BACKENDS, 
+            description="[MANDATORY] Spark API to use for processing."
+        ),
+        # "nifi_hostname": Param("nifi.flight-analysis.local:8085", type="string"),
+        # "airflow_hostname": Param("airflow.flight-analysis.local:8088", type="string"),
+        "raw_storage_type": Param("HDFS", enum=["HDFS", "S3"], ),
+        "preprocessed_storage_type": Param("HDFS", enum=["HDFS", "S3"]),
+        "optimization_strategy": Param("PREDICATE_PUSHDOWN", enum=["PREDICATE_PUSHDOWN", "PARTITION_PRUNING"])
     },
 )
 def flight_analysis():
@@ -79,7 +93,8 @@ def flight_analysis():
         print(f"[AIRFLOW] Variable '{var_name}' initialized.")
 
         # 2. Fetch JWT Token for the callback
-        login_url = f"http://{params['airflow_hostname']}/auth/token"
+        # login_url = f"http://{params['airflow_hostname']}/auth/token"
+        login_url = f"http://airflow.flight-analysis.local:8088/auth/token"
         login_res = requests.post(login_url, json={"username": "admin", "password": "admin_password"})
         login_res.raise_for_status()
         jwt_token = login_res.json().get("access_token")
@@ -117,7 +132,8 @@ def flight_analysis():
         payload["callback"].update({
             "run_id": clean_id,
             "variable_key": var_name,
-            "url": f"http://{params['airflow_hostname']}/api/v2/variables/{var_name}",
+            # "url": f"http://{params['airflow_hostname']}/api/v2/variables/{var_name}",
+            "url": f"http://airflow.flight-analysis.local:8088/api/v2/variables/{var_name}",
             "method": "PATCH",
             "headers": {
                 "Authorization": f"Bearer {jwt_token}",
@@ -126,7 +142,8 @@ def flight_analysis():
         })
 
         # 4. Trigger NiFi Endpoint
-        endpoint = f"http://{params['nifi_hostname']}/experiment"
+        # endpoint = f"http://{params['nifi_hostname']}/experiment"
+        endpoint = f"http://nifi.flight-analysis.local:8085/experiment"
         nifi_res = requests.post(endpoint, json=payload)
         nifi_res.raise_for_status()
         print(f"[AIRFLOW] NiFi triggered successfully! Status: {nifi_res.status_code}")
@@ -181,33 +198,41 @@ def flight_analysis():
     branch_2 = route_after_ingest(clean_id_str)
     cleanup_task = cleanup_variable(clean_id_str)
 
-    # Spark Livy Operators initialization
-    spark_ops = []
-    for q in QUERIES:
-        spark_ops.append(LivyOperator(
-            task_id=f"spark_{q}",
-            livy_conn_id="livy_default",
-            file=JAR_PATH,
-            class_name=JAR_CLASS,
-            args=["--query", q, "--backend", "dataframe", "--config", SPARK_CONFIG_PATH],
-            name=f"spark-{q}-{{{{ ti.xcom_pull(task_ids='sanitize_id') }}}}",
-            polling_interval=15
-        ))
+    @task(trigger_rule="none_failed_min_one_success")
+    def prepare_spark_args(**context) -> list[str]:
+        """Prepares the arguments for the Spark task based on user selection."""
+        run_mode = context["params"]["run_mode"]
+        
+        # If we shouldn't run execution, return an empty list (will be handled by trigger rules)
+        if run_mode == "Ingest Only":
+            return []
+            
+        query = context["params"]["selected_query"]
+        backend = context["params"]["spark_backend"]
+        
+        return ["--query", query, "--backend", backend, "--config", SPARK_CONFIG_PATH]
+
+    spark_args = prepare_spark_args()
+
+    # Simple Livy task
+    spark_task = LivyOperator(
+        task_id="spark_execution",
+        livy_conn_id="livy_default",
+        file=JAR_PATH,
+        class_name=JAR_CLASS,
+        args=spark_args,
+        name=f"spark-{{{{ params.selected_query }}}}-{{{{ ti.xcom_pull(task_ids='sanitize_id') }}}}",
+        polling_interval=15
+    )
 
     # Routing from Start
-    branch_1 >> nifi_task >> wait_task >> branch_2
-    branch_1 >> spark_join # Path for "Execution Only"
+    branch_1 >> [nifi_task, spark_join]
+    nifi_task >> wait_task >> branch_2
 
     # Routing after Ingestion
-    branch_2 >> spark_join # Path for "Both"
-    branch_2 >> cleanup_task # Path for "Ingest Only"
+    branch_2 >> [spark_join, cleanup_task]
 
-    # Spark Sequential Execution
-    spark_join >> spark_ops[0]
-    for i in range(len(spark_ops) - 1):
-        spark_ops[i] >> spark_ops[i+1]
-
-    # Final Cleanup (waits for the last Spark task)
-    spark_ops[-1] >> cleanup_task
+    # Spark Execution Logic
+    spark_join >> spark_args >> spark_task >> cleanup_task
 
 flight_analysis()

@@ -54,4 +54,3 @@ services:
       - '${SPARK_MASTER_PORT}:7077' # Spark Master Port
     volumes:
       - ./data:/opt/spark/data
-      - ./spark:/opt/spark/scripts

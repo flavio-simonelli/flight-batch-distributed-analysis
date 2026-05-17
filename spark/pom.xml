@@ -16,6 +16,9 @@
         <scala.compat.version>2.12</scala.compat.version>
         <jackson.version>2.15.2</jackson.version>
         <hbase.version>2.5.4</hbase.version>
+        <!-- HDFS Upload Properties with defaults for local testing if env is missing -->
+        <hdfs.namenode.host>localhost</hdfs.namenode.host>
+        <hdfs.namenode.port>54310</hdfs.namenode.port>
     </properties>
 
     <dependencies>
@@ -164,6 +167,82 @@
 
     <profiles>
         <profile>
+            <id>hdfs-upload</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.6.1</version>
+                        <executions>
+                            <execution>
+                                <id>copy-dependencies</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/hadoop-libs</outputDirectory>
+                                    <includeScope>runtime</includeScope>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>hdfs-put</id>
+                                <phase>package</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <target>
+                                        <echo message="Generating optimized core-site.xml for DNS resolution..." />
+                                        <echo file="${project.build.directory}/hadoop-libs/core-site.xml"><![CDATA[<configuration>
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://${hdfs.namenode.host}:${hdfs.namenode.port}</value>
+  </property>
+  <property>
+    <name>dfs.client.use.datanode.hostname</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>dfs.datanode.address</name>
+    <value>0.0.0.0:9866</value>
+  </property>
+</configuration>]]></echo>
+                                        <echo message="Uploading to HDFS hdfs://${hdfs.namenode.host}:${hdfs.namenode.port} via Hadoop Client..." />
+                                        <java classname="org.apache.hadoop.fs.FsShell" fork="true" failonerror="true">
+                                            <classpath>
+                                                <pathelement path="${project.build.directory}/hadoop-libs" />
+                                                <fileset dir="${project.build.directory}/hadoop-libs">
+                                                    <include name="*.jar" />
+                                                </fileset>
+                                            </classpath>
+                                            <arg value="-put" />
+                                            <arg value="-f" />
+                                            <arg value="${project.build.directory}\flight-analysis.jar" />
+                                            <arg value="/bin" />
+                                        </java>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.hadoop</groupId>
+                    <artifactId>hadoop-client</artifactId>
+                    <version>3.3.4</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>emr</id>
             <activation><activeByDefault>true</activeByDefault></activation>
         </profile>
@@ -202,7 +281,7 @@
                                         <argument>--class</argument>
                                         <argument>it.uniroma2.sae.FlightAnalysisApp</argument>
                                         <argument>--master</argument>
-                                        <argument>spark://master.flight-analysis.local:7077</argument>
+                                        <argument>spark://spark-master.flight-analysis.local:7077</argument>
                                         <argument>/opt/spark/scripts/target/flight-analysis.jar</argument>
                                     </arguments>
                                 </configuration>
