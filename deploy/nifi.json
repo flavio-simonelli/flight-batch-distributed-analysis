@@ -18,7 +18,7 @@
   },
   "callback": {
     "run_id": "exp_http_to_minio_001",
-    "url": "http://airflow-apiserver:8080/api/v2/variables/nifi_done_exp_http_to_minio_001",
+    "url": "http://airflow.flight-analysis.local:8088/api/v2/variables/nifi_done_exp_http_to_minio_001",
     "method": "PATCH"
   }
 }

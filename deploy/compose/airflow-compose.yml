@@ -26,7 +26,7 @@ x-airflow-common: &airflow-common
         AIRFLOW_CONN_NIFI_HTTP: ${AIRFLOW_CONN_NIFI_HTTP}
     volumes:
         - ./airflow/dags:/opt/airflow/dags
-        - ./airflow/logs:/opt/airflow/logs
+        - ./data/airflow/logs:/opt/airflow/logs
         - ./airflow/plugins:/opt/airflow/plugins
         - ./airflow/config:/opt/airflow/config
     depends_on: &airflow-common-depends-on
@@ -34,7 +34,11 @@ x-airflow-common: &airflow-common
             condition: service_healthy
 
 services:
-    # Dedicated PostgreSQL instance for Airflow metadata
+    # =================================================================
+    # ORCHESTRATION LAYER
+    # =================================================================
+
+    # Internal PostgreSQL for Airflow Metadata
     airflow-postgres:
         image: postgres:15
         container_name: airflow-postgres
@@ -44,13 +48,13 @@ services:
             - POSTGRES_PASSWORD=${AIRFLOW_POSTGRES_PASSWORD}
             - POSTGRES_DB=${AIRFLOW_POSTGRES_DB}
         volumes:
-            - ./data/airflow-postgres:/var/lib/postgresql/data
+            - ./data/airflow/postgres:/var/lib/postgresql/data
         healthcheck:
             test: [ "CMD", "pg_isready", "-U", "${AIRFLOW_POSTGRES_USER}" ]
             interval: 10s
             retries: 5
 
-    # Initialization service to setup database and users
+    # Airflow Initialization Service
     airflow-init:
         <<: *airflow-common
         container_name: airflow-init
@@ -63,7 +67,13 @@ services:
                 chown -R "${AIRFLOW_UID:-50000}:0" /opt/airflow/
                 /entrypoint airflow version
                 /entrypoint airflow db migrate
-                /entrypoint airflow users create --username ${AIRFLOW_USER} --password ${AIRFLOW_PASSWORD} --firstname Admin --lastname User --role Admin --email ${AIRFLOW_EMAIL} || true
+                /entrypoint airflow users create \
+                    --username "${AIRFLOW_USER}" \
+                    --password "${AIRFLOW_PASSWORD}" \
+                    --firstname Admin \
+                    --lastname User \
+                    --role Admin \
+                    --email "${AIRFLOW_EMAIL}" || true
         depends_on:
             airflow-postgres:
                 condition: service_healthy
@@ -76,6 +86,7 @@ services:
             _AIRFLOW_WWW_USER_ROLE: Admin
             _AIRFLOW_WWW_USER_EMAIL: ${AIRFLOW_EMAIL}
 
+    # Apache Airflow Scheduler
     airflow-scheduler:
         <<: *airflow-common
         container_name: airflow-scheduler
@@ -86,6 +97,7 @@ services:
             airflow-init:
                 condition: service_completed_successfully
 
+    # Apache Airflow DAG Processor
     airflow-dag-processor:
         <<: *airflow-common
         container_name: airflow-dag-processor
@@ -96,6 +108,7 @@ services:
             airflow-init:
                 condition: service_completed_successfully
 
+    # Apache Airflow Triggerer
     airflow-triggerer:
         <<: *airflow-common
         container_name: airflow-triggerer
@@ -106,6 +119,7 @@ services:
             airflow-init:
                 condition: service_completed_successfully
 
+    # Apache Airflow API Server and Web UI
     airflow-webserver:
         <<: *airflow-common
         container_name: airflow-webserver
@@ -116,12 +130,14 @@ services:
             airflow-init:
                 condition: service_completed_successfully
 
-    # Livy Server for submitting Spark jobs via REST API
+    # =================================================================
+    # PROCESSING LAYER (Livy Component)
+    # =================================================================
+
+    # Apache Livy for Spark REST API Access
     livy:
         build:
             context: ./livy
             dockerfile: Dockerfile
         container_name: livy
         network_mode: host
-        ports:
-            - "8998:8998"

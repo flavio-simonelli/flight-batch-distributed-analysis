@@ -1,0 +1,63 @@
+# Application configuration for Flight Analysis on EC2
+appName: Flight Analysis
+appBackend: dataframe
+
+# --- STORAGE LAYER (Inputs) ---
+inputs:
+  hdfs:
+    type: "hdfs"
+    uri: "hdfs://hdfs-master.flight-analysis.local:54310"
+    path: "/data/conv"
+  local:
+    type: "local"
+    path: "/home/ec2-user/data/conv"
+  s3:
+    type: "s3"
+    uri: "s3a://spark-flight-analysis"
+    path: "/data/conv"
+
+# --- PROCESSING LAYER ---
+sparkCluster:
+  master:
+    hostname: spark-master.flight-analysis.local
+    port: 7077
+
+# --- PERSISTENCE LAYER (Outputs) ---
+outputs:
+  hdfs:
+    type: "hdfs"
+    uri: "hdfs://hdfs-master.flight-analysis.local:54310"
+    path: "/data/res"
+  postgres:
+    type: "postgres"
+    hostname: "postgres-databases.flight-analysis.local"
+    port: 5432
+    database: "flight_db"
+    user: "postgres"
+    password: "postgres"
+  mongodb:
+    type: "mongodb"
+    hostname: "mongodb-databases.flight-analysis.local"
+    port: 27017
+    database: "flight_db"
+    collection: "flight_results"
+    user: "admin"
+    password: "password"
+  redis:
+    type: "redis"
+    hostname: "redis-databases.flight-analysis.local"
+    port: 6379
+    database: "0"
+  hbase:
+    type: "hbase"
+    hostname: "hbase-databases.flight-analysis.local"
+    port: 2181
+    database: "flight_results"
+
+# --- MONITORING LAYER (Metrics) ---
+metrics:
+  redis:
+    type: "redis"
+    hostname: "metrics.flight-analysis.local"
+    port: 6379
+    database: "0"

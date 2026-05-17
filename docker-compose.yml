@@ -1,6 +1,6 @@
 name: sky-analytics-engine
 
-# --- BASE CONFIGURATIONS (Anchors) ---
+# --- BASE CONFIGURATIONS ---
 
 # Base configuration for HDFS worker nodes
 x-hdfs-worker-base: &hdfs-worker-base
@@ -72,7 +72,7 @@ x-airflow-common: &airflow-common
 services:
 
     # =================================================================
-    # 1. INGESTION LAYER
+    # INGESTION LAYER
     # =================================================================
 
     # Apache NiFi for Data Ingestion and Orchestration
@@ -102,7 +102,7 @@ services:
             - ./nifi/extensions:/opt/nifi/nifi-current/nar_extensions
 
     # =================================================================
-    # 2. STORAGE LAYER
+    # STORAGE LAYER
     # =================================================================
 
     # HDFS NameNode for Distributed File Storage
@@ -197,7 +197,7 @@ services:
         command: server /data --console-address ":9001"
 
     # =================================================================
-    # 3. PROCESSING LAYER
+    # PROCESSING LAYER
     # =================================================================
 
     # Apache Spark Master Instance
@@ -252,69 +252,6 @@ services:
                 aliases:
                     - spark-worker-3.flight-analysis.local
 
-    spark-worker-4:
-        <<: *spark-worker-base
-        container_name: spark-worker-4
-        hostname: spark-worker-4
-        networks:
-            sae-net:
-                aliases:
-                    - spark-worker-4.flight-analysis.local
-
-    spark-worker-5:
-        <<: *spark-worker-base
-        container_name: spark-worker-5
-        hostname: spark-worker-5
-        networks:
-            sae-net:
-                aliases:
-                    - spark-worker-5.flight-analysis.local
-
-    spark-worker-6:
-        <<: *spark-worker-base
-        container_name: spark-worker-6
-        hostname: spark-worker-6
-        networks:
-            sae-net:
-                aliases:
-                    - spark-worker-6.flight-analysis.local
-
-    spark-worker-7:
-        <<: *spark-worker-base
-        container_name: spark-worker-7
-        hostname: spark-worker-7
-        networks:
-            sae-net:
-                aliases:
-                    - spark-worker-7.flight-analysis.local
-
-    spark-worker-8:
-        <<: *spark-worker-base
-        container_name: spark-worker-8
-        hostname: spark-worker-8
-        networks:
-            sae-net:
-                aliases:
-                    - spark-worker-8.flight-analysis.local
-
-    spark-worker-9:
-        <<: *spark-worker-base
-        container_name: spark-worker-9
-        hostname: spark-worker-9
-        networks:
-            sae-net:
-                aliases:
-                    - spark-worker-9.flight-analysis.local
-
-    spark-worker-10:
-        <<: *spark-worker-base
-        container_name: spark-worker-10
-        hostname: spark-worker-10
-        networks:
-            sae-net:
-                aliases:
-                    - spark-worker-10.flight-analysis.local
-
     # Apache Livy for Spark REST API Access
     livy:
         build:
@@ -330,7 +267,7 @@ services:
             - "${AIRFLOW_CONN_LIVY_PORT}:8998"
 
     # =================================================================
-    # 4. PERSISTENCE LAYER
+    # PERSISTENCE LAYER
     # =================================================================
 
     # PostgreSQL Relational Database for Final Results
@@ -399,7 +336,7 @@ services:
         command: redis-server
 
     # =================================================================
-    # 5. ORCHESTRATION LAYER
+    # ORCHESTRATION LAYER
     # =================================================================
 
     # Internal PostgreSQL for Airflow Metadata
@@ -520,7 +457,7 @@ services:
                 condition: service_completed_successfully
 
     # =================================================================
-    # 6. MONITORING & VISUALIZATION LAYER
+    # MONITORING & VISUALIZATION LAYER
     # =================================================================
 
     # Redis Stack for Performance Metrics Storage and Search

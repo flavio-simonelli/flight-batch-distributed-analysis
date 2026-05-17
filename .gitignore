@@ -1,6 +1,6 @@
 # Datasets
 data/
-!data/raw
+!data/zip
 
 # ========================
 # Maven / Java (spark/)

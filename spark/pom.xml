@@ -18,9 +18,27 @@
         <hbase.version>2.5.4</hbase.version>
         <log4j2.version>2.20.0</log4j2.version>
         <slf4j.version>2.0.7</slf4j.version>
-        <!-- HDFS Upload Properties with defaults for local testing if env is missing -->
-        <hdfs.namenode.host>localhost</hdfs.namenode.host>
-        <hdfs.namenode.port>54310</hdfs.namenode.port>
+
+        <build.file.name>flight-analysis.jar</build.file.name>
+        <build.file.path>${project.build.directory}\${build.file.name}</build.file.path>
+
+        <container.hdfs.master>hdfs-master</container.hdfs.master>
+        <container.spark.master>spark-master</container.spark.master>
+
+        <hdfs.host>hdfs-master.flight-analysis.local</hdfs.host>
+        <hdfs.port>54310</hdfs.port>
+        <hdfs.uri>hdfs://${hdfs.host}:${hdfs.port}</hdfs.uri>
+        <hdfs.jar.path.local>${build.file.path}</hdfs.jar.path.local>
+        <hdfs.jar.path.stage>/home/${build.file.name}</hdfs.jar.path.stage>
+        <hdfs.jar.path.remote>/bin/${build.file.name}</hdfs.jar.path.remote>
+
+        <spark.host>spark-master.flight-analysis.local</spark.host>
+        <spark.port>7077</spark.port>
+        <spark.uri>spark://${spark.host}:${spark.port}</spark.uri>
+        <spark.jar.name>flight-analysis.jar</spark.jar.name>
+        <spark.jar.path>/opt/spark/jars/${build.file.name}</spark.jar.path>
+
+        <sae.config>local-config.yml</sae.config>
     </properties>
 
     <dependencies>
@@ -146,7 +164,7 @@
                         <goals><goal>shade</goal></goals>
                         <configuration>
                             <shadedArtifactAttached>false</shadedArtifactAttached>
-                            <outputFile>${project.build.directory}/flight-analysis.jar</outputFile>
+                            <outputFile>${build.file.path}</outputFile>
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
@@ -195,8 +213,140 @@
     </build>
 
     <profiles>
+        <!-- ========================================== -->
+        <!-- UPLOAD LOCAL HDFS                          -->
+        <!-- ========================================== -->
         <profile>
-            <id>hdfs-upload</id>
+            <id>upload-local</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.1</version>
+                        <executions>
+                            <execution>
+                                <id>docker-cp-stage</id>
+                                <phase>package</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <executable>docker</executable>
+                                    <arguments>
+                                        <argument>cp</argument>
+                                        <argument>${hdfs.jar.path.local}</argument>
+                                        <argument>${container.hdfs.master}:${hdfs.jar.path.stage}</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>docker-hdfs-rm</id>
+                                <phase>package</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <executable>docker</executable>
+                                    <successCodes>
+                                        <successCode>0</successCode>
+                                        <successCode>1</successCode>
+                                        <successCode>255</successCode>
+                                    </successCodes>
+                                    <arguments>
+                                        <argument>exec</argument>
+                                        <argument>${container.hdfs.master}</argument>
+                                        <argument>hdfs</argument>
+                                        <argument>dfs</argument>
+                                        <argument>-rm</argument>
+                                        <argument>-f</argument>
+                                        <argument>${hdfs.jar.path.remote}</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>docker-hdfs-put</id>
+                                <phase>package</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <executable>docker</executable>
+                                    <arguments>
+                                        <argument>exec</argument>
+                                        <argument>${container.hdfs.master}</argument>
+                                        <argument>hdfs</argument>
+                                        <argument>dfs</argument>
+                                        <argument>-put</argument>
+                                        <argument>-f</argument>
+                                        <argument>${hdfs.jar.path.stage}</argument>
+                                        <argument>${hdfs.jar.path.remote}</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- ========================================== -->
+        <!-- LOCAL SUBMIT                               -->
+        <!-- ========================================== -->
+        <profile>
+            <id>submit-local</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.1</version>
+                        <executions>
+                            <execution>
+                                <id>docker-copy-jar</id>
+                                <phase>package</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <executable>docker</executable>
+                                    <arguments>
+                                        <argument>cp</argument>
+                                        <argument>${build.file.path}</argument>
+                                        <argument>${container.spark.master}:${spark.jar.path}</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>docker-spark-submit</id>
+                                <phase>package</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <executable>docker</executable>
+                                    <arguments>
+                                        <argument>exec</argument>
+                                        <argument>${container.spark.master}</argument>
+                                        <argument>/opt/spark/bin/spark-submit</argument>
+                                        <argument>--master</argument>
+                                        <argument>${spark.uri}</argument>
+                                        <argument>--class</argument>
+                                        <argument>it.uniroma2.sae.FlightAnalysisApp</argument>
+                                        <argument>${spark.jar.path}</argument>
+                                        <argument>--config</argument>
+                                        <argument>${sae.config}</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- ========================================== -->
+        <!-- UPLOAD REMOTE HDFS                         -->
+        <!-- ========================================== -->
+        <profile>
+            <id>upload-remote</id>
+            <properties>
+                <hdfs.host>hdfs-master-node.flight-analysis.remote</hdfs.host>
+                <spark.host>spark-master-node.flight-analysis.remote</spark.host>
+                <sae.config>ec2-config.yml</sae.config>
+                <hdfs.uri>hdfs://${hdfs.host}:${hdfs.port}</hdfs.uri>
+                <spark.uri>spark://${spark.host}:${spark.port}</spark.uri>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -205,11 +355,9 @@
                         <version>3.6.1</version>
                         <executions>
                             <execution>
-                                <id>copy-dependencies</id>
+                                <id>copy-dependencies-remote</id>
                                 <phase>package</phase>
-                                <goals>
-                                    <goal>copy-dependencies</goal>
-                                </goals>
+                                <goals><goal>copy-dependencies</goal></goals>
                                 <configuration>
                                     <outputDirectory>${project.build.directory}/hadoop-libs</outputDirectory>
                                     <includeScope>runtime</includeScope>
@@ -223,38 +371,26 @@
                         <version>3.1.0</version>
                         <executions>
                             <execution>
-                                <id>hdfs-put</id>
+                                <id>hdfs-put-remote</id>
                                 <phase>package</phase>
                                 <goals><goal>run</goal></goals>
                                 <configuration>
                                     <target>
-                                        <echo message="Generating optimized core-site.xml for DNS resolution..." />
+                                        <echo message="Generating temporary core-site.xml for REMOTE ${hdfs.host}..." />
                                         <echo file="${project.build.directory}/hadoop-libs/core-site.xml"><![CDATA[<configuration>
-  <property>
-    <name>fs.defaultFS</name>
-    <value>hdfs://${hdfs.namenode.host}:${hdfs.namenode.port}</value>
-  </property>
-  <property>
-    <name>dfs.client.use.datanode.hostname</name>
-    <value>true</value>
-  </property>
-  <property>
-    <name>dfs.datanode.address</name>
-    <value>0.0.0.0:9866</value>
-  </property>
+  <property><name>fs.defaultFS</name><value>${hdfs.uri}</value></property>
+  <property><name>dfs.client.use.datanode.hostname</name><value>true</value></property>
 </configuration>]]></echo>
-                                        <echo message="Uploading to HDFS hdfs://${hdfs.namenode.host}:${hdfs.namenode.port} via Hadoop Client..." />
+                                        <echo message="Uploading JAR to REMOTE HDFS ${hdfs.uri}..." />
                                         <java classname="org.apache.hadoop.fs.FsShell" fork="true" failonerror="true">
                                             <classpath>
                                                 <pathelement path="${project.build.directory}/hadoop-libs" />
-                                                <fileset dir="${project.build.directory}/hadoop-libs">
-                                                    <include name="*.jar" />
-                                                </fileset>
+                                                <fileset dir="${project.build.directory}/hadoop-libs"><include name="*.jar" /></fileset>
                                             </classpath>
-                                            <arg value="-put" />
-                                            <arg value="-f" />
-                                            <arg value="${project.build.directory}\flight-analysis.jar" />
-                                            <arg value="/bin" />
+                                            <!-- Usa direttamente le variabili globali del POM -->
+                                            <arg value="-put" /><arg value="-f" />
+                                            <arg value="${hdfs.jar.path.local}" />
+                                            <arg value="${hdfs.jar.path.remote}" />
                                         </java>
                                     </target>
                                 </configuration>
@@ -271,12 +407,19 @@
                 </dependency>
             </dependencies>
         </profile>
+
+        <!-- ========================================== -->
+        <!-- REMOTE SUBMIT                              -->
+        <!-- ========================================== -->
         <profile>
-            <id>emr</id>
-            <activation><activeByDefault>true</activeByDefault></activation>
-        </profile>
-        <profile>
-            <id>local</id>
+            <id>submit-remote</id>
+            <properties>
+                <hdfs.host>hdfs-master-node.flight-analysis.remote</hdfs.host>
+                <spark.host>spark-master-node.flight-analysis.remote</spark.host>
+                <sae.config>ec2-config.yml</sae.config>
+                <hdfs.uri>hdfs://${hdfs.host}:${hdfs.port}</hdfs.uri>
+                <spark.uri>spark://${spark.host}:${spark.port}</spark.uri>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -285,33 +428,19 @@
                         <version>3.1.1</version>
                         <executions>
                             <execution>
-                                <id>docker-upload</id>
-                                <phase>package</phase><goals><goal>exec</goal></goals>
+                                <id>remote-spark-submit</id>
+                                <phase>package</phase>
+                                <goals><goal>exec</goal></goals>
                                 <configuration>
-                                    <executable>docker</executable>
+                                    <executable>spark-submit</executable>
                                     <arguments>
-                                        <argument>cp</argument>
-                                        <argument>${project.build.directory}/flight-analysis.jar</argument>
-                                        <argument>spark-master:/opt/spark/jars/flight-analysis.jar</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>run-submit</id>
-                                <phase>package</phase><goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <executable>docker</executable>
-                                    <arguments>
-                                        <argument>exec</argument>
-                                        <argument>spark-master</argument>
-                                        <argument>/opt/spark/bin/spark-submit</argument>
-                                        <argument>--packages</argument>
-                                        <argument>org.apache.hadoop:hadoop-aws:3.3.4</argument>
+                                        <argument>--master</argument>
+                                        <argument>${spark.uri}</argument>
                                         <argument>--class</argument>
                                         <argument>it.uniroma2.sae.FlightAnalysisApp</argument>
-                                        <argument>--master</argument>
-                                        <argument>spark://spark-master.flight-analysis.local:7077</argument>
-                                        <argument>/opt/spark/jars/flight-analysis.jar</argument>
+                                        <argument>${hdfs.uri}${hdfs.jar.path.remote}</argument>
+                                        <argument>--config</argument>
+                                        <argument>${sae.config}</argument>
                                     </arguments>
                                 </configuration>
                             </execution>

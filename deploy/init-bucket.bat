@@ -46,7 +46,7 @@ if %ERRORLEVEL% equ 0 (
 :: --- FOLDER STRUCTURE PROVISIONING ---
 :: Create the logical folder structure within the bucket to support logs, data, and deployment scripts.
 :: These variables are usually defined in .env or passed via CLI.
-call "%SCRIPTS_DIR%create_bucket_folders.bat" "logs" "deploy" "data" "data/conv" "data/res"
+call "%SCRIPTS_DIR%create_bucket_folders.bat" "logs" "deploy" "data" "data/raw" "data/conv" "data/res"
 
 :: --- DEPLOYMENT ASSETS SYNCHRONIZATION ---
 :: Sync the local deploy directory containing templates, compose files, and bash scripts.
@@ -91,9 +91,9 @@ if exist "%PROJECT_ROOT%spark\src\main\resources\" (
 
 :: --- DATASET SYNCHRONIZATION ---
 :: Upload the raw project data used as input for the processing pipeline.
-if exist "%PROJECT_ROOT%data\raw\" (
+if exist "%PROJECT_ROOT%data\zip\" (
     echo [INFO] Syncing raw input datasets to the storage layer...
-    aws s3 sync "%PROJECT_ROOT%data/raw/" "s3://%BUCKET_NAME%/data/raw/"
+    aws s3 sync "%PROJECT_ROOT%data/zip/" "s3://%BUCKET_NAME%/data/zip/"
 )
 
 echo.

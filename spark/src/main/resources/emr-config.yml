@@ -1,0 +1,40 @@
+# Application configuration for Flight Analysis on EMR
+appName: Flight Analysis
+appBackend: dataframe
+
+# --- STORAGE LAYER (Inputs) ---
+inputs:
+  s3:
+    type: "s3"
+    uri: "s3a://spark-flight-analysis"
+    path: "/data/conv"
+  hdfs:
+    type: "hdfs"
+    uri: "hdfs://hdfs-master.flight-analysis.local:54310/bin"
+    path: "/data/conv"
+
+# --- PERSISTENCE LAYER (Outputs) ---
+outputs:
+  s3:
+    type: "s3"
+    uri: "s3a://spark-flight-analysis"
+    path: "/data/res"
+  hdfs:
+    type: "hdfs"
+    uri: "hdfs://hdfs-master.flight-analysis.local:54310/bin"
+    path: "/data/res"
+  postgres:
+    type: "postgres"
+    hostname: "postgres-databases.flight-analysis.local"
+    port: 5432
+    database: "flight_db"
+    user: "postgres"
+    password: "postgres"
+
+# --- MONITORING LAYER (Metrics) ---
+metrics:
+  redis:
+    type: "redis"
+    hostname: "metrics.flight-analysis.local"
+    port: 6379
+    database: "0"

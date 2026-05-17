@@ -1,41 +1,73 @@
 name: flight-analytics-metrics
 
 services:
+  # =================================================================
+  # MONITORING & VISUALIZATION LAYER
+  # =================================================================
+
+  # Redis Stack for Performance Metrics Storage and Search
   redis-metrics:
     image: redis/redis-stack:latest
-    container_name: redis
-    hostname: redis
+    container_name: redis-metrics
+    hostname: redis-metrics
     network_mode: host
-    ports:
-      - "${REDIS_PORT}:6379"
-      - "${REDIS_INSIGHT_PORT}:8001"
+    healthcheck:
+        test: [ "CMD", "redis-cli", "ping" ]
+        interval: 5s
+        timeout: 3s
+        retries: 5
 
+  # Tool for Automated RediSearch Index Creation
   redis-init:
     image: redis/redis-stack:latest
     container_name: redis-init
     network_mode: host
     depends_on:
-      - redis-metrics
+      redis-metrics:
+        condition: service_healthy
     command: >
       sh -c '
-        sleep 5;
+        echo "Waiting for Redis host to respond..."
+        until redis-cli -h localhost -p ${REDIS_PORT} ping | grep -q "PONG"; do
+          sleep 1
+        done
+
+        echo "Redis alive. Waiting for RediSearch module to be loaded..."
+        until redis-cli -h localhost -p ${REDIS_PORT} MODULE LIST | grep -q "search"; do
+          echo "RediSearch module not found in MODULE LIST yet - sleeping..."
+          sleep 1
+        done
+
+        echo "RediSearch completely loaded! Executing index creation script..."
+
         redis-cli -h localhost -p ${REDIS_PORT} FT.CREATE phaseIdx ON HASH PREFIX 1 metrics:phases: SCHEMA query TAG approach TAG phase TAG duration NUMERIC wallclock-duration NUMERIC spark-duration NUMERIC timestamp NUMERIC SORTABLE || true;
+        sleep 1;
+        
         redis-cli -h localhost -p ${REDIS_PORT} FT.CREATE stagesIdx ON HASH PREFIX 1 metrics:stages: SCHEMA query TAG approach TAG phase TAG stageId NUMERIC duration NUMERIC gcTime NUMERIC read NUMERIC written NUMERIC shuffleRead NUMERIC shuffleWrite NUMERIC timestamp NUMERIC SORTABLE || true;
+        sleep 1;
+        
         redis-cli -h localhost -p ${REDIS_PORT} FT.CREATE executorsIdx ON HASH PREFIX 1 metrics:executors: SCHEMA query TAG approach TAG phase TAG execId TAG host TAG tasks NUMERIC runTime NUMERIC cpuTime NUMERIC gcTime NUMERIC read NUMERIC written NUMERIC shuffleRead NUMERIC shuffleWrite NUMERIC timestamp NUMERIC SORTABLE || true;
-        echo "RediSearch index configured successfully!";
+        
+        echo "RediSearch index configuration batch completed!";
       '
 
+  # Grafana Visualization Tool
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     hostname: grafana
     network_mode: host
-    ports:
-      - "${GRAFANA_PORT}:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
       - GF_INSTALL_PLUGINS=redis-datasource
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_PORT=${REDIS_PORT}
     volumes:
       - ./grafana/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+    depends_on:
+      - redis-metrics

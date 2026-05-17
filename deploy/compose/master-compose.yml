@@ -2,19 +2,21 @@ name: flight-analytics-master
 
 services:
 
-  # Storage Layer - HDFS
+  # =================================================================
+  # STORAGE LAYER
+  # =================================================================
+
+  # HDFS NameNode for Distributed File Storage
   hdfs-master:
     image: matnar/hadoop:3.3.2
     container_name: hdfs-master
     user: root
+    hostname: ${HDFS_NAMENODE_HOST}
     network_mode: host
-    ports:
-      - "${HDFS_WEB_UI_PORT}:9870" # HDFS Web UI
-      - "${HDFS_NAMENODE_PORT}:54310" # HDFS RPC NameNode
     volumes:
-      - ./workers:/usr/local/hadoop/etc/hadoop/workers
-      - ./core-site.xml:/usr/local/hadoop/etc/hadoop/core-site.xml
-      - ./hdfs-site.xml:/usr/local/hadoop/etc/hadoop/hdfs-site.xml
+      - ./workers:/usr/local/hadoop/etc/hadoop/workers:ro
+      - ./core-site.xml:/usr/local/hadoop/etc/hadoop/core-site.xml:ro
+      - ./hdfs-site.xml:/usr/local/hadoop/etc/hadoop/hdfs-site.xml:ro
     environment:
       - NODE_TYPE=master
     command: >
@@ -37,20 +39,31 @@ services:
       /usr/local/hadoop/bin/hdfs dfs -mkdir -p /data/raw;
       /usr/local/hadoop/bin/hdfs dfs -chmod -R 777 /data/raw;
 
+      /usr/local/hadoop/bin/hdfs dfs -mkdir -p /bin;
+      /usr/local/hadoop/bin/hdfs dfs -chmod -R 777 /bin;
+
       echo '[INFO] HDFS Master is up and running.';
       wait"
     tty: true
     stdin_open: true
 
-  # Processing Layer - Spark
+  # =================================================================
+  # PROCESSING LAYER
+  # =================================================================
+
+  # Apache Spark Master Instance
   spark-master:
     image: apache/spark:3.5.1
     container_name: spark-master
     user: root
+    hostname: ${SPARK_MASTER_HOST}
     network_mode: host
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
-    ports:
-      - '${SPARK_MASTER_WEBUI_PORT}:8080' # Spark Master Web UI
-      - '${SPARK_MASTER_PORT}:7077' # Spark Master Port
     volumes:
       - ./data:/opt/spark/data
+    environment:
+      - SPARK_MASTER_HOST=${SPARK_MASTER_HOST}
+      - SPARK_LOCAL_HOSTNAME=${SPARK_MASTER_HOST}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}

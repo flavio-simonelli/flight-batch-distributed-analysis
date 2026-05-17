@@ -17,9 +17,9 @@ mkdir -p data/raw data/conv nar_extensions
 # Download configurations, NAR extensions, and raw input data from S3.
 echo "[DEPLOY] Downloading NiFi configurations, extensions, and raw datasets..."
 aws s3 cp "s3://${BUCKET_NAME}/deploy/compose/nifi-compose.yml" "docker-compose.yml"
-aws s3 cp "s3://${BUCKET_NAME}/deploy/configs/" "hadoop-config/" --recursive
-aws s3 cp "s3://${BUCKET_NAME}/nifi/extensions/" "nar_extensions/" --recursive
-aws s3 cp "s3://${BUCKET_NAME}/data/raw/" "data/raw/" --recursive
+aws s3 cp "s3://${BUCKET_NAME}/deploy/configs/" "hadoop/config/" --recursive
+aws s3 cp "s3://${BUCKET_NAME}/nifi/extensions/" "nifi/extensions/" --recursive
+aws s3 cp "s3://${BUCKET_NAME}/data/" "data/" --recursive
 
 # Move the environment file to the working directory for Docker Compose.
 if [ -f "/home/ec2-user/.env" ]; then

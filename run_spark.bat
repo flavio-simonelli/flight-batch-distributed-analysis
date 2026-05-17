@@ -2,6 +2,7 @@
 setlocal enabledelayedexpansion
 
 :: --- CONFIGURATION ---
+set CONTAINER_NAME=spark-master
 set CONFIG_FILE=local-config.yml
 :: ---------------------
 

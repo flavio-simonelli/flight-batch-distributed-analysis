@@ -1,20 +1,31 @@
 name: flight-analytics-worker
 
 services:
+
+  # =================================================================
+  # STORAGE LAYER
+  # =================================================================
+
+  # HDFS DataNode Instance
   hdfs-worker:
     image: matnar/hadoop:3.3.2
     container_name: hdfs-worker
     user: root
     network_mode: host
     volumes:
-      - ./core-site.xml:/usr/local/hadoop/etc/hadoop/core-site.xml
-      - ./hdfs-site.xml:/usr/local/hadoop/etc/hadoop/hdfs-site.xml
+      - ./core-site.xml:/usr/local/hadoop/etc/hadoop/core-site.xml:ro
+      - ./hdfs-site.xml:/usr/local/hadoop/etc/hadoop/hdfs-site.xml:ro
     environment:
       - NODE_TYPE=worker
-      - HDFS_NAMENODE_HOST=${MASTER_PRIVATE_IP}
+      - HDFS_NAMENODE_HOST=${HDFS_NAMENODE_HOST}
     command: >
       sh -c "/usr/local/hadoop/bin/hdfs datanode & wait"
 
+  # =================================================================
+  # PROCESSING LAYER
+  # =================================================================
+
+  # Apache Spark Worker Instance
   spark-worker:
     image: apache/spark:3.5.1
     container_name: spark-worker
@@ -23,6 +34,8 @@ services:
     volumes:
       - ./data:/opt/spark/data
     environment:
-      - SPARK_MASTER_HOST=${MASTER_PRIVATE_IP}
-    # Connection to master via DNS name
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://${MASTER_PRIVATE_IP}:7077
+      - SPARK_MASTER_HOST=${SPARK_MASTER_HOST}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://${SPARK_MASTER_HOST}:7077

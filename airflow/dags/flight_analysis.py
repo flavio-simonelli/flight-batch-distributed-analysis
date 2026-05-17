@@ -26,16 +26,20 @@ PAYLOAD_TEMPLATE_PATH = os.path.join(DAGS_DIR, "payload.json")
 # Spark application parameters and paths within the distributed nodes
 JAR_PATH = "hdfs://hdfs-master.flight-analysis.local:54310/bin/flight-analysis.jar"
 JAR_CLASS = "it.uniroma2.sae.FlightAnalysisApp"
-SPARK_CONFIG_PATH = "local-config.yml"
 
-# Hardcoded storage configurations
+# Available configuration options
+AVAILABLE_QUERIES = ["monthly_performance", "arrival_delay_ranking", "hourly_delay_percentiles", "airline_clustering"]
+AVAILABLE_BACKENDS = ["rdd", "dataframe", "sql"]
+AVAILABLE_CONFIGS = ["local-config.yml", "ec2-config.yml", "emr-config.yml"]
+AVAILABLE_INPUTS = ["hdfs", "s3", "local"]
+AVAILABLE_OUTPUTS = ["hdfs", "postgres", "mongodb", "redis", "hbase", "s3", "local"]
+AVAILABLE_METRICS = ["redis"]
+
+# Hardcoded storage configurations for NiFi (Internal Airflow mapping)
 STORAGE_MAPPINGS = {
     "HDFS": {"bucket": "", "raw_path": "/data/raw", "preprocessed_path": "/data/conv"},
     "S3": {"bucket": "spark-flight-analysis", "raw_path": "/data/raw", "preprocessed_path": "/data/conv"}
 }
-
-AVAILABLE_QUERIES = ["monthly_performance", "arrival_delay_ranking", "hourly_delay_percentiles", "airline_clustering"]
-AVAILABLE_BACKENDS = ["rdd", "dataframe", "sql"]
 
 @dag(
     dag_id="flight_analysis",
@@ -44,24 +48,14 @@ AVAILABLE_BACKENDS = ["rdd", "dataframe", "sql"]
     catchup=False,
     tags=["distributed", "spark", "nifi", "orchestration", "airflow-3"],
     params={
-        "run_mode": Param(
-            "Both", 
-            enum=["Both", "Ingest Only", "Execution Only"],
-            description="[MANDATORY] Execution scope."
-        ),
-        "selected_query": Param(
-            "monthly_performance", 
-            enum=AVAILABLE_QUERIES,
-            description="[MANDATORY] Select the Spark query to execute."
-        ),
-        "spark_backend": Param(
-            "dataframe", 
-            enum=AVAILABLE_BACKENDS, 
-            description="[MANDATORY] Spark API to use for processing."
-        ),
-        # "nifi_hostname": Param("nifi.flight-analysis.local:8085", type="string"),
-        # "airflow_hostname": Param("airflow.flight-analysis.local:8088", type="string"),
-        "raw_storage_type": Param("HDFS", enum=["HDFS", "S3"], ),
+        "run_mode": Param("Both", enum=["Both", "Ingest Only", "Execution Only"]),
+        "selected_query": Param("monthly_performance", enum=AVAILABLE_QUERIES),
+        "spark_backend": Param("dataframe", enum=AVAILABLE_BACKENDS),
+        "config_file": Param("local-config.yml", enum=AVAILABLE_CONFIGS),
+        "input_type": Param("hdfs", enum=AVAILABLE_INPUTS),
+        "output_type": Param("hdfs", enum=AVAILABLE_OUTPUTS),
+        "metrics_type": Param("redis", enum=AVAILABLE_METRICS),
+        "raw_storage_type": Param("HDFS", enum=["HDFS", "S3"]),
         "preprocessed_storage_type": Param("HDFS", enum=["HDFS", "S3"]),
         "optimization_strategy": Param("PREDICATE_PUSHDOWN", enum=["PREDICATE_PUSHDOWN", "PARTITION_PRUNING"])
     },
@@ -93,7 +87,6 @@ def flight_analysis():
         print(f"[AIRFLOW] Variable '{var_name}' initialized.")
 
         # 2. Fetch JWT Token for the callback
-        # login_url = f"http://{params['airflow_hostname']}/auth/token"
         login_url = f"http://airflow.flight-analysis.local:8088/auth/token"
         login_res = requests.post(login_url, json={"username": "admin", "password": "admin_password"})
         login_res.raise_for_status()
@@ -132,7 +125,6 @@ def flight_analysis():
         payload["callback"].update({
             "run_id": clean_id,
             "variable_key": var_name,
-            # "url": f"http://{params['airflow_hostname']}/api/v2/variables/{var_name}",
             "url": f"http://airflow.flight-analysis.local:8088/api/v2/variables/{var_name}",
             "method": "PATCH",
             "headers": {
@@ -142,7 +134,6 @@ def flight_analysis():
         })
 
         # 4. Trigger NiFi Endpoint
-        # endpoint = f"http://{params['nifi_hostname']}/experiment"
         endpoint = f"http://nifi.flight-analysis.local:8085/experiment"
         nifi_res = requests.post(endpoint, json=payload)
         nifi_res.raise_for_status()
@@ -201,16 +192,18 @@ def flight_analysis():
     @task(trigger_rule="none_failed_min_one_success")
     def prepare_spark_args(**context) -> list[str]:
         """Prepares the arguments for the Spark task based on user selection."""
-        run_mode = context["params"]["run_mode"]
-        
-        # If we shouldn't run execution, return an empty list (will be handled by trigger rules)
-        if run_mode == "Ingest Only":
+        params = context["params"]
+        if params["run_mode"] == "Ingest Only":
             return []
             
-        query = context["params"]["selected_query"]
-        backend = context["params"]["spark_backend"]
-        
-        return ["--query", query, "--backend", backend, "--config", SPARK_CONFIG_PATH]
+        return [
+            "--query", params["selected_query"],
+            "--backend", params["spark_backend"],
+            "--config", params["config_file"],
+            "--input-type", params["input_type"],
+            "--output-type", params["output_type"],
+            "--metrics-type", params["metrics_type"]
+        ]
 
     spark_args = prepare_spark_args()
 

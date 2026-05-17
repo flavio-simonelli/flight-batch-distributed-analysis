@@ -17,7 +17,7 @@ echo "[SPARK] Configuration: Query=$QUERY_TYPE, Backend=$BACKEND_TYPE"
 # Execute the spark-submit binary within the spark-master container.
 # Configuration is loaded from the internal container path mapped to the spark application folder.
 docker exec spark-master /opt/spark/bin/spark-submit \
-  --master spark://master.flight-analysis.local:7077 \
+  --master spark://spark-master.flight-analysis.local:7077 \
   --class it.uniroma2.sae.FlightAnalysisApp \
   /opt/spark/scripts/flight-analysis.jar \
   --config /opt/spark/scripts/ec2-config.yml \

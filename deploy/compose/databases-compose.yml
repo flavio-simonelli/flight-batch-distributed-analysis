@@ -1,47 +1,47 @@
 name: flight-analytics-databases
 
 services:
+  # =================================================================
+  # PERSISTENCE LAYER (Result Databases)
+  # =================================================================
+
+  # PostgreSQL Relational Database for Final Results
   postgres:
     image: postgres:15
     container_name: postgres
     hostname: postgres
     network_mode: host
-    ports:
-      - "${POSTGRES_PORT}:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      - ./data/databases/postgres:/var/lib/postgresql/data
 
+  # MongoDB Document Database for Final Results
   mongodb:
     image: mongo:latest
     container_name: mongodb
     hostname: mongodb
     network_mode: host
-    ports:
-      - "${MONGO_PORT}:27017"
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
       - MONGO_INITDB_DATABASE=${MONGO_DB}
 
-  redis-output:
-    image: redis:latest
-    container_name: redis-output
-    hostname: redis-output
-    network_mode: host
-    command: redis-server --port 6380
-
+  # Apache HBase Columnar Database for Final Results
   hbase:
     image: harisekhon/hbase:latest
     container_name: hbase
     hostname: hbase
     network_mode: host
-    ports:
-      - "${HBASE_UI_PORT}:16010"
-      - "16000:16000"
-      - "16020:16020"
-      - "${HBASE_ZK_PORT}:2181"
-      - "8765:8765"
+    tty: true
+    stdin_open: true
+
+  # Redis Instance for Output Storage
+  redis-output:
+    image: redis:latest
+    container_name: redis-output
+    hostname: redis-output
+    network_mode: host
+    command: redis-server
