@@ -1,4 +1,4 @@
 # Flight Batch Distributed Analysis
-> Sistemi e Architetture per Big Data [SABD] - Progetto 1 di 2
+> Systems and Architectures for Big Data [SABD] - Project 1 of 2
 
-Questo repository contiene il primo progetto del corso di SABD, dedicato all'analisi dei dati relativi ai voli domestici statunitensi nel periodo gennaio-aprile 2025. L'obiettivo è confrontare diverse astrazioni di calcolo distribuito (RDD vs Spark SQL vs Dataframe) e implementare pipeline di analisi distribuita.
+This repository contains the first project of the SABD course, focused on analyzing domestic US flight data from January to April 2025. The objective is to compare different distributed computing abstractions (RDD vs. Spark SQL vs. Dataframe) and implement distributed analysis pipelines.

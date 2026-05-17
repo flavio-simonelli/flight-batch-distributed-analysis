@@ -1,45 +1,45 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Cluster Amazon EMR configurato per applicazioni Apache Spark
+Description: Amazon EMR cluster configured for Apache Spark applications
 
 Parameters:
   ClusterName:
     Type: String
     Default: SparkEMRCluster
-    Description: Nome del cluster EMR
+    Description: Name of the EMR cluster
   ReleaseLabel:
     Type: String
     Default: emr-7.13.0
-    Description: Versione della release di EMR (es. emr-6.15.0 include Spark 3.4.1)
+    Description: EMR release version (e.g., emr-6.15.0 includes Spark 3.4.1)
   MasterInstanceType:
     Type: String
     Default: m6g.xlarge
-    Description: Tipo di istanza EC2 per il nodo Master
+    Description: EC2 instance type for the Master node
   CoreInstanceType:
     Type: String
     Default: m6g.xlarge
-    Description: Tipo di istanza EC2 per i nodi Core (Worker)
+    Description: EC2 instance type for the Core nodes (Workers)
   CoreInstanceCount:
     Type: Number
     Default: 1
-    Description: Numero di istanze Core per il calcolo distribuito
+    Description: Number of Core instances for distributed computation
   KeyName:
     Type: AWS::EC2::KeyPair::KeyName
-    Description: Nome della chiave SSH per accedere ai nodi (Master e Core)
+    Description: SSH key pair name to access nodes (Master and Core)
   SubnetId:
     Type: AWS::EC2::Subnet::Id
-    Description: ID della subnet dove avviare il cluster
+    Description: Subnet ID where the cluster will be launched
   LogUri:
     Type: String
     Default: s3://logs/emr-logs/
-    Description: Percorso del bucket S3 per salvare i log di EMR e Spark
+    Description: S3 bucket path to save EMR and Spark logs
   ServiceRole:
     Type: String
     Default: EMR_DefaultRole
-    Description: Ruolo IAM per il servizio EMR
+    Description: IAM role for the EMR service
   JobFlowRole:
     Type: String
     Default: EMR_EC2_DefaultRole
-    Description: Profilo istanza IAM per i nodi EC2
+    Description: IAM instance profile for EC2 nodes
 
 Resources:
   SparkEMRCluster:
@@ -51,14 +51,14 @@ Resources:
       LogUri: !Ref LogUri
       ServiceRole: !Ref ServiceRole
       JobFlowRole: !Ref JobFlowRole
-      # Installiamo Spark e Hadoop come applicazioni di base sul cluster
+      # Install Spark and Hadoop as base applications on the cluster
       Applications:
         - Name: Spark
         - Name: Hadoop
       Instances:
         Ec2KeyName: !Ref KeyName
         Ec2SubnetId: !Ref SubnetId
-        # Mantiene il cluster attivo anche quando non ci sono step in esecuzione
+        # Keeps the cluster active even when no steps are running
         KeepJobFlowAliveWhenNoSteps: true
         MasterInstanceGroup:
           InstanceCount: 1
@@ -77,8 +77,8 @@ Resources:
 
 Outputs:
   ClusterId:
-    Description: L'ID univoco del cluster EMR creato
+    Description: Unique ID of the created EMR cluster
     Value: !Ref SparkEMRCluster
   MasterPublicDns:
-    Description: Il DNS pubblico del nodo Master
+    Description: Public DNS of the Master node
     Value: !GetAtt SparkEMRCluster.MasterPublicDNS

@@ -61,11 +61,11 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
     }
 
     /**
-     * Salva le metriche di performance su Redis, includendo l'approccio utilizzato (es. RDD, DF, SQL)
-     * per permettere il confronto su Grafana.
+     * Saves performance metrics to Redis, including the approach used (e.g., RDD, DF, SQL)
+     * to allow comparison in Grafana.
      *
-     * @param queryName Il nome della query (es. "query1_monthly_performance")
-     * @param approach L'API di Spark utilizzata (es. "RDD", "DataFrame", "SQL")
+     * @param queryName The name of the query (e.g., "query1_monthly_performance")
+     * @param approach The Spark API used (e.g., "RDD", "DataFrame", "SQL")
      */
     public void saveMetrics(String queryName, String approach) {
         PerformanceMetrics pm = PerformanceMetrics.getInstance();
@@ -73,7 +73,7 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
 
         logger.info("Persisting metrics to Redis | query={} | approach={}", queryName, approach);
 
-        // 1. SAVE PHASE METRICS
+        // SAVE PHASE METRICS
         List<Row> phaseRows = new ArrayList<>();
         pm.getPhases().forEach((name, m) -> {
             phaseRows.add(RowFactory.create(queryName, approach, name, m.getWallClockTime(), m.getSparkTime(), timestamp));
@@ -93,7 +93,7 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
             saveResults(spark.createDataFrame(phaseRows, phaseSchema), phaseTable, SaveMode.Append);
         }
 
-        // 2. SAVE STAGE METRICS
+        // SAVE STAGE METRICS
         List<Row> stageRows = new ArrayList<>();
         pm.getPhases().forEach((phaseName, m) -> {
             m.sparkStages.forEach(s -> {
@@ -121,7 +121,7 @@ public class RedisFlightRepository extends DbFlightRepository<RedisStorageConfig
             saveResults(spark.createDataFrame(stageRows, stageSchema), stageTable, SaveMode.Append);
         }
 
-        // 3. SAVE EXECUTOR METRICS
+        // SAVE EXECUTOR METRICS
         List<Row> execRows = new ArrayList<>();
         pm.getPhases().forEach((phaseName, m) -> {
             m.executorMetrics.values().forEach(e -> {

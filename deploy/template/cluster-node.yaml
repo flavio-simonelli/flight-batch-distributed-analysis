@@ -14,10 +14,10 @@ Parameters:
     Type: AWS::EC2::SecurityGroup::Id
   HostedZoneId:
     Type: String
-    Description: ID della Private Hosted Zone
+    Description: ID of the Private Hosted Zone
   NodeHostname:
     Type: String
-    Description: Hostname del nodo (es. master.flight-analysis.local o worker-1.flight-analysis.local)
+    Description: Node hostname (e.g., master.flight-analysis.local or worker-1.flight-analysis.local)
   KeyName:
     Type: AWS::EC2::KeyPair::KeyName
   InstanceName:
@@ -33,7 +33,7 @@ Parameters:
     Default: deploy-engine.sh
   EnvironmentFile:
     Type: String
-    Description: File .env specifico per questo nodo
+    Description: Specific .env file for this node
 
 Resources:
   InstanceProfile:

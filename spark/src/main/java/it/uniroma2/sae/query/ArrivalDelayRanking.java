@@ -121,9 +121,9 @@ public class ArrivalDelayRanking extends BaseQuery {
                     );
                 });
 
-        //diagnostic print
-        SparkDiagnostics.profilePartitions(processedRDD, "Compagnie Aeree dopo Filtro 500");
-        SparkDiagnostics.checkSkew(processedRDD, "Compagnie Aeree", 3.0);
+        // diagnostic print
+        SparkDiagnostics.profilePartitions(processedRDD, "Airlines after 500 filter");
+        SparkDiagnostics.checkSkew(processedRDD, "Airlines", 3.0);
 
 
         // Sort the result by average arrival delay in descending order
