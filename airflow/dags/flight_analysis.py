@@ -38,7 +38,7 @@ AVAILABLE_METRICS = ["redis"]
 # Hardcoded storage configurations for NiFi (Internal Airflow mapping)
 STORAGE_MAPPINGS = {
     "HDFS": {"bucket": "", "raw_path": "/data/raw", "preprocessed_path": "/data/conv"},
-    "S3": {"bucket": "spark-flight-analysis", "raw_path": "/data/raw", "preprocessed_path": "/data/conv"}
+    "S3": {"bucket": "spark-flight-analysis", "region": "us-east-1", "raw_path": "data/raw", "preprocessed_path": "data/conv"}
 }
 
 @dag(
@@ -49,15 +49,15 @@ STORAGE_MAPPINGS = {
     tags=["distributed", "spark", "nifi", "orchestration", "airflow-3"],
     params={
         "run_mode": Param("Both", enum=["Both", "Ingest Only", "Execution Only"]),
+        "raw_storage_type": Param("HDFS", enum=["HDFS", "S3"]),
+        "optimization_strategy": Param("PREDICATE_PUSHDOWN", enum=["PREDICATE_PUSHDOWN", "PARTITION_PRUNING"]),
+        "preprocessed_storage_type": Param("HDFS", enum=["HDFS", "S3"]),
         "selected_query": Param("monthly_performance", enum=AVAILABLE_QUERIES),
         "spark_backend": Param("dataframe", enum=AVAILABLE_BACKENDS),
-        "config_file": Param("local-config.yml", enum=AVAILABLE_CONFIGS),
+        "config_file": Param("ec2-config.yml", enum=AVAILABLE_CONFIGS),
         "input_type": Param("hdfs", enum=AVAILABLE_INPUTS),
-        "output_type": Param("hdfs", enum=AVAILABLE_OUTPUTS),
-        "metrics_type": Param("redis", enum=AVAILABLE_METRICS),
-        "raw_storage_type": Param("HDFS", enum=["HDFS", "S3"]),
-        "preprocessed_storage_type": Param("HDFS", enum=["HDFS", "S3"]),
-        "optimization_strategy": Param("PREDICATE_PUSHDOWN", enum=["PREDICATE_PUSHDOWN", "PARTITION_PRUNING"])
+        "output_type": Param("postgres", enum=AVAILABLE_OUTPUTS),
+        "metrics_type": Param("redis", enum=AVAILABLE_METRICS)
     },
 )
 def flight_analysis():
@@ -108,6 +108,7 @@ def flight_analysis():
         payload["storage_raw"].update({
             "type": params["raw_storage_type"],
             "bucket": raw_info["bucket"],
+            "region": raw_info["region"] if "region" in raw_info else "us-east-1",
             "path": raw_info["raw_path"]
         })
         
@@ -115,6 +116,7 @@ def flight_analysis():
         payload["storage_preprocessed"].update({
             "type": params["preprocessed_storage_type"],
             "bucket": pre_info["bucket"],
+            "region": pre_info["region"] if "region" in raw_info else "us-east-1",
             "path": pre_info["preprocessed_path"]
         })
         

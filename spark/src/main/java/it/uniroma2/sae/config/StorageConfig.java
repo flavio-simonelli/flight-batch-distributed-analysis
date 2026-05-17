@@ -63,8 +63,8 @@ public class StorageConfig implements Serializable {
     }
 
     public String getResultDirectory() {
-        if(resultDirectory == null) return getPath();
-        return resultDirectory.endsWith("/") ? resultDirectory : resultDirectory + "/";
+        String rd = resultDirectory != null ? resultDirectory : "/";
+        return rd.endsWith("/") ? rd : rd + "/";
     }
     public void setResultDirectory(String resultDirectory) {
         this.resultDirectory = resultDirectory;

@@ -28,15 +28,15 @@ AVAILABLE_OUTPUTS = ["hdfs", "postgres", "mongodb", "redis", "hbase", "s3", "loc
 AVAILABLE_METRICS = ["redis"]
 
 @dag(
-    dag_id="flight_benchmark",
+    dag_id="ec2_benchmark",
     schedule=None,
     start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=["benchmark", "spark", "performance", "airflow-3"],
     params={
-        "config_file": Param("local-config.yml", enum=AVAILABLE_CONFIGS),
+        "config_file": Param("ec2-config.yml", enum=AVAILABLE_CONFIGS),
         "input_type": Param("hdfs", enum=AVAILABLE_INPUTS),
-        "output_type": Param("hdfs", enum=AVAILABLE_OUTPUTS),
+        "output_type": Param("postgres", enum=AVAILABLE_OUTPUTS),
         "metrics_type": Param("redis", enum=AVAILABLE_METRICS),
     },
     description="Runs all query/backend combinations sequentially for benchmarking."

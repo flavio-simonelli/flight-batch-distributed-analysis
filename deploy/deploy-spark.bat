@@ -48,7 +48,7 @@ echo [INFO] Target network segment identified: %SUBNET_ID%
 :: Deploy the EMR cluster stack via CloudFormation using the spark-emr template.
 echo [INFO] Launching Spark EMR Infrastructure stack...
 
-set CLUSTER_STACK_NAME=%SPARK_CLUSTER_NAME%-stack
+set CLUSTER_STACK_NAME=%SPARK_CLUSTER_NAME%-stack-%RANDOM%
 
 aws cloudformation create-stack ^
   --stack-name %CLUSTER_STACK_NAME% ^
@@ -57,7 +57,6 @@ aws cloudformation create-stack ^
       ParameterKey=ClusterName,ParameterValue="%SPARK_CLUSTER_NAME%" ^
       ParameterKey=KeyName,ParameterValue="%SSH_KEY_NAME%" ^
       ParameterKey=SubnetId,ParameterValue="%SUBNET_ID%" ^
-      ParameterKey=LogUri,ParameterValue="s3://%BUCKET_NAME%/%LOGS_FOLDER_NAME%/" ^
       ParameterKey=CoreInstanceCount,ParameterValue=%SPARK_CORE_COUNT%
 
 if %ERRORLEVEL% equ 0 (
