@@ -18,17 +18,6 @@ services:
     volumes:
       - ./data/databases/postgres:/var/lib/postgresql/data
 
-  # MongoDB Document Database for Final Results
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb
-    hostname: mongodb
-    network_mode: host
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
-      - MONGO_INITDB_DATABASE=${MONGO_DB}
-
   # Apache HBase Columnar Database for Final Results
   hbase:
     image: harisekhon/hbase:latest

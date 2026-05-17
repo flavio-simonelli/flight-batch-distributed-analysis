@@ -240,7 +240,7 @@ del "%DNS_BATCH_FILE%"
 :skip_airflow
 
 :: --- DATABASES NODE DEPLOYMENT ---
-:: Persistence layer with PostgreSQL, MongoDB, HBase, and Redis Output.
+:: Persistence layer with PostgreSQL, HBase, and Redis Output.
 if /I "%TARGET%"=="master" goto :skip_databases
 if /I "%TARGET%"=="worker" goto :skip_databases
 if /I "%TARGET%"=="metrics" goto :skip_databases
@@ -267,14 +267,13 @@ aws cloudformation deploy ^
   --capabilities CAPABILITY_IAM ^
   --no-fail-on-empty-changeset
 
-echo [INFO] Creating additional DNS aliases for Databases (postgres, mongodb, redis, hbase)...
+echo [INFO] Creating additional DNS aliases for Databases (postgres, redis, hbase)...
 set "DNS_BATCH_FILE=%TEMP%\dns-databases-aliases.json"
 (
 echo {
 echo   "Comment": "Creating aliases for Databases",
 echo   "Changes": [
 echo     { "Action": "UPSERT", "ResourceRecordSet": { "Name": "postgres-databases.%PRIVATE_DOMAIN_NAME%", "Type": "CNAME", "TTL": 300, "ResourceRecords": [{ "Value": "databases.%PRIVATE_DOMAIN_NAME%" }] } },
-echo     { "Action": "UPSERT", "ResourceRecordSet": { "Name": "mongodb-databases.%PRIVATE_DOMAIN_NAME%", "Type": "CNAME", "TTL": 300, "ResourceRecords": [{ "Value": "databases.%PRIVATE_DOMAIN_NAME%" }] } },
 echo     { "Action": "UPSERT", "ResourceRecordSet": { "Name": "redis-databases.%PRIVATE_DOMAIN_NAME%", "Type": "CNAME", "TTL": 300, "ResourceRecords": [{ "Value": "databases.%PRIVATE_DOMAIN_NAME%" }] } },
 echo     { "Action": "UPSERT", "ResourceRecordSet": { "Name": "hbase-databases.%PRIVATE_DOMAIN_NAME%", "Type": "CNAME", "TTL": 300, "ResourceRecords": [{ "Value": "databases.%PRIVATE_DOMAIN_NAME%" }] } }
 echo   ]

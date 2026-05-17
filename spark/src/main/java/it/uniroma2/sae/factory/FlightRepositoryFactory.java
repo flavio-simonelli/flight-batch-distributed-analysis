@@ -96,12 +96,6 @@ public class FlightRepositoryFactory {
                 JdbcStorageConfig jdbcConfig = (JdbcStorageConfig) storageConfig;
                 return new PostgresFlightRepository(spark, jdbcConfig);
 
-            case MONGODB:
-                if (!(storageConfig instanceof MongoStorageConfig)) {
-                    throw new IllegalArgumentException("Configuration mismatch: Expected MongoStorageConfig for MONGODB output type.");
-                }
-                return new MongoFlightRepository(spark, (MongoStorageConfig) storageConfig);
-
             case REDIS:
                 if (!(storageConfig instanceof RedisStorageConfig)) {
                     throw new IllegalArgumentException("Configuration mismatch: Expected RedisStorageConfig for REDIS output type.");

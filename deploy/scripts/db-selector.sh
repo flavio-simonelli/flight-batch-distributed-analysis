@@ -4,7 +4,7 @@
 # This script allows the operator to toggle between different storage engines
 # without keeping all services active simultaneously, optimizing resource usage.
 
-# Usage: ./db-selector.sh {postgres|mongodb|redis|hbase|all|stop}
+# Usage: ./db-selector.sh {postgres|redis|hbase|all|stop}
 
 # Retrieve the selection target from the first command-line argument.
 TARGET=$1
@@ -14,11 +14,6 @@ case $TARGET in
         echo "[DB-SELECTOR] Activating PostgreSQL service only..."
         docker-compose stop
         docker-compose up -d postgres
-        ;;
-    mongodb)
-        echo "[DB-SELECTOR] Activating MongoDB service only..."
-        docker-compose stop
-        docker-compose up -d mongodb
         ;;
     redis)
         echo "[DB-SELECTOR] Activating Redis Output service only..."
@@ -40,7 +35,7 @@ case $TARGET in
         ;;
     *)
         # Display usage information for invalid or missing inputs.
-        echo "Usage: $0 {postgres|mongodb|redis|hbase|all|stop}"
+        echo "Usage: $0 {postgres|redis|hbase|all|stop}"
         echo "Example: ./db-selector.sh postgres"
         exit 1
         ;;

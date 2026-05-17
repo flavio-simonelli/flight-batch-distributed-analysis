@@ -23,9 +23,6 @@ public enum StorageType implements Serializable {
     @JsonProperty("postgres")
     POSTGRES("postgres"),
 
-    @JsonProperty("mongodb")
-    MONGODB("mongodb"),
-
     @JsonProperty("redis")
     REDIS("redis"),
 

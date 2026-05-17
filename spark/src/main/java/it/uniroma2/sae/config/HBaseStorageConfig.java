@@ -33,7 +33,7 @@ public class HBaseStorageConfig extends DbStorageConfig {
 
     @Override
     public String getConnectionUri() {
-        // HBase doesn't use a single connection URI in the same way Mongo does, 
+        // HBase doesn't use a single connection URI, 
         // but we can return the Zookeeper quorum string as its identifier.
         return getZookeeperQuorum() + ":" + getZookeeperClientPort();
     }

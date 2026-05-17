@@ -62,7 +62,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Jackson (Compile & Shaded) - Esplicitiamo tutti i moduli -->
+        <!-- Jackson (Compile & Shaded) -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
@@ -89,11 +89,6 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>42.6.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mongodb.spark</groupId>
-            <artifactId>mongo-spark-connector_${scala.compat.version}</artifactId>
-            <version>10.3.0</version>
         </dependency>
         <dependency>
             <groupId>com.redislabs</groupId>
@@ -387,7 +382,6 @@
                                                 <pathelement path="${project.build.directory}/hadoop-libs" />
                                                 <fileset dir="${project.build.directory}/hadoop-libs"><include name="*.jar" /></fileset>
                                             </classpath>
-                                            <!-- Usa direttamente le variabili globali del POM -->
                                             <arg value="-put" /><arg value="-f" />
                                             <arg value="${hdfs.jar.path.local}" />
                                             <arg value="${hdfs.jar.path.remote}" />

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Deployment script for the Databases Node of the Sky Analytics Engine.
-# This instance hosts various storage engines (Postgres, MongoDB, HBase, Redis Output).
+# This instance hosts various storage engines (Postgres, HBase, Redis Output).
 # It is used for persisting the final results of the analytical queries.
 
 echo "[DEPLOY] Starting Databases Node Deployment..."

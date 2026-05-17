@@ -46,14 +46,6 @@ outputs:
     database: "flight_db"
     user: "postgres"
     password: "postgres"
-  mongodb:
-    type: "mongodb"
-    hostname: "mongodb.flight-analysis.local"
-    port: 27017
-    database: "flight_db"
-    collection: "flight_results"
-    user: "admin"
-    password: "password"
   redis:
     type: "redis"
     hostname: "redis-output.flight-analysis.local"
