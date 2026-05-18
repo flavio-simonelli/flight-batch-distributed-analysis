@@ -1,0 +1,357 @@
+\documentclass[conference]{IEEEtran}
+% \documentclass[conference]{acmart}
+\usepackage[utf8]{inputenc}
+\usepackage[italian]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{cite} % IEEE specific package for bibliography management
+\usepackage{tabularx}
+
+% Configurazione
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+% ACM Configuration
+%\setcopyright{none}
+%\acmConference[SABD 2025/26]{Sistemi e Architetture per Big Data}{Giugno 2026}{Roma, Italia}
+%\acmDOI{}
+%\acmISBN{}
+
+\begin{document}
+
+\title{Sky Analytics Engine: Architettura Distribuita per l'Analisi Big Data del Traffico Aereo \\ \large Sviluppo di una Pipeline Integrata con Spark, NiFi e Airflow}
+
+% IEEE Configuration
+\author{
+    \IEEEauthorblockN{Flavio Simonelli}
+    \IEEEauthorblockA{Dipartimento di Ingegneria\\
+    Università di Roma "Tor Vergata"\\
+    flavio.simonelli@alumni.uniroma2.eu}
+    \and
+    \IEEEauthorblockN{Francesco Masci}
+    \IEEEauthorblockA{Dipartimento di Ingegneria\\
+    Università di Roma "Tor Vergata"\\
+    francesco.masci.02@alumni.uniroma2.eu}
+}
+
+% ACM Configuration
+% \author{Flavio Simonelli}
+% \affiliation{%
+%     \institution{Università di Roma "Tor Vergata"}
+%     \city{Roma}
+%     \country{Italia}
+% }
+% \email{flavio.simonelli@alumni.uniroma2.eu}
+%
+% \author{Francesco Masci}
+% \affiliation{%
+%     \institution{Università di Roma "Tor Vergata"}
+%     \city{Roma}
+%     \country{Italia}
+% }
+% \email{francesco.masci.02@alumni.uniroma2.eu}
+
+% IEEE Configuration
+\maketitle
+
+% ------------------------------
+
+\begin{abstract}
+Il presente documento descrive in dettaglio la progettazione, lo sviluppo e la validazione sperimentale di Sky Analytics Engine, una piattaforma Big Data concepita per l'analisi distribuita e l'orchestrazione di pipeline analitiche complesse relative al traffico aereo statunitense.
+SAE integra componenti leader del settore come Apache Airflow per l'orchestrazione, Apache NiFi per l'ingestion asincrona, e Apache Spark per il processamento distribuito su cluster Hadoop.
+L'architettura proposta si distingue per la sua estrema modularità, implementata attraverso un approccio "polyglot persistence" e una netta separazione tra i piani di controllo e di esecuzione.
+Il sistema è in grado di gestire dataset massivi, applicando tecniche avanzate di approssimazione algoritmica e modelli di machine learning non supervisionato per estrarre insight operativi con alta efficienza computazionale.
+I risultati sperimentali confermano la superiorità delle API strutturate di Spark (DataFrame/SQL) rispetto all'approccio a basso livello (RDD) e dimostrano l'efficacia del formato colonnare Parquet nel ridurre drasticamente l'I/O overhead in ambienti distribuiti, sia in implementazioni on-premise che in scenari cloud-native.
+\end{abstract}
+
+% ------------------------------
+
+% IEEE Configuration
+\begin{IEEEkeywords}
+Architetture Big Data, Apache Spark, Apache NiFi, Apache Airflow, Orchestrazione di Pipeline, Data Ingestion, Machine Learning, Scalabilità, Polyglot Persistence.
+\end{IEEEkeywords}
+
+% ACM Configuration
+% \keywords{Architetture Big Data, Apache Spark, Apache NiFi, Apache Airflow, Orchestrazione di Pipeline, Data Ingestion, Machine Learning, Scalabilità, Polyglot Persistence.}
+
+% ------------------------------
+
+% ACM Configuration
+% \maketitle
+
+\section{Introduzione}\label{sec:introduction}
+La crescita esponenziale dei dati generati dai sistemi operanti nel settore del trasporto aereo richiede architetture di elaborazione che superino agilmente i limiti imposti dai sistemi monolitici tradizionali.
+La sfida odierna non riguarda esclusivamente il volume dei dati generati, ma coinvolge anche la velocità con cui questi devono essere acquisiti, trasformati e resi disponibili per le analisi, unita alla varietà dei formati sorgente e delle destinazioni di storage.
+Sky Analytics Engine è stato concepito e sviluppato per rispondere in modo esaustivo a queste sfide attraverso un'architettura distribuita, altamente modulare e "cloud-ready".
+
+L'obiettivo primario di SAE è fornire una piattaforma che non si limiti ad essere un mero strumento di calcolo, bensì un ecosistema completo in cui ogni fase del ciclo di vita del dato (Ingestion, Storage, Processing, Serving e Monitoring) sia isolata, tracciabile e facilmente estensibile.
+Il caso d'uso affrontato in questo progetto si focalizza sull'analisi dei dati storici relativi ai ritardi dei voli commerciali negli Stati Uniti nel periodo Gennaio-Aprile 2025, forniti dal Bureau of Transportation Statistics.
+Questo dominio applicativo offre una notevole complessità strutturale (come presenza di valori nulli, anomalie statistiche, dipendenze temporali) e rappresenta un banco di prova ideale per l'implementazione di ottimizzazioni algoritmiche avanzate.
+
+Nelle sezioni successive, esploreremo in dettaglio come la modularità implementata a livello di codice sorgente, attraverso l'utilizzo estensivo del pattern GoF Factory e interfacce astratte in Java, si rifletta coerentemente nella modularità dell'infrastruttura di deployment.
+Questo design permette a SAE di operare con la medesima efficacia e senza alterazioni alla logica di business sia su un ambiente di sviluppo locale containerizzato tramite Docker Compose, sia su un cluster cloud di produzione basato su Amazon Web Services tramite i servizi di AWS EMR ed EC2.
+
+% ------------------------------
+
+\section{Architettura del Sistema e Modularità}\label{sec:system_architecture}
+L'architettura di Sky Analytics Engine rappresenta il fulcro innovativo del progetto.
+È stata concepita seguendo i rigidi principi della "Separation of Concerns" e della "Microservices-oriented Infrastructure".
+Il sistema rifugge l'approccio monolitico, configurandosi come un'aggregazione di servizi distribuiti coordinati che comunicano esclusivamente attraverso interfacce standardizzate\@.
+
+\subsection{Decomposizione Funzionale}\label{subsec:functional_decomposition}
+L'infrastruttura SAE è organizzata in macro-livelli gerarchici indipendenti.
+Questa netta separazione assicura che il sistema sia "future-proof": è possibile scalare o sostituire il motore di processing (es. passare da Spark a Flink) senza impattare il sistema di orchestrazione o le logiche di visualizzazione.
+
+I livelli principali sono:
+\begin{enumerate}
+    \item \textbf{Orchestration Layer:} Gestisce lo scheduling e lo stato delle esecuzioni.
+    \item \textbf{Ingestion Layer:} Si occupa dell'acquisizione sicura e della trasformazione grezza dei dati.
+    \item \textbf{Processing Layer:} Esegue il calcolo distribuito e l'addestramento dei modelli ML.
+    \item \textbf{Storage Layer:} Implementa la persistenza multi-modello.
+    \item \textbf{Monitoring Layer:} Raccoglie la telemetria di sistema.
+\end{enumerate}
+
+\subsection{Livello di Orchestrazione}\label{subsec:orchestration_layer}
+In Sky Analytics Engine, Apache Airflow 3.0 non viene utilizzato per un singolo flusso lineare, ma gestisce una suite di tre DAG specializzati, ciascuno progettato per coprire un aspetto specifico del ciclo di vita del software e della validazione sperimentale\@.
+
+\subsubsection{Disaccoppiamento tramite Apache Livy}
+Una caratteristica architetturale di rilievo è l'integrazione di Apache Livy.
+Nelle architetture legacy, Airflow necessita dell'installazione dei binari client di Spark e Hadoop sui propri nodi worker per lanciare i job tramite \texttt{spark-submit}.
+SAE supera questa limitazione interagendo esclusivamente con l'API REST di Livy.
+Airflow prepara un payload JSON contenente il path del JAR (precedentemente caricato su HDFS o S3) e gli argomenti di classe, inviandoli a Livy.
+Questo approccio trasforma di fatto il cluster Spark in una risorsa "Compute-as-a-Service", riducendo il carico computazionale sul nodo orchestratore e migliorando la sicurezza isolando il piano di controllo dal piano dati\@.
+
+\subsubsection{Sincronizzazione Asincrona con NiFi}
+L'interazione tra Airflow e NiFi rappresenta una sfida architettonica.
+SAE risolve questo problema con un pattern di callback asincrono.
+Airflow avvia il flusso NiFi tramite una chiamata HTTP POST, fornendo un JWT generato a runtime e un identificatore di variabile univoco.
+Successivamente, Airflow entra in uno stato di \textit{Sensor Polling}, consumando risorse minime.
+Quando NiFi completa l'ingestion, utilizza il JWT per autenticarsi contro le API REST di Airflow e aggiornare la variabile di stato, sbloccando il DAG e permettendo l'avvio della fase di processing\@.
+
+\subsubsection{Il DAG di Orchestrazione}
+Rappresenta il workflow principale di produzione.
+Questo DAG coordina l'interazione tra NiFi e Spark attraverso un pattern di callback asincrono.Implementa tre modalità operative selezionabili via parametri di trigger:
+\begin{itemize}
+    \item \textbf{Both:} Triggera NiFi per l'ingestion, attende il completamento tramite un sensore su variabili Airflow, e avvia il processing Spark.
+    \item \textbf{Ingest Only:} Si ferma dopo la conversione in Parquet da parte di NiFi, ideale per popolare il data lake.
+    \item \textbf{Execution Only:} Salta NiFi e avvia direttamente Spark sui dati già pre-processati, accelerando le iterazioni analitiche.
+\end{itemize}
+
+\subsubsection{Benchmark Sequenziale Locale/EC2}
+Questo DAG è stato progettato per la fase di valutazione sperimentale sistematica.
+A differenza del DAG principale, \texttt{ec2\_benchmark} itera automaticamente su tutte le combinazioni possibili di query e backend.
+Utilizzando un approccio puramente sequenziale, implementato tramite dipendenze dinamiche generate in un loop Python, garantisce che ogni job Spark non subisca interferenze da esecuzioni parallele, fornendo dati di telemetria puliti e affidabili per il confronto delle performance su infrastrutture standalone o EC2\@.
+
+\subsubsection{Benchmark Cloud-Native EMR}
+Sviluppato specificamente per l'ambiente AWS EMR, questo DAG adatta la logica di benchmarking alle peculiarità del cloud.
+Non utilizza Livy, ma sfrutta gli operatori nativi Amazon: \textit{EmrAddStepsOperator} per sottomettere i job come "step" del cluster EMR e \textit{EmrStepSensor} per monitorarne il completamento.
+Questa scelta permette di sfruttare le capacità di log-aggregation di AWS EMR e di gestire job che richiedono risorse massicce, mantenendo una visibilità completa sulla console AWS oltre che su Airflow\@.
+
+\subsection{Livello di Ingestion}\label{subsec:ingestion_layer}
+Apache NiFi è la spina dorsale del livello di acquisizione dati.
+La sua architettura basata sul paradigma Flow-Based Programming garantisce un controllo visivo e transazionale sui flussi di dati, garantendo anche la Data Provenance\@.
+
+\subsubsection{Pipeline di Trasformazione}
+Il flusso \texttt{SAE\_Ingestion\_Pipeline} esegue un processo Extract-Load-Transform sofisticato:
+\begin{itemize}
+    \item \textbf{Estrazione dei Metadati:} Il processore \texttt{EvaluateJsonPath} estrae dal payload di Airflow le configurazioni dinamiche (es. bucket S3 di destinazione, URL del dataset).
+    \item \textbf{Fetch e Validazione:} \texttt{InvokeHTTP} scarica il dataset CSV zippato.
+    Un processore custom calcola l'hash SHA-1 in streaming e lo confronta con la firma attesa, garantendo la non-ripudio del dato.
+    \item \textbf{Conversione Colonnare Parquet:} Questo è il passaggio più critico per l'ottimizzazione delle performance a valle. Utilizzando \texttt{ConvertRecord} basato su uno schema Avro fortemente tipizzato, NiFi trasforma i dati da formato testuale CSV a formato colonnare Parquet.
+    Questa operazione preserva i tipi nativi (Integer per i tempi, Double per i ritardi) e scarta i record malformati inviandoli a una coda di dead-letter.
+\end{enumerate}
+
+\subsubsection{Formato dei Dati}
+La scelta di Parquet è strategica: la sua struttura a blocchi con dizionari integrati abilita il \textit{predicate pushdown} nel motore Catalyst di Spark.
+Se una query analizza solo American Airlines, Spark legge dai dischi HDFS/S3 esclusivamente i blocchi Parquet contenenti tale compagnia, riducendo l'I/O di rete di ordini di grandezza rispetto alla scansione lineare di un file CSV\@.
+
+\subsection{Livello di Processing}\label{subsec:processing_layer}
+Il cuore computazionale di SAE è l'applicazione Spark, sviluppata in Java 11.
+La modularità del codice sorgente è stata ottenuta applicando rigorosamente i design pattern della programmazione orientata agli oggetti\@.
+
+\subsubsection{Pattern Factory e Repository}
+Per astrarre l'accesso ai dati, SAE implementa il pattern Repository.
+L'interfaccia \texttt{FlightRepository} definisce metodi generici come \texttt{getFlights()} e \texttt{saveResults()}.
+Tramite la classe \texttt{FlightRepositoryFactory}, l'applicazione istanzia a runtime implementazioni specifiche (es. \texttt{HdfsFlightRepository}, \texttt{PostgresFlightRepository}, \texttt{RedisFlightRepository}) basandosi su un file di configurazione YAML , gestiti attraverso la classe \texttt{ApplicationConfig.java}.
+Questo significa che la logica di business analitica è completamente disaccoppiata dalla tecnologia di storage sottostante\@.
+
+\subsubsection{Astrazione delle Query}
+Ogni query estende la classe astratta \texttt{BaseQuery}.
+Questa classe si fa carico del boilerplate code: istanziazione della \texttt{SparkSession}, gestione del logging strutturato, iniezione del listener delle metriche e recupero dei dati dal repository.
+Le classi figlie devono implementare esclusivamente tre metodi: \texttt{runQueryRDD}, \texttt{runQueryDataFrame} e \texttt{runQuerySQL}, focalizzandosi solo sulla trasformazione del dato\@.
+
+\subsection{Livello di Storage}\label{subsec:storage_layer}
+Un'architettura Big Data moderna non può fare affidamento su un singolo paradigma di database.
+SAE implementa una strategia "Polyglot Persistence" per ottimizzare i costi e le latenze di accesso in base al caso d'uso:
+\begin{itemize}
+    \item \textbf{Hadoop HDFS / Amazon S3:} Fungono da \textit{Single Source of Truth}.
+    Conservano i dati raw e pre-processati in Parquet, offrendo throughput elevato per le letture batch di Spark.
+    \item \textbf{PostgreSQL:} Utilizzato come \textit{Serving Layer} relazionale.
+    I risultati aggregati delle query vengono salvati qui per essere facilmente interrogati da strumenti di Business Intelligence tradizionali come Grafana.
+    \item \textbf{Redis Stack:} Funge da database per le metriche di telemetria emesse in tempo reale da Spark.
+    \item \textbf{Apache HBase:} Implementa il paradigma NoSQL a colonne larghe.
+    È impiegato per memorizzare dataset di risultati estremamente granulari, garantendo tempi di accesso nell'ordine dei millisecondi per singole chiavi.
+\end{itemize}
+
+% ------------------------------
+
+\section{Dettagli Implementativi della Computazione}\label{sec:implementation_details}
+Le quattro query richieste dal progetto sono state implementate in modo da testare diverse astrazioni di Spark e valutare i trade-off tra controllo a basso livello ed engine ottimizzati.
+
+\subsection{Analisi Base e Ottimizzazioni RDD}
+La \textit{Query 1} richiede il calcolo di statistiche mensili (media, min, max, tasso di cancellazione) per specifiche compagnie.
+Nell'implementazione RDD, si è evitato l'uso dell'operatore \texttt{groupByKey}, noto per causare gravi problemi di Out-Of-Memory a causa del trasferimento incontrollato di dati durante la fase di shuffle.
+Al suo posto è stato utilizzato \texttt{aggregateByKey}.
+Questo operatore combina i valori parzialmente all'interno di ogni singola partizione del nodo worker prima di trasferirli sulla rete, riducendo l'impronta di memoria e i tempi di rete.
+
+La \textit{Query 2} introduce logiche di \textit{feature engineering} per gestire i dati sparsi, imputando i valori nulli delle cause di ritardo a zero e filtrando i carrier non statisticamente significativi.
+
+\subsection{Approssimazione tramite KLL Sketch}
+Il calcolo dei percentili su finestre orarie nella \textii{Query 3} rappresenta la sfida computazionale più ardua.
+Un calcolo esatto richiederebbe l'ordinamento globale di milioni di record, un'operazione che su un cluster distribuito causa enormi colli di bottiglia dovuti allo scambio di dati.
+
+SAE risolve questo problema implementando tecniche di "Quantile Sketching".
+Attraverso l'integrazione della libreria Apache DataSketches, è stato implementato lo stimatore Karnin-Lang-Liberty.
+L'algoritmo KLL mantiene in memoria un set compresso e rappresentativo dei dati osservati.
+La potenza matematica del KLL risiede nella sua proprietà di unione: due sketch generati su nodi worker differenti possono essere sommati nel driver node mantenendo rigorose garanzie matematiche sull'errore di rango massimo (configurato di default a $\sim 1.6\%$).
+Questo permette di calcolare i percentili orari in un singolo passaggio sui dati, con una complessità spaziale fissa indipendente dalla dimensione del dataset.
+
+Nell'implementazione DataFrame, SAE delega questa approssimazione alla funzione nativa \texttt{percentile\_approx}, la quale utilizza un approccio simile derivato dall'algoritmo Greenwald-Khanna.
+
+\subsection{Machine Learning e Ottimizzazione Modelli}
+L'obiettivo della \textit{Query 4} è raggruppare le compagnie aeree in base alle loro feature prestazionali.
+
+L'implementazione in \texttt{AirlineClustering.java} costruisce una complessa pipeline:
+\begin{enumerate}
+    \item \textbf{Aggregazione Iniziale:} Calcolo delle feature medie per carrier escludendo i voli cancellati dai conteggi di ritardo.
+    \item \textbf{Vector Assembler:} Consolidamento delle colonne numeriche in una singola colonna di tipo \texttt{Vector}, formato richiesto da MLlib.
+    \item \textbf{Standardization:} Applicazione di uno \texttt{StandardScaler}.
+    Poiché il k-Means è sensibile alla scala delle feature (basandosi sulla distanza euclidea), è imperativo normalizzare i dati affinché abbiano media 0 e deviazione standard 1, evitando che feature con magnitudo maggiore dominino l'algoritmo.
+    \item \textbf{Model Selection:} SAE non richiede di specificare a priori il parametro $K$, ovvero il numero di cluster.
+    Il sistema esegue un loop iterativo addestrando modelli da $K=2$ a $K=8$.
+    Per ogni modello, valuta la qualità del raggruppamento utilizzando il \textit{Silhouette Score} fornito da \texttt{ClusteringEvaluator}.
+    Il punteggio di Silhouette misura la coesione intra-cluster rispetto alla separazione inter-cluster.
+    SAE seleziona dinamicamente il $K$ che massimizza questo punteggio, garantendo un clustering statisticamente fondato.
+\end{enumerate}
+
+% ------------------------------
+
+\section{Telemetria Distribuita}\label{sec:telemetry_monitoring}
+Per garantire l'osservabilità di un sistema distribuito asincrono, SAE implementa un modulo di telemetria altamente personalizzato.
+
+\subsection{JobTimerListener Custom}
+Affidarsi unicamente alla UI nativa di Spark non è sufficiente per analisi storiche automatizzate.
+SAE implementa la classe \texttt{JobTimerListener}, che estende le interfacce native dello \texttt{SparkListener}.
+Questo componente viene agganciato al bus degli eventi di Spark durante l'inizializzazione della sessione.
+
+Il Listener intercetta eventi cruciali come \texttt{onJobStart}, \texttt{onStageCompleted} e \texttt{onTaskEnd}.
+Registra timestamp millisecondi e metriche relative al volume di dati letti e scritti.
+Alla fine del ciclo di vita dell'applicazione, aggrega questi dati e, sfruttando la connettività asincrona verso Redis, persiste i record di telemetria.
+Questo permette di scorporare il "vero" tempo di calcolo sui dati dal tempo fisiologico speso da Spark per negoziare le risorse con YARN o allocare i container.
+
+\subsection{Visualizzazione in Grafana}
+L'ecosistema si chiude con Grafana, configurato per leggere direttamente da Redis (tramite plugin RediSearch) e PostgreSQL. Le dashboard sono state progettate per presentare:
+\begin{itemize}
+    \item Benchmark prestazionali comparativi.
+    \item Trend temporali dei ritardi suddivisi per vettore.
+    \item Heatmap della distribuzione oraria calcolata sui percentili approssimati.
+    \item La disposizione geometrica dei cluster ML nello spazio delle feature principali.
+\end{itemize}
+
+% ------------------------------
+
+\section{Infrastruttura di Deployment}\label{sec:deployment_infrastructure}
+L'agilità di SAE è esaltata dalle sue procedure di deployment, strutturate in due macro-scenari.
+
+\subsection{Configuration Management as Code}
+Tutta la configurazione è esternalizzata in file YAML e \texttt{.env}.
+L'assenza di stringhe di connessione o path assoluti hardcoded nel codice Java permette di compilare il JAR una sola volta (tramite Maven) e di eseguirlo in contesti completamente diversi.
+
+% TODO
+
+% ------------------------------
+
+\section{Analisi Sperimentale e Discussione}\label{sec:experimental_analysis}
+
+% TODO
+
+% ------------------------------
+
+\section{Conclusioni e Sviluppi Futuri}
+Il progetto Sky Analytics Engine dimostra che l'implementazione rigorosa di pattern architetturali distribuiti e l'adozione di formati dati ottimizzati sono requisiti imprescindibili per gestire la complessità inerente ai Big Data.
+L'orchestrazione asincrona tra Airflow e NiFi, combinata con la modularità polyglot dell'engine Spark, fornisce un ambiente robusto ed enterprise-ready.
+L'introduzione di tecniche algoritmiche avanzate, quali i Quantile Sketches e il Model Selection automatizzato tramite Silhouette Score, dota SAE di capacità analitiche di altissimo livello pur mantenendo confinati i costi computazionali.
+
+I potenziali sviluppi futuri della piattaforma includono la transizione da un paradigma puramente batch a un'architettura ibrida Lambda.
+L'integrazione di Apache Kafka e Spark Structured Streaming permetterebbe a SAE di acquisire eventi di volo in real-time, applicando i modelli ML di clustering precedentemente addestrati per prevedere ritardi anomali "on-the-fly".
+
+\begin{thebibliography}{10}
+
+    % Core Frameworks & Data Processing
+    \bibitem{spark}
+    Apache Spark Foundation, "Apache Spark - A Unified engine for large-scale data analytics," \url{https://archive.apache.org/dist/spark/docs/3.5.1/}, Consultato: Maggio 2026.
+
+    \bibitem{livy}
+    Apache Livy, "Apache Livy Documentation," \url{https://livy.apache.org/docs/latest/}, Consultato: Maggio 2026.
+
+    % Orchestration & Ingestion
+    \bibitem{airflow}
+    Apache Airflow, "TaskFlow API Tutorial," \url{https://airflow.apache.org/docs/apache-airflow/stable/tutorial_taskflow_api.html}, Consultato: Maggio 2026.
+
+    \bibitem{nifi}
+    Apache NiFi, "Apache NiFi User Guide," \url{https://nifi.apache.org/docs/nifi-docs/html/user-guide.html}, Consultato: Maggio 2026.
+
+    % Storage & File Systems
+    \bibitem{hdfs}
+    Apache Hadoop, "HDFS Architecture Guide," \url{https://hadoop.apache.org/docs/r3.3.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html}, Consultato: Maggio 2026.
+
+    \bibitem{s3}
+    Amazon Web Services, "Amazon Simple Storage Service (S3) Documentation," \url{https://docs.aws.amazon.com/s3/}, Consultato: Maggio 2026.
+
+    \bibitem{parquet}
+    Apache Parquet, "Parquet Format Specification," \url{https://parquet.apache.org/docs/file-format/}, Consultato: Maggio 2026.
+
+    % Databases & NoSQL
+    \bibitem{hbase}
+    Apache HBase, "Apache HBase Reference Guide," \url{https://hbase.apache.org/book.html}, Consultato: Maggio 2026.
+
+    \bibitem{postgresql}
+    PostgreSQL Global Development Group, "PostgreSQL Documentation," \url{https://www.postgresql.org/docs/15/}, Consultato: Maggio 2026.
+
+    \bibitem{redis}
+    Redis Ltd., "Redis Documentation," \url{https://redis.io/docs/latest/}, Consultato: Maggio 2026.
+
+    % Visualization & Monitoring
+    \bibitem{grafana}
+    Grafana Labs, "Grafana Official Documentation," \url{https://grafana.com/docs/}, Consultato: Maggio 2026.
+
+\end{thebibliography}
+
+\end{document}
