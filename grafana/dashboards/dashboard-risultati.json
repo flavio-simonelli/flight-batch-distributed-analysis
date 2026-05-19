@@ -2,11 +2,21 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "adsqs2c",
+    "name": "adtcqd9",
     "namespace": "default",
-    "uid": "d4f52090-e95f-4228-a155-0f46e99c5e3d",
+    "uid": "583932fe-86a4-4d50-bea9-b03c979fc3ed",
+    "resourceVersion": "1779225715212983",
+    "generation": 6,
+    "creationTimestamp": "2026-05-19T20:49:09Z",
+    "labels": {
+      "grafana.app/deprecatedInternalID": "3198170599473152"
+    },
     "annotations": {
-      "grafana.app/folder": ""
+      "grafana.app/createdBy": "user:dfmjx2mxhodmoc",
+      "grafana.app/folder": "",
+      "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f)",
+      "grafana.app/updatedBy": "user:dfmjx2mxhodmoc",
+      "grafana.app/updatedTimestamp": "2026-05-19T21:21:55Z"
     }
   },
   "spec": {
@@ -109,6 +119,19 @@
                   "unit": "short",
                   "decimals": 1,
                   "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 80,
+                        "color": "red"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -120,6 +143,242 @@
                     "axisPlacement": "auto",
                     "fillOpacity": 80,
                     "gradientMode": "opacity",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineWidth": 1,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-10": {
+        "kind": "Panel",
+        "spec": {
+          "id": 10,
+          "title": "Q4 — Airline Assignments (Sorted by Cluster)",
+          "description": "Full airline data and predictions, ordered for easy comparison.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "postgres-datasource-uid"
+                      },
+                      "spec": {
+                        "dataset": "flight_db",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT\n  \"OP_UNIQUE_CARRIER\" AS carrier,\n  prediction AS cluster,\n  ROUND(avg_dep_delay::numeric, 2) AS dep_delay,\n  ROUND(avg_arr_delay::numeric, 2) AS arr_delay,\n  ROUND((cancellation_rate * 100)::numeric, 2) AS cancel_rate_pct,\n  ROUND(avg_carrier_delay::numeric, 2) AS carrier_d,\n  ROUND(avg_weather_delay::numeric, 2) AS weather_d,\n  ROUND(avg_nas_delay::numeric, 2) AS nas_d,\n  ROUND(avg_security_delay::numeric, 2) AS security_d,\n  ROUND(avg_late_aircraft_delay::numeric, 2) AS late_ac_d\nFROM airline_clustering_dataframe_1\nORDER BY prediction, carrier"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "table",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "cellHeight": "sm",
+                "showHeader": true,
+                "sortBy": [
+                  {
+                    "desc": true,
+                    "displayName": "cluster"
+                  }
+                ]
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 1,
+                        "color": "blue"
+                      },
+                      {
+                        "value": 2,
+                        "color": "orange"
+                      },
+                      {
+                        "value": 3,
+                        "color": "purple"
+                      }
+                    ]
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "footer": {
+                      "reducers": []
+                    },
+                    "inspect": false
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "cluster"
+                    },
+                    "properties": []
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-11": {
+        "kind": "Panel",
+        "spec": {
+          "id": 11,
+          "title": "New panel",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "postgres-datasource-uid"
+                      },
+                      "spec": {
+                        "dataset": "flight_db",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT CONCAT('Cluster ', prediction), count(*) as Airlines FROM airline_clustering_dataframe_1 GROUP BY prediction;",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "barchart",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barRadius": 0,
+                "barWidth": 0.97,
+                "colorByField": "airlines",
+                "fullHighlight": false,
+                "groupWidth": 0.7,
+                "legend": {
+                  "calcs": [
+                    "min",
+                    "mean",
+                    "median",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "orientation": "horizontal",
+                "showValue": "auto",
+                "stacking": "none",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                },
+                "xField": "prediction",
+                "xTickLabelRotation": 0,
+                "xTickLabelSpacing": 0
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 80,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "fillOpacity": 80,
+                    "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
                       "tooltip": false,
@@ -454,6 +713,19 @@
                   "unit": "short",
                   "decimals": 2,
                   "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 80,
+                        "color": "red"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -587,7 +859,24 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\n  LPAD(hour::text, 2, '0') || ':00' AS hour_label,\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p25::numeric,1) END) AS \"AA p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p50::numeric,1) END) AS \"AA p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p75::numeric,1) END) AS \"AA p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p90::numeric,1) END) AS \"AA p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p25::numeric,1) END) AS \"DL p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p50::numeric,1) END) AS \"DL p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p75::numeric,1) END) AS \"DL p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p90::numeric,1) END) AS \"DL p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p25::numeric,1) END) AS \"UA p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p50::numeric,1) END) AS \"UA p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p75::numeric,1) END) AS \"UA p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p90::numeric,1) END) AS \"UA p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p25::numeric,1) END) AS \"WN p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p50::numeric,1) END) AS \"WN p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p75::numeric,1) END) AS \"WN p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p90::numeric,1) END) AS \"WN p90\"\nFROM hourly_delay_percentiles_rdd_kll_1\nWHERE \"opUniqueCarrier\" IN ($TargetCarrier)\nGROUP BY hour\nORDER BY hour"
+                        "rawSql": "SELECT\n  LPAD(hour::text, 2, '0') || ':00' AS hour_label,\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p25::numeric,1) END) AS \"AA p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p50::numeric,1) END) AS \"AA p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p75::numeric,1) END) AS \"AA p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p90::numeric,1) END) AS \"AA p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p25::numeric,1) END) AS \"DL p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p50::numeric,1) END) AS \"DL p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p75::numeric,1) END) AS \"DL p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p90::numeric,1) END) AS \"DL p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p25::numeric,1) END) AS \"UA p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p50::numeric,1) END) AS \"UA p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p75::numeric,1) END) AS \"UA p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p90::numeric,1) END) AS \"UA p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p25::numeric,1) END) AS \"WN p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p50::numeric,1) END) AS \"WN p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p75::numeric,1) END) AS \"WN p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p90::numeric,1) END) AS \"WN p90\"\nFROM hourly_delay_percentiles_rdd_kll_1\nWHERE \"opUniqueCarrier\" IN ($TargetCarrier)\nGROUP BY hour\nORDER BY hour",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
                       }
                     },
                     "refId": "A",
@@ -630,6 +919,19 @@
                 "defaults": {
                   "unit": "short",
                   "decimals": 1,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 80,
+                        "color": "red"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -839,6 +1141,19 @@
                 "defaults": {
                   "unit": "short",
                   "decimals": 1,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 80,
+                        "color": "red"
+                      }
+                    ]
+                  },
                   "color": {
                     "mode": "palette-classic"
                   },
@@ -1015,6 +1330,347 @@
             }
           }
         }
+      },
+      "panel-8": {
+        "kind": "Panel",
+        "spec": {
+          "id": 8,
+          "title": "Q4 — Airline Clustering Distribution (8D Logic, 2D PCA Projection)",
+          "description": "True projection of 8D clusters. Small dots = Airlines, Large dots = Centers. All grouped by Cluster ID.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "postgres-datasource-uid"
+                      },
+                      "spec": {
+                        "dataset": "flight_db",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT\n  \"OP_UNIQUE_CARRIER\" as carrier,\n  pca_x,\n  pca_y,\n  prediction AS cluster,\n  'Airline' AS type\nFROM airline_clustering_dataframe_1\nUNION ALL\nSELECT\n  'center' as carrier,\n  pca_x,\n  pca_y,\n  cluster,\n  'Center' AS type\nFROM airline_clustering_dataframe_2",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [
+                {
+                  "kind": "Transformation",
+                  "group": "partitionByValues",
+                  "spec": {
+                    "options": {
+                      "fields": [
+                        "cluster",
+                        "type"
+                      ],
+                      "keepFields": false
+                    }
+                  }
+                },
+                {
+                  "kind": "Transformation",
+                  "group": "renameByRegex",
+                  "spec": {
+                    "options": {
+                      "regex": ".*cluster=\"([^\"]+)\".*type=\"([^\"]+)\".*",
+                      "renamePattern": "$1 - $2"
+                    }
+                  }
+                }
+              ],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "xychart",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "mapping": "auto",
+                "series": [
+                  {
+                    "x": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "pca_x"
+                      }
+                    },
+                    "y": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "pca_y"
+                      }
+                    }
+                  }
+                ],
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 80,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "fillOpacity": 50,
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "pointShape": "circle",
+                    "pointSize": {
+                      "fixed": 15
+                    },
+                    "pointStrokeWidth": 1,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "show": "points"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "scope": "series",
+                      "options": ".*Center.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.pointSize.fixed",
+                        "value": 25
+                      },
+                      {
+                        "id": "custom.pointShape",
+                        "value": "circle"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "scope": "series",
+                      "options": ".*0.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "dark-blue",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "scope": "series",
+                      "options": ".*1.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "green",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-9": {
+        "kind": "Panel",
+        "spec": {
+          "id": 9,
+          "title": "Q4 — Cluster Center Profiles (8D Averages)",
+          "description": "Shows the average values of all 8 features that determined the cluster centers.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "postgres-datasource-uid"
+                      },
+                      "spec": {
+                        "dataset": "flight_db",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT\n  'Cluster ' || cluster::text AS cluster_label,\n  ROUND(avg_dep_delay_center::numeric, 2) AS \"Dep Delay\",\n  ROUND(avg_arr_delay_center::numeric, 2) AS \"Arr Delay\",\n  ROUND(cancellation_rate_center::numeric, 2) AS \"Cancel Rate\",\n  ROUND(avg_carrier_delay_center::numeric, 2) AS \"Carrier D.\",\n  ROUND(avg_weather_delay_center::numeric, 2) AS \"Weather D.\",\n  ROUND(avg_nas_delay_center::numeric, 2) AS \"NAS D.\",\n  ROUND(avg_security_delay_center::numeric, 2) AS \"Security D.\",\n  ROUND(avg_late_aircraft_delay_center::numeric, 2) AS \"Late Ac. D.\"\nFROM airline_clustering_dataframe_2\nORDER BY cluster",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "barchart",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barRadius": 0,
+                "barWidth": 0.8,
+                "fullHighlight": false,
+                "groupWidth": 0.7,
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "right",
+                  "showLegend": true
+                },
+                "orientation": "auto",
+                "showValue": "always",
+                "stacking": "none",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "none"
+                },
+                "xTickLabelRotation": 0,
+                "xTickLabelSpacing": 0
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 2,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 80,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "fillOpacity": 80,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineWidth": 1,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
       }
     },
     "layout": {
@@ -1148,6 +1804,72 @@
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-7"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "title": "Q4 — Airline Clustering",
+              "collapse": false,
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 12,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-8"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 12,
+                        "y": 0,
+                        "width": 8,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-9"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 20,
+                        "y": 0,
+                        "width": 4,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-11"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 10,
+                        "width": 24,
+                        "height": 13,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-10"
                         }
                       }
                     }
