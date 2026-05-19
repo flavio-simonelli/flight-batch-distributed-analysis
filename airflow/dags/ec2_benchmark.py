@@ -49,6 +49,9 @@ def flight_benchmark():
         for backend in AVAILABLE_BACKENDS:
             task_id = f"spark_{query}_{backend}"
 
+            if query == "airline_clustering" and (backend == "rdd" or backend == "sql"):
+                continue
+
             # Initialize LivyOperator for this specific combination
             spark_task = LivyOperator(
                 task_id=task_id,
@@ -64,7 +67,7 @@ def flight_benchmark():
                     "--metrics-type", "{{ params.metrics_type }}"
                 ],
                 name=f"benchmark-{query}-{backend}-{{{{ run_id }}}}",
-                polling_interval=30
+                polling_interval=5
             )
 
             # Wire sequentially

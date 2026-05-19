@@ -1,2079 +1,2057 @@
 {
-  "apiVersion": "dashboard.grafana.app/v2",
-  "kind": "Dashboard",
-  "metadata": {
-    "name": "adz5hzw",
-    "namespace": "default",
-    "uid": "abb0d777-d745-4d5c-9a4b-1b285451e406",
-    "resourceVersion": "1778890187301018",
-    "generation": 47,
-    "creationTimestamp": "2026-05-15T20:01:18Z",
-    "labels": {
-      "grafana.app/deprecatedInternalID": "1736578810589184"
+  "annotations": [
+    {
+      "kind": "AnnotationQuery",
+      "spec": {
+        "builtIn": true,
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "query": {
+          "datasource": {
+            "name": "-- Grafana --"
+          },
+          "group": "grafana",
+          "kind": "DataQuery",
+          "spec": {},
+          "version": "v0"
+        }
+      }
+    }
+  ],
+  "cursorSync": "Off",
+  "editable": true,
+  "elements": {
+    "panel-2": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "redis-datasource-uid"
+                    },
+                    "group": "redis-datasource",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "command": "ft.search",
+                      "count": 10000,
+                      "keyName": "phaseIdx",
+                      "query": "",
+                      "returnFields": [
+                        "query",
+                        "approach",
+                        "phase",
+                        "wallclock-duration",
+                        "spark-duration"
+                      ],
+                      "searchQuery": "@phase:{EXECUTION}",
+                      "sortDirection": "ASC",
+                      "streaming": false,
+                      "type": "search"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "filterByValue",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "filters": [
+                      {
+                        "config": {
+                          "id": "equal",
+                          "options": {
+                            "value": "${query_name}"
+                          }
+                        },
+                        "fieldName": "query"
+                      }
+                    ],
+                    "match": "any",
+                    "type": "include"
+                  }
+                }
+              },
+              {
+                "group": "convertFieldType",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "conversions": [
+                      {
+                        "destinationType": "number",
+                        "targetField": "wallclock-duration"
+                      },
+                      {
+                        "destinationType": "number",
+                        "targetField": "spark-duration"
+                      }
+                    ],
+                    "fields": {}
+                  }
+                }
+              },
+              {
+                "group": "groupBy",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "fields": {
+                      "approach": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "duration": {
+                        "aggregations": [
+                          "sum"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "query": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "spark-duration": {
+                        "aggregations": [
+                          "mean"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "wallclock-duration": {
+                        "aggregations": [
+                          "mean"
+                        ],
+                        "operation": "aggregate"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "overhead-time",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "wallclock-duration (mean)"
+                        }
+                      },
+                      "operator": "-",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "spark-duration (mean)"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {
+                      "overhead-time": false,
+                      "query": false,
+                      "wallclock-duration (mean)": true
+                    },
+                    "includeByName": {},
+                    "indexByName": {},
+                    "renameByName": {
+                      "approach": "Backend",
+                      "overhead-time": "Wall Clock Overhead",
+                      "query": "Query",
+                      "spark-duration (mean)": "Spark Time",
+                      "wallclock-duration (mean)": "Wall Clock Time"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "Total wall clock duration vs Spark duration for the execution phase.",
+        "id": 2,
+        "links": [],
+        "title": "Execution Phase Duration",
+        "vizConfig": {
+          "group": "barchart",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "Milliseconds (ms)",
+                  "axisPlacement": "auto",
+                  "fillOpacity": 80,
+                  "gradientMode": "hue",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "lineWidth": 1,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "fieldMinMax": false,
+                "thresholds": {
+                  "mode": "percentage",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 60
+                    }
+                  ]
+                },
+                "unit": "ms"
+              },
+              "overrides": []
+            },
+            "options": {
+              "barRadius": 0,
+              "barWidth": 0.7,
+              "fullHighlight": false,
+              "groupWidth": 0.66,
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean",
+                  "median"
+                ],
+                "displayMode": "table",
+                "placement": "right",
+                "showLegend": true
+              },
+              "orientation": "horizontal",
+              "showValue": "always",
+              "stacking": "normal",
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "single",
+                "sort": "none"
+              },
+              "xField": "Backend",
+              "xTickLabelRotation": 0,
+              "xTickLabelSpacing": 0
+            }
+          },
+          "version": "13.0.1"
+        }
+      }
     },
-    "annotations": {
-      "grafana.app/createdBy": "user:cfm5rx942fytcb",
-      "grafana.app/folder": "",
-      "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f)",
-      "grafana.app/updatedBy": "user:cfm5rx942fytcb",
-      "grafana.app/updatedTimestamp": "2026-05-16T00:09:47Z"
+    "panel-3": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "redis-datasource-uid"
+                    },
+                    "group": "redis-datasource",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "command": "ft.search",
+                      "count": 10000,
+                      "keyName": "executorsIdx",
+                      "query": "",
+                      "returnFields": [
+                        "query",
+                        "approach",
+                        "read",
+                        "written",
+                        "shuffleRead",
+                        "shuffleWrite",
+                        "execId"
+                      ],
+                      "searchQuery": "@phase:{EXECUTION}",
+                      "type": "search"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "filterByValue",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "filters": [
+                      {
+                        "config": {
+                          "id": "equal",
+                          "options": {
+                            "value": "${query_name}"
+                          }
+                        },
+                        "fieldName": "query"
+                      }
+                    ],
+                    "match": "all",
+                    "type": "include"
+                  }
+                }
+              },
+              {
+                "group": "convertFieldType",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "conversions": [
+                      {
+                        "destinationType": "number",
+                        "targetField": "read"
+                      },
+                      {
+                        "destinationType": "number",
+                        "targetField": "written"
+                      },
+                      {
+                        "destinationType": "number",
+                        "targetField": "shuffleRead"
+                      },
+                      {
+                        "destinationType": "number",
+                        "targetField": "shuffleWrite"
+                      }
+                    ],
+                    "fields": {}
+                  }
+                }
+              },
+              {
+                "group": "groupBy",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "fields": {
+                      "approach": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "execId": {
+                        "aggregations": []
+                      },
+                      "keyName": {
+                        "aggregations": []
+                      },
+                      "query": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "read": {
+                        "aggregations": [
+                          "mean",
+                          "max"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "shuffleRead": {
+                        "aggregations": [
+                          "mean",
+                          "max"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "shuffleWrite": {
+                        "aggregations": [
+                          "mean",
+                          "max"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "timestamp": {
+                        "aggregations": []
+                      },
+                      "written": {
+                        "aggregations": [
+                          "mean",
+                          "max"
+                        ],
+                        "operation": "aggregate"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {
+                      "approach": false,
+                      "execId": true,
+                      "keyName": true,
+                      "query": true,
+                      "shuffleRead (max)": true,
+                      "shuffleRead (mean)": true,
+                      "shuffleWrite (max)": true,
+                      "shuffleWrite (mean)": true
+                    },
+                    "includeByName": {},
+                    "indexByName": {
+                      "approach": 3,
+                      "execId": 2,
+                      "exec_backend": 4,
+                      "keyName": 0,
+                      "query": 1,
+                      "read": 5,
+                      "written": 6
+                    },
+                    "orderByMode": "manual",
+                    "renameByName": {
+                      "read (mean)": "Mean Read",
+                      "read (sum)": "Max Read",
+                      "written (mean)": ""
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "Total bytes read and written by executors.",
+        "id": 3,
+        "links": [],
+        "title": "Data Movement",
+        "vizConfig": {
+          "group": "barchart",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "fillOpacity": 80,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "lineWidth": 1,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "bytes"
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "execId",
+                    "scope": "series"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit"
+                    },
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "options": {
+                            "pattern": "(.*)",
+                            "result": {
+                              "index": 0,
+                              "text": "Executor ID - $1"
+                            }
+                          },
+                          "type": "regex"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "barRadius": 0,
+              "barWidth": 0.97,
+              "fullHighlight": false,
+              "groupWidth": 0.7,
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "orientation": "auto",
+              "showValue": "auto",
+              "stacking": "none",
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "single",
+                "sort": "none"
+              },
+              "xField": "approach",
+              "xTickLabelRotation": 0,
+              "xTickLabelSpacing": 0
+            }
+          },
+          "version": "13.0.1"
+        }
+      }
+    },
+    "panel-4": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "redis-datasource-uid"
+                    },
+                    "group": "redis-datasource",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "command": "ft.search",
+                      "count": 10000,
+                      "keyName": "executorsIdx",
+                      "query": "",
+                      "returnFields": [
+                        "query",
+                        "approach",
+                        "read",
+                        "written",
+                        "shuffleRead",
+                        "shuffleWrite",
+                        "execId"
+                      ],
+                      "searchQuery": "@phase:{EXECUTION}",
+                      "type": "search"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "filterByValue",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "filters": [
+                      {
+                        "config": {
+                          "id": "equal",
+                          "options": {
+                            "value": "${query_name}"
+                          }
+                        },
+                        "fieldName": "query"
+                      }
+                    ],
+                    "match": "all",
+                    "type": "include"
+                  }
+                }
+              },
+              {
+                "group": "convertFieldType",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "conversions": [
+                      {
+                        "destinationType": "number",
+                        "targetField": "read"
+                      },
+                      {
+                        "destinationType": "number",
+                        "targetField": "written"
+                      },
+                      {
+                        "destinationType": "number",
+                        "targetField": "shuffleRead"
+                      },
+                      {
+                        "destinationType": "number",
+                        "targetField": "shuffleWrite"
+                      }
+                    ],
+                    "fields": {}
+                  }
+                }
+              },
+              {
+                "group": "groupBy",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "fields": {
+                      "approach": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "execId": {
+                        "aggregations": []
+                      },
+                      "keyName": {
+                        "aggregations": []
+                      },
+                      "query": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "read": {
+                        "aggregations": [
+                          "mean",
+                          "max"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "shuffleRead": {
+                        "aggregations": [
+                          "mean",
+                          "max"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "shuffleWrite": {
+                        "aggregations": [
+                          "mean",
+                          "max"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "timestamp": {
+                        "aggregations": []
+                      },
+                      "written": {
+                        "aggregations": [
+                          "mean",
+                          "max"
+                        ],
+                        "operation": "aggregate"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {
+                      "approach": false,
+                      "execId": true,
+                      "keyName": true,
+                      "query": true,
+                      "read (max)": true,
+                      "read (mean)": true,
+                      "written (max)": true,
+                      "written (mean)": true
+                    },
+                    "includeByName": {},
+                    "indexByName": {
+                      "approach": 3,
+                      "execId": 2,
+                      "exec_backend": 4,
+                      "keyName": 0,
+                      "query": 1,
+                      "read": 5,
+                      "written": 6
+                    },
+                    "orderByMode": "manual",
+                    "renameByName": {
+                      "shuffleRead (max)": "Max Shuffle Read",
+                      "shuffleRead (mean)": "Mean Shuffle Read",
+                      "shuffleWrite (max)": "Max Shuffle Write",
+                      "shuffleWrite (mean)": "Mean Shuffle Write"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "Shuffle bytes read and written by executors.",
+        "id": 4,
+        "links": [],
+        "title": "Data Movement",
+        "vizConfig": {
+          "group": "barchart",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "fillOpacity": 80,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "lineWidth": 1,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "bytes"
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "execId",
+                    "scope": "series"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit"
+                    },
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "options": {
+                            "pattern": "(.*)",
+                            "result": {
+                              "index": 0,
+                              "text": "Executor ID - $1"
+                            }
+                          },
+                          "type": "regex"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "barRadius": 0,
+              "barWidth": 0.97,
+              "fullHighlight": false,
+              "groupWidth": 0.7,
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "orientation": "auto",
+              "showValue": "auto",
+              "stacking": "none",
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "single",
+                "sort": "none"
+              },
+              "xField": "approach",
+              "xTickLabelRotation": 0,
+              "xTickLabelSpacing": 0
+            }
+          },
+          "version": "13.0.1"
+        }
+      }
+    },
+    "panel-5": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "redis-datasource-uid"
+                    },
+                    "group": "redis-datasource",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "command": "ft.search",
+                      "count": 10000,
+                      "keyName": "executorsIdx",
+                      "query": "",
+                      "returnFields": [
+                        "timestamp",
+                        "query",
+                        "approach",
+                        "execId",
+                        "read"
+                      ],
+                      "searchQuery": "@phase:{EXECUTION}",
+                      "type": "search"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "filterByValue",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "filters": [
+                      {
+                        "config": {
+                          "id": "equal",
+                          "options": {
+                            "value": "${query_name}"
+                          }
+                        },
+                        "fieldName": "query"
+                      }
+                    ],
+                    "match": "any",
+                    "type": "include"
+                  }
+                }
+              },
+              {
+                "group": "convertFieldType",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "conversions": [
+                      {
+                        "destinationType": "number",
+                        "targetField": "read"
+                      }
+                    ],
+                    "fields": {}
+                  }
+                }
+              },
+              {
+                "group": "groupBy",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "fields": {
+                      "approach": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "execId": {
+                        "aggregations": [
+                          "count"
+                        ]
+                      },
+                      "query": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "read": {
+                        "aggregations": [
+                          "mean",
+                          "max"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "timestamp": {
+                        "aggregations": []
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "extra_load",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "read (max)"
+                        }
+                      },
+                      "operator": "-",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "read (mean)"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    }
+                  }
+                }
+              },
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {
+                      "query": true,
+                      "read (max)": true
+                    },
+                    "includeByName": {},
+                    "indexByName": {},
+                    "renameByName": {
+                      "extra_load": "Extra Read Load",
+                      "read (mean)": "Mean Read Load"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "Difference between maximum and mean read load across executors.",
+        "id": 5,
+        "links": [],
+        "title": "Read Load Imbalance",
+        "vizConfig": {
+          "group": "barchart",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "fillOpacity": 80,
+                  "gradientMode": "hue",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "lineWidth": 1,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "thresholds": {
+                  "mode": "percentage",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 90
+                    }
+                  ]
+                },
+                "unit": "bytes"
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "read (mean)",
+                    "scope": "series"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "fixedColor": "dark-green",
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "extra_load",
+                    "scope": "series"
+                  },
+                  "properties": [
+                    {
+                      "id": "color",
+                      "value": {
+                        "fixedColor": "dark-red",
+                        "mode": "fixed"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "barRadius": 0,
+              "barWidth": 0.6,
+              "fullHighlight": false,
+              "groupWidth": 0.7,
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": false
+              },
+              "orientation": "auto",
+              "showValue": "never",
+              "stacking": "normal",
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "single",
+                "sort": "none"
+              },
+              "xField": "approach",
+              "xTickLabelRotation": 0,
+              "xTickLabelSpacing": 0
+            }
+          },
+          "version": "13.0.1"
+        }
+      }
+    },
+    "panel-6": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "redis-datasource-uid"
+                    },
+                    "group": "redis-datasource",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "command": "ft.search",
+                      "count": 10000,
+                      "keyName": "executorsIdx",
+                      "query": "",
+                      "returnFields": [
+                        "timestamp",
+                        "query",
+                        "approach",
+                        "execId",
+                        "read"
+                      ],
+                      "searchQuery": "@phase:{EXECUTION}",
+                      "type": "search"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "filterByValue",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "filters": [
+                      {
+                        "config": {
+                          "id": "equal",
+                          "options": {
+                            "value": "${query_name}"
+                          }
+                        },
+                        "fieldName": "query"
+                      }
+                    ],
+                    "match": "any",
+                    "type": "include"
+                  }
+                }
+              },
+              {
+                "group": "groupBy",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "fields": {
+                      "approach": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "execId": {
+                        "aggregations": [
+                          "count",
+                          "max",
+                          "min"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "query": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "read": {
+                        "aggregations": [
+                          "mean",
+                          "max"
+                        ]
+                      },
+                      "timestamp": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "group": "groupBy",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "fields": {
+                      "approach": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "execId (count)": {
+                        "aggregations": [
+                          "mean",
+                          "max",
+                          "min"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "query": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {
+                      "query": true,
+                      "read (max)": true
+                    },
+                    "includeByName": {},
+                    "indexByName": {},
+                    "renameByName": {
+                      "execId (count) (max)": "executor_max",
+                      "execId (count) (mean)": "executor_mean",
+                      "execId (count) (min)": "executor_min",
+                      "extra_load": "Extra Read Load",
+                      "read (mean)": "Mean Read Load"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "Mean number of executors participating in the execution phase.",
+        "id": 6,
+        "links": [],
+        "title": "Average Number of Executors",
+        "vizConfig": {
+          "group": "barchart",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "fillOpacity": 80,
+                  "gradientMode": "opacity",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "lineWidth": 1,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "barRadius": 0,
+              "barWidth": 0.9,
+              "fullHighlight": false,
+              "groupWidth": 0.7,
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "orientation": "auto",
+              "showValue": "always",
+              "stacking": "none",
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "single",
+                "sort": "none"
+              },
+              "xField": "approach",
+              "xTickLabelRotation": 0,
+              "xTickLabelSpacing": 0
+            }
+          },
+          "version": "13.0.1"
+        }
+      }
+    },
+    "panel-7": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "redis-datasource-uid"
+                    },
+                    "group": "redis-datasource",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "command": "ft.search",
+                      "count": 10000,
+                      "keyName": "stagesIdx",
+                      "query": "",
+                      "returnFields": [
+                        "timestamp",
+                        "query",
+                        "approach",
+                        "stageId",
+                        "duration",
+                        "gcTime"
+                      ],
+                      "searchQuery": "@phase:{EXECUTION}",
+                      "sortDirection": "ASC",
+                      "streaming": false,
+                      "type": "search"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "filterByValue",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "filters": [
+                      {
+                        "config": {
+                          "id": "equal",
+                          "options": {
+                            "value": "${query_name}"
+                          }
+                        },
+                        "fieldName": "query"
+                      }
+                    ],
+                    "match": "any",
+                    "type": "include"
+                  }
+                }
+              },
+              {
+                "group": "convertFieldType",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "conversions": [
+                      {
+                        "destinationType": "number",
+                        "targetField": "duration"
+                      },
+                      {
+                        "destinationType": "number",
+                        "targetField": "gcTime"
+                      },
+                      {
+                        "destinationType": "number",
+                        "enumConfig": {
+                          "text": []
+                        },
+                        "targetField": "stageId"
+                      }
+                    ],
+                    "fields": {}
+                  }
+                }
+              },
+              {
+                "group": "groupBy",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "fields": {
+                      "approach": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "duration": {
+                        "aggregations": [
+                          "mean"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "gcTime": {
+                        "aggregations": [
+                          "mean"
+                        ]
+                      },
+                      "query": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "spark-duration": {
+                        "aggregations": [
+                          "mean"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "stageId": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "timestamp": {
+                        "aggregations": []
+                      },
+                      "wallclock-duration": {
+                        "aggregations": [
+                          "mean"
+                        ],
+                        "operation": "aggregate"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "group": "groupingToMatrix",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "columnField": "stageId",
+                    "rowField": "approach",
+                    "valueField": "duration (mean)"
+                  }
+                }
+              },
+              {
+                "group": "renameByRegex",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "regex": "^(\\d+)$",
+                    "renamePattern": "Stage $1"
+                  }
+                }
+              },
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {},
+                    "includeByName": {},
+                    "indexByName": {},
+                    "orderBy": [
+                      {
+                        "desc": false,
+                        "type": "name"
+                      }
+                    ],
+                    "orderByMode": "auto",
+                    "renameByName": {
+                      "approach\\stageId": "stage_detail"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "Duration of different stages in the execution phase.",
+        "id": 7,
+        "links": [],
+        "title": "Execution Phase Duration",
+        "vizConfig": {
+          "group": "barchart",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "Milliseconds (ms)",
+                  "axisPlacement": "auto",
+                  "fillOpacity": 80,
+                  "gradientMode": "hue",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "lineWidth": 1,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "fieldMinMax": false,
+                "noValue": "0",
+                "thresholds": {
+                  "mode": "percentage",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 60
+                    }
+                  ]
+                },
+                "unit": "ms"
+              },
+              "overrides": []
+            },
+            "options": {
+              "barRadius": 0,
+              "barWidth": 0.7,
+              "fullHighlight": false,
+              "groupWidth": 0.66,
+              "legend": {
+                "calcs": [
+                  "count"
+                ],
+                "displayMode": "table",
+                "placement": "right",
+                "showLegend": true
+              },
+              "orientation": "horizontal",
+              "showValue": "auto",
+              "stacking": "normal",
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "single",
+                "sort": "none"
+              },
+              "xField": "approach",
+              "xTickLabelRotation": 0,
+              "xTickLabelSpacing": 0
+            }
+          },
+          "version": "13.0.1"
+        }
+      }
+    },
+    "panel-8": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "redis-datasource-uid"
+                    },
+                    "group": "redis-datasource",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "command": "ft.search",
+                      "count": 10000,
+                      "keyName": "stagesIdx",
+                      "query": "",
+                      "returnFields": [
+                        "timestamp",
+                        "query",
+                        "approach",
+                        "stageId",
+                        "read"
+                      ],
+                      "searchQuery": "@phase:{EXECUTION}",
+                      "type": "search"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "filterByValue",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "filters": [
+                      {
+                        "config": {
+                          "id": "equal",
+                          "options": {
+                            "value": "${query_name}"
+                          }
+                        },
+                        "fieldName": "query"
+                      }
+                    ],
+                    "match": "any",
+                    "type": "include"
+                  }
+                }
+              },
+              {
+                "group": "groupBy",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "fields": {
+                      "approach": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "execId": {
+                        "aggregations": [
+                          "count",
+                          "max",
+                          "min"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "query": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "read": {
+                        "aggregations": [
+                          "mean",
+                          "max"
+                        ]
+                      },
+                      "stageId": {
+                        "aggregations": [
+                          "count",
+                          "max",
+                          "min"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "timestamp": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "group": "groupBy",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "fields": {
+                      "approach": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "execId (count)": {
+                        "aggregations": [
+                          "mean",
+                          "max",
+                          "min"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "query": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "stageId (count)": {
+                        "aggregations": [
+                          "mean",
+                          "max",
+                          "min"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "stageId (sum)": {
+                        "aggregations": [
+                          "mean"
+                        ],
+                        "operation": "aggregate"
+                      },
+                      "timestamp": {
+                        "aggregations": []
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {
+                      "query": true,
+                      "read (max)": true
+                    },
+                    "includeByName": {},
+                    "indexByName": {},
+                    "renameByName": {
+                      "execId (count) (max)": "executor_max",
+                      "execId (count) (mean)": "executor_mean",
+                      "execId (count) (min)": "executor_min",
+                      "extra_load": "Extra Read Load",
+                      "read (mean)": "Mean Read Load",
+                      "stageId (count) (max)": "stage_min",
+                      "stageId (count) (mean)": "stage_mean",
+                      "stageId (count) (min)": "stage_max"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "Mean number of stages executed in the execution phase.",
+        "id": 8,
+        "links": [],
+        "title": "Average Number of Stages",
+        "vizConfig": {
+          "group": "barchart",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "fillOpacity": 80,
+                  "gradientMode": "opacity",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "lineWidth": 1,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "barRadius": 0,
+              "barWidth": 0.9,
+              "fullHighlight": false,
+              "groupWidth": 0.7,
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "orientation": "auto",
+              "showValue": "never",
+              "stacking": "none",
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "single",
+                "sort": "none"
+              },
+              "xField": "approach",
+              "xTickLabelRotation": 0,
+              "xTickLabelSpacing": 0
+            }
+          },
+          "version": "13.0.1"
+        }
+      }
     }
   },
-  "spec": {
-    "annotations": [
-      {
-        "kind": "AnnotationQuery",
-        "spec": {
-          "query": {
-            "kind": "DataQuery",
-            "group": "grafana",
-            "version": "v0",
-            "datasource": {
-              "name": "-- Grafana --"
+  "layout": {
+    "kind": "RowsLayout",
+    "spec": {
+      "rows": [
+        {
+          "kind": "RowsLayoutRow",
+          "spec": {
+            "collapse": false,
+            "layout": {
+              "kind": "GridLayout",
+              "spec": {
+                "items": [
+                  {
+                    "kind": "GridLayoutItem",
+                    "spec": {
+                      "element": {
+                        "kind": "ElementReference",
+                        "name": "panel-2"
+                      },
+                      "height": 8,
+                      "width": 18,
+                      "x": 0,
+                      "y": 0
+                    }
+                  },
+                  {
+                    "kind": "GridLayoutItem",
+                    "spec": {
+                      "element": {
+                        "kind": "ElementReference",
+                        "name": "panel-6"
+                      },
+                      "height": 8,
+                      "width": 6,
+                      "x": 18,
+                      "y": 0
+                    }
+                  },
+                  {
+                    "kind": "GridLayoutItem",
+                    "spec": {
+                      "element": {
+                        "kind": "ElementReference",
+                        "name": "panel-7"
+                      },
+                      "height": 8,
+                      "width": 18,
+                      "x": 0,
+                      "y": 8
+                    }
+                  },
+                  {
+                    "kind": "GridLayoutItem",
+                    "spec": {
+                      "element": {
+                        "kind": "ElementReference",
+                        "name": "panel-8"
+                      },
+                      "height": 8,
+                      "width": 6,
+                      "x": 18,
+                      "y": 8
+                    }
+                  }
+                ]
+              }
             },
-            "spec": {}
-          },
-          "enable": true,
-          "hide": true,
-          "iconColor": "rgba(0, 211, 255, 1)",
-          "name": "Annotations & Alerts",
-          "builtIn": true
-        }
-      }
-    ],
-    "cursorSync": "Off",
-    "editable": true,
-    "elements": {
-      "panel-2": {
-        "kind": "Panel",
-        "spec": {
-          "id": 2,
-          "title": "Execution Phase Duration",
-          "description": "Total wall clock duration vs Spark duration for the execution phase.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "redis-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "redis-datasource-uid"
-                      },
-                      "spec": {
-                        "command": "ft.search",
-                        "count": 10000,
-                        "keyName": "phaseIdx",
-                        "query": "",
-                        "returnFields": [
-                          "query",
-                          "approach",
-                          "phase",
-                          "wallclock-duration",
-                          "spark-duration"
-                        ],
-                        "searchQuery": "@phase:{EXECUTION}",
-                        "sortDirection": "ASC",
-                        "streaming": false,
-                        "type": "search"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [
-                {
-                  "kind": "Transformation",
-                  "group": "filterByValue",
-                  "spec": {
-                    "options": {
-                      "filters": [
-                        {
-                          "config": {
-                            "id": "equal",
-                            "options": {
-                              "value": "${query_name}"
-                            }
-                          },
-                          "fieldName": "query"
-                        }
-                      ],
-                      "match": "any",
-                      "type": "include"
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "convertFieldType",
-                  "spec": {
-                    "options": {
-                      "conversions": [
-                        {
-                          "destinationType": "number",
-                          "targetField": "wallclock-duration"
-                        },
-                        {
-                          "destinationType": "number",
-                          "targetField": "spark-duration"
-                        }
-                      ],
-                      "fields": {}
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "groupBy",
-                  "spec": {
-                    "options": {
-                      "fields": {
-                        "approach": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "duration": {
-                          "aggregations": [
-                            "sum"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "query": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "spark-duration": {
-                          "aggregations": [
-                            "mean"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "wallclock-duration": {
-                          "aggregations": [
-                            "mean"
-                          ],
-                          "operation": "aggregate"
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "calculateField",
-                  "spec": {
-                    "options": {
-                      "alias": "overhead-time",
-                      "binary": {
-                        "left": {
-                          "matcher": {
-                            "id": "byName",
-                            "options": "wallclock-duration (mean)"
-                          }
-                        },
-                        "operator": "-",
-                        "right": {
-                          "matcher": {
-                            "id": "byName",
-                            "options": "spark-duration (mean)"
-                          }
-                        }
-                      },
-                      "mode": "binary",
-                      "reduce": {
-                        "reducer": "sum"
-                      },
-                      "replaceFields": false
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "organize",
-                  "spec": {
-                    "options": {
-                      "excludeByName": {
-                        "overhead-time": false,
-                        "query": false,
-                        "wallclock-duration (mean)": true
-                      },
-                      "includeByName": {},
-                      "indexByName": {},
-                      "renameByName": {
-                        "approach": "Backend",
-                        "overhead-time": "Wall Clock Overhead",
-                        "query": "Query",
-                        "spark-duration (mean)": "Spark Time",
-                        "wallclock-duration (mean)": "Wall Clock Time"
-                      }
-                    }
-                  }
-                }
-              ],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "barchart",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "barRadius": 0,
-                "barWidth": 0.7,
-                "fullHighlight": false,
-                "groupWidth": 0.66,
-                "legend": {
-                  "calcs": [
-                    "min",
-                    "max",
-                    "mean",
-                    "median"
-                  ],
-                  "displayMode": "table",
-                  "placement": "right",
-                  "showLegend": true
-                },
-                "orientation": "auto",
-                "showValue": "always",
-                "stacking": "normal",
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                },
-                "xField": "Backend",
-                "xTickLabelRotation": 0,
-                "xTickLabelSpacing": 0
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "ms",
-                  "thresholds": {
-                    "mode": "percentage",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 60,
-                        "color": "red"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "Milliseconds (ms)",
-                    "axisPlacement": "auto",
-                    "fillOpacity": 80,
-                    "gradientMode": "hue",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "lineWidth": 1,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  },
-                  "fieldMinMax": false
-                },
-                "overrides": []
-              }
-            }
+            "title": "Execution Time"
           }
-        }
-      },
-      "panel-3": {
-        "kind": "Panel",
-        "spec": {
-          "id": 3,
-          "title": "Data Movement",
-          "description": "Total bytes read and written by executors.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "redis-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "redis-datasource-uid"
-                      },
-                      "spec": {
-                        "command": "ft.search",
-                        "count": 10000,
-                        "keyName": "executorsIdx",
-                        "query": "",
-                        "returnFields": [
-                          "query",
-                          "approach",
-                          "read",
-                          "written",
-                          "shuffleRead",
-                          "shuffleWrite",
-                          "execId"
-                        ],
-                        "searchQuery": "@phase:{EXECUTION}",
-                        "type": "search"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [
-                {
-                  "kind": "Transformation",
-                  "group": "filterByValue",
-                  "spec": {
-                    "options": {
-                      "filters": [
-                        {
-                          "config": {
-                            "id": "equal",
-                            "options": {
-                              "value": "${query_name}"
-                            }
-                          },
-                          "fieldName": "query"
-                        }
-                      ],
-                      "match": "all",
-                      "type": "include"
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "convertFieldType",
-                  "spec": {
-                    "options": {
-                      "conversions": [
-                        {
-                          "destinationType": "number",
-                          "targetField": "read"
-                        },
-                        {
-                          "destinationType": "number",
-                          "targetField": "written"
-                        },
-                        {
-                          "destinationType": "number",
-                          "targetField": "shuffleRead"
-                        },
-                        {
-                          "destinationType": "number",
-                          "targetField": "shuffleWrite"
-                        }
-                      ],
-                      "fields": {}
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "groupBy",
-                  "spec": {
-                    "options": {
-                      "fields": {
-                        "approach": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "execId": {
-                          "aggregations": []
-                        },
-                        "keyName": {
-                          "aggregations": []
-                        },
-                        "query": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "read": {
-                          "aggregations": [
-                            "mean",
-                            "max"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "shuffleRead": {
-                          "aggregations": [
-                            "mean",
-                            "max"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "shuffleWrite": {
-                          "aggregations": [
-                            "mean",
-                            "max"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "timestamp": {
-                          "aggregations": []
-                        },
-                        "written": {
-                          "aggregations": [
-                            "mean",
-                            "max"
-                          ],
-                          "operation": "aggregate"
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "organize",
-                  "spec": {
-                    "options": {
-                      "excludeByName": {
-                        "approach": false,
-                        "execId": true,
-                        "keyName": true,
-                        "query": true,
-                        "shuffleRead (max)": true,
-                        "shuffleRead (mean)": true,
-                        "shuffleWrite (max)": true,
-                        "shuffleWrite (mean)": true
-                      },
-                      "includeByName": {},
-                      "indexByName": {
-                        "approach": 3,
-                        "execId": 2,
-                        "exec_backend": 4,
-                        "keyName": 0,
-                        "query": 1,
-                        "read": 5,
-                        "written": 6
-                      },
-                      "orderByMode": "manual",
-                      "renameByName": {
-                        "read (mean)": "Mean Read",
-                        "read (sum)": "Max Read",
-                        "written (mean)": ""
-                      }
-                    }
-                  }
-                }
-              ],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "barchart",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "barRadius": 0,
-                "barWidth": 0.97,
-                "fullHighlight": false,
-                "groupWidth": 0.7,
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "orientation": "auto",
-                "showValue": "auto",
-                "stacking": "none",
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                },
-                "xField": "approach",
-                "xTickLabelRotation": 0,
-                "xTickLabelSpacing": 0
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "bytes",
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 80,
-                        "color": "red"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "fillOpacity": 80,
-                    "gradientMode": "none",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "lineWidth": 1,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  }
-                },
-                "overrides": [
+        },
+        {
+          "kind": "RowsLayoutRow",
+          "spec": {
+            "collapse": false,
+            "layout": {
+              "kind": "GridLayout",
+              "spec": {
+                "items": [
                   {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "execId"
-                    },
-                    "properties": [
-                      {
-                        "id": "unit"
+                    "kind": "GridLayoutItem",
+                    "spec": {
+                      "element": {
+                        "kind": "ElementReference",
+                        "name": "panel-3"
                       },
-                      {
-                        "id": "mappings",
-                        "value": [
-                          {
-                            "options": {
-                              "pattern": "(.*)",
-                              "result": {
-                                "index": 0,
-                                "text": "Executor ID - $1"
-                              }
-                            },
-                            "type": "regex"
-                          }
-                        ]
-                      }
-                    ]
+                      "height": 8,
+                      "width": 8,
+                      "x": 0,
+                      "y": 0
+                    }
+                  },
+                  {
+                    "kind": "GridLayoutItem",
+                    "spec": {
+                      "element": {
+                        "kind": "ElementReference",
+                        "name": "panel-4"
+                      },
+                      "height": 8,
+                      "width": 8,
+                      "x": 8,
+                      "y": 0
+                    }
+                  },
+                  {
+                    "kind": "GridLayoutItem",
+                    "spec": {
+                      "element": {
+                        "kind": "ElementReference",
+                        "name": "panel-5"
+                      },
+                      "height": 8,
+                      "width": 8,
+                      "x": 16,
+                      "y": 0
+                    }
                   }
                 ]
               }
-            }
+            },
+            "title": "Read Loads"
           }
         }
-      },
-      "panel-4": {
-        "kind": "Panel",
-        "spec": {
-          "id": 4,
-          "title": "Data Movement",
-          "description": "Shuffle bytes read and written by executors.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "redis-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "redis-datasource-uid"
-                      },
-                      "spec": {
-                        "command": "ft.search",
-                        "count": 10000,
-                        "keyName": "executorsIdx",
-                        "query": "",
-                        "returnFields": [
-                          "query",
-                          "approach",
-                          "read",
-                          "written",
-                          "shuffleRead",
-                          "shuffleWrite",
-                          "execId"
-                        ],
-                        "searchQuery": "@phase:{EXECUTION}",
-                        "type": "search"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [
-                {
-                  "kind": "Transformation",
-                  "group": "filterByValue",
-                  "spec": {
-                    "options": {
-                      "filters": [
-                        {
-                          "config": {
-                            "id": "equal",
-                            "options": {
-                              "value": "${query_name}"
-                            }
-                          },
-                          "fieldName": "query"
-                        }
-                      ],
-                      "match": "all",
-                      "type": "include"
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "convertFieldType",
-                  "spec": {
-                    "options": {
-                      "conversions": [
-                        {
-                          "destinationType": "number",
-                          "targetField": "read"
-                        },
-                        {
-                          "destinationType": "number",
-                          "targetField": "written"
-                        },
-                        {
-                          "destinationType": "number",
-                          "targetField": "shuffleRead"
-                        },
-                        {
-                          "destinationType": "number",
-                          "targetField": "shuffleWrite"
-                        }
-                      ],
-                      "fields": {}
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "groupBy",
-                  "spec": {
-                    "options": {
-                      "fields": {
-                        "approach": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "execId": {
-                          "aggregations": []
-                        },
-                        "keyName": {
-                          "aggregations": []
-                        },
-                        "query": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "read": {
-                          "aggregations": [
-                            "mean",
-                            "max"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "shuffleRead": {
-                          "aggregations": [
-                            "mean",
-                            "max"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "shuffleWrite": {
-                          "aggregations": [
-                            "mean",
-                            "max"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "timestamp": {
-                          "aggregations": []
-                        },
-                        "written": {
-                          "aggregations": [
-                            "mean",
-                            "max"
-                          ],
-                          "operation": "aggregate"
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "organize",
-                  "spec": {
-                    "options": {
-                      "excludeByName": {
-                        "approach": false,
-                        "execId": true,
-                        "keyName": true,
-                        "query": true,
-                        "read (max)": true,
-                        "read (mean)": true,
-                        "written (max)": true,
-                        "written (mean)": true
-                      },
-                      "includeByName": {},
-                      "indexByName": {
-                        "approach": 3,
-                        "execId": 2,
-                        "exec_backend": 4,
-                        "keyName": 0,
-                        "query": 1,
-                        "read": 5,
-                        "written": 6
-                      },
-                      "orderByMode": "manual",
-                      "renameByName": {
-                        "shuffleRead (mean)": "Mean Shuffle Read",
-                        "shuffleRead (max)": "Max Shuffle Read",
-                        "shuffleWrite (mean)": "Mean Shuffle Write",
-                        "shuffleWrite (max)": "Max Shuffle Write"
-                      }
-                    }
-                  }
-                }
-              ],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "barchart",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "barRadius": 0,
-                "barWidth": 0.97,
-                "fullHighlight": false,
-                "groupWidth": 0.7,
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "orientation": "auto",
-                "showValue": "auto",
-                "stacking": "none",
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                },
-                "xField": "approach",
-                "xTickLabelRotation": 0,
-                "xTickLabelSpacing": 0
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "bytes",
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 80,
-                        "color": "red"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "fillOpacity": 80,
-                    "gradientMode": "none",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "lineWidth": 1,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  }
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "execId"
-                    },
-                    "properties": [
-                      {
-                        "id": "unit"
-                      },
-                      {
-                        "id": "mappings",
-                        "value": [
-                          {
-                            "options": {
-                              "pattern": "(.*)",
-                              "result": {
-                                "index": 0,
-                                "text": "Executor ID - $1"
-                              }
-                            },
-                            "type": "regex"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        }
-      },
-      "panel-5": {
-        "kind": "Panel",
-        "spec": {
-          "id": 5,
-          "title": "Read Load Imbalance",
-          "description": "Difference between maximum and mean read load across executors.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "redis-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "redis-datasource-uid"
-                      },
-                      "spec": {
-                        "command": "ft.search",
-                        "count": 10000,
-                        "keyName": "executorsIdx",
-                        "query": "",
-                        "returnFields": [
-                          "timestamp",
-                          "query",
-                          "approach",
-                          "execId",
-                          "read"
-                        ],
-                        "searchQuery": "@phase:{EXECUTION}",
-                        "type": "search"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [
-                {
-                  "kind": "Transformation",
-                  "group": "filterByValue",
-                  "spec": {
-                    "options": {
-                      "filters": [
-                        {
-                          "config": {
-                            "id": "equal",
-                            "options": {
-                              "value": "${query_name}"
-                            }
-                          },
-                          "fieldName": "query"
-                        }
-                      ],
-                      "match": "any",
-                      "type": "include"
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "convertFieldType",
-                  "spec": {
-                    "options": {
-                      "conversions": [
-                        {
-                          "destinationType": "number",
-                          "targetField": "read"
-                        }
-                      ],
-                      "fields": {}
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "groupBy",
-                  "spec": {
-                    "options": {
-                      "fields": {
-                        "approach": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "execId": {
-                          "aggregations": [
-                            "count"
-                          ]
-                        },
-                        "query": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "read": {
-                          "aggregations": [
-                            "mean",
-                            "max"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "timestamp": {
-                          "aggregations": []
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "calculateField",
-                  "spec": {
-                    "options": {
-                      "alias": "extra_load",
-                      "binary": {
-                        "left": {
-                          "matcher": {
-                            "id": "byName",
-                            "options": "read (max)"
-                          }
-                        },
-                        "operator": "-",
-                        "right": {
-                          "matcher": {
-                            "id": "byName",
-                            "options": "read (mean)"
-                          }
-                        }
-                      },
-                      "mode": "binary",
-                      "reduce": {
-                        "reducer": "sum"
-                      }
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "organize",
-                  "spec": {
-                    "options": {
-                      "excludeByName": {
-                        "query": true,
-                        "read (max)": true
-                      },
-                      "includeByName": {},
-                      "indexByName": {},
-                      "renameByName": {
-                        "extra_load": "Extra Read Load",
-                        "read (mean)": "Mean Read Load"
-                      }
-                    }
-                  }
-                }
-              ],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "barchart",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "barRadius": 0,
-                "barWidth": 0.6,
-                "fullHighlight": false,
-                "groupWidth": 0.7,
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": false
-                },
-                "orientation": "auto",
-                "showValue": "never",
-                "stacking": "normal",
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                },
-                "xField": "approach",
-                "xTickLabelRotation": 0,
-                "xTickLabelSpacing": 0
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "bytes",
-                  "thresholds": {
-                    "mode": "percentage",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 90,
-                        "color": "red"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "fillOpacity": 80,
-                    "gradientMode": "hue",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "lineWidth": 1,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  }
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "read (mean)"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "dark-green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "extra_load"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "dark-red",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        }
-      },
-      "panel-6": {
-        "kind": "Panel",
-        "spec": {
-          "id": 6,
-          "title": "Average Number of Executors",
-          "description": "Mean number of executors participating in the execution phase.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "redis-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "redis-datasource-uid"
-                      },
-                      "spec": {
-                        "command": "ft.search",
-                        "count": 10000,
-                        "keyName": "executorsIdx",
-                        "query": "",
-                        "returnFields": [
-                          "timestamp",
-                          "query",
-                          "approach",
-                          "execId",
-                          "read"
-                        ],
-                        "searchQuery": "@phase:{EXECUTION}",
-                        "type": "search"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [
-                {
-                  "kind": "Transformation",
-                  "group": "filterByValue",
-                  "spec": {
-                    "options": {
-                      "filters": [
-                        {
-                          "config": {
-                            "id": "equal",
-                            "options": {
-                              "value": "${query_name}"
-                            }
-                          },
-                          "fieldName": "query"
-                        }
-                      ],
-                      "match": "any",
-                      "type": "include"
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "groupBy",
-                  "spec": {
-                    "options": {
-                      "fields": {
-                        "approach": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "execId": {
-                          "aggregations": [
-                            "count",
-                            "max",
-                            "min"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "query": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "read": {
-                          "aggregations": [
-                            "mean",
-                            "max"
-                          ]
-                        },
-                        "timestamp": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "groupBy",
-                  "spec": {
-                    "options": {
-                      "fields": {
-                        "approach": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "execId (count)": {
-                          "aggregations": [
-                            "mean",
-                            "max",
-                            "min"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "query": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "organize",
-                  "spec": {
-                    "options": {
-                      "excludeByName": {
-                        "query": true,
-                        "read (max)": true
-                      },
-                      "includeByName": {},
-                      "indexByName": {},
-                      "renameByName": {
-                        "execId (count) (max)": "executor_max",
-                        "execId (count) (mean)": "executor_mean",
-                        "execId (count) (min)": "executor_min",
-                        "extra_load": "Extra Read Load",
-                        "read (mean)": "Mean Read Load"
-                      }
-                    }
-                  }
-                }
-              ],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "barchart",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "barRadius": 0,
-                "barWidth": 0.9,
-                "fullHighlight": false,
-                "groupWidth": 0.7,
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "orientation": "auto",
-                "showValue": "always",
-                "stacking": "none",
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                },
-                "xField": "approach",
-                "xTickLabelRotation": 0,
-                "xTickLabelSpacing": 0
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 80,
-                        "color": "red"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "fillOpacity": 80,
-                    "gradientMode": "opacity",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "lineWidth": 1,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  }
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-7": {
-        "kind": "Panel",
-        "spec": {
-          "id": 7,
-          "title": "Execution Phase Duration",
-          "description": "Duration of different stages in the execution phase.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "redis-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "redis-datasource-uid"
-                      },
-                      "spec": {
-                        "command": "ft.search",
-                        "count": 10000,
-                        "keyName": "stagesIdx",
-                        "query": "",
-                        "returnFields": [
-                          "timestamp",
-                          "query",
-                          "approach",
-                          "stageId",
-                          "duration",
-                          "gcTime"
-                        ],
-                        "searchQuery": "@phase:{EXECUTION}",
-                        "sortDirection": "ASC",
-                        "streaming": false,
-                        "type": "search"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [
-                {
-                  "kind": "Transformation",
-                  "group": "filterByValue",
-                  "spec": {
-                    "options": {
-                      "filters": [
-                        {
-                          "config": {
-                            "id": "equal",
-                            "options": {
-                              "value": "${query_name}"
-                            }
-                          },
-                          "fieldName": "query"
-                        }
-                      ],
-                      "match": "any",
-                      "type": "include"
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "convertFieldType",
-                  "spec": {
-                    "options": {
-                      "conversions": [
-                        {
-                          "destinationType": "number",
-                          "targetField": "duration"
-                        },
-                        {
-                          "destinationType": "number",
-                          "targetField": "gcTime"
-                        },
-                        {
-                          "destinationType": "number",
-                          "enumConfig": {
-                            "text": []
-                          },
-                          "targetField": "stageId"
-                        }
-                      ],
-                      "fields": {}
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "groupBy",
-                  "spec": {
-                    "options": {
-                      "fields": {
-                        "approach": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "duration": {
-                          "aggregations": [
-                            "mean"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "gcTime": {
-                          "aggregations": [
-                            "mean"
-                          ]
-                        },
-                        "query": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "spark-duration": {
-                          "aggregations": [
-                            "mean"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "stageId": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "timestamp": {
-                          "aggregations": []
-                        },
-                        "wallclock-duration": {
-                          "aggregations": [
-                            "mean"
-                          ],
-                          "operation": "aggregate"
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "groupingToMatrix",
-                  "spec": {
-                    "options": {
-                      "columnField": "stageId",
-                      "rowField": "approach",
-                      "valueField": "duration (mean)"
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "renameByRegex",
-                  "spec": {
-                    "options": {
-                      "regex": "^(\\d+)$",
-                      "renamePattern": "Stage $1"
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "organize",
-                  "spec": {
-                    "options": {
-                      "excludeByName": {},
-                      "includeByName": {},
-                      "indexByName": {},
-                      "orderBy": [
-                        {
-                          "desc": false,
-                          "type": "name"
-                        }
-                      ],
-                      "orderByMode": "auto",
-                      "renameByName": {
-                        "approach\\stageId": "stage_detail"
-                      }
-                    }
-                  }
-                }
-              ],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "barchart",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "barRadius": 0,
-                "barWidth": 0.7,
-                "fullHighlight": false,
-                "groupWidth": 0.66,
-                "legend": {
-                  "calcs": [
-                    "count"
-                  ],
-                  "displayMode": "table",
-                  "placement": "right",
-                  "showLegend": true
-                },
-                "orientation": "auto",
-                "showValue": "auto",
-                "stacking": "normal",
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                },
-                "xField": "approach",
-                "xTickLabelRotation": 0,
-                "xTickLabelSpacing": 0
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "ms",
-                  "thresholds": {
-                    "mode": "percentage",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 60,
-                        "color": "red"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "noValue": "0",
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "Milliseconds (ms)",
-                    "axisPlacement": "auto",
-                    "fillOpacity": 80,
-                    "gradientMode": "hue",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "lineWidth": 1,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  },
-                  "fieldMinMax": false
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-8": {
-        "kind": "Panel",
-        "spec": {
-          "id": 8,
-          "title": "Average Number of Stages",
-          "description": "Mean number of stages executed in the execution phase.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "redis-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "redis-datasource-uid"
-                      },
-                      "spec": {
-                        "command": "ft.search",
-                        "count": 10000,
-                        "keyName": "stagesIdx",
-                        "query": "",
-                        "returnFields": [
-                          "timestamp",
-                          "query",
-                          "approach",
-                          "stageId",
-                          "read"
-                        ],
-                        "searchQuery": "@phase:{EXECUTION}",
-                        "type": "search"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [
-                {
-                  "kind": "Transformation",
-                  "group": "filterByValue",
-                  "spec": {
-                    "options": {
-                      "filters": [
-                        {
-                          "config": {
-                            "id": "equal",
-                            "options": {
-                              "value": "${query_name}"
-                            }
-                          },
-                          "fieldName": "query"
-                        }
-                      ],
-                      "match": "any",
-                      "type": "include"
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "groupBy",
-                  "spec": {
-                    "options": {
-                      "fields": {
-                        "approach": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "execId": {
-                          "aggregations": [
-                            "count",
-                            "max",
-                            "min"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "query": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "read": {
-                          "aggregations": [
-                            "mean",
-                            "max"
-                          ]
-                        },
-                        "stageId": {
-                          "aggregations": [
-                            "count",
-                            "max",
-                            "min"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "timestamp": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "groupBy",
-                  "spec": {
-                    "options": {
-                      "fields": {
-                        "approach": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "execId (count)": {
-                          "aggregations": [
-                            "mean",
-                            "max",
-                            "min"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "query": {
-                          "aggregations": [],
-                          "operation": "groupby"
-                        },
-                        "stageId (count)": {
-                          "aggregations": [
-                            "mean",
-                            "max",
-                            "min"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "stageId (sum)": {
-                          "aggregations": [
-                            "mean"
-                          ],
-                          "operation": "aggregate"
-                        },
-                        "timestamp": {
-                          "aggregations": []
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  "kind": "Transformation",
-                  "group": "organize",
-                  "spec": {
-                    "options": {
-                      "excludeByName": {
-                        "query": true,
-                        "read (max)": true
-                      },
-                      "includeByName": {},
-                      "indexByName": {},
-                      "renameByName": {
-                        "execId (count) (max)": "executor_max",
-                        "execId (count) (mean)": "executor_mean",
-                        "execId (count) (min)": "executor_min",
-                        "extra_load": "Extra Read Load",
-                        "read (mean)": "Mean Read Load",
-                        "stageId (count) (max)": "stage_min",
-                        "stageId (count) (mean)": "stage_mean",
-                        "stageId (count) (min)": "stage_max"
-                      }
-                    }
-                  }
-                }
-              ],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "barchart",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "barRadius": 0,
-                "barWidth": 0.9,
-                "fullHighlight": false,
-                "groupWidth": 0.7,
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "orientation": "auto",
-                "showValue": "never",
-                "stacking": "none",
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                },
-                "xField": "approach",
-                "xTickLabelRotation": 0,
-                "xTickLabelSpacing": 0
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 80,
-                        "color": "red"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "fillOpacity": 80,
-                    "gradientMode": "opacity",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "lineWidth": 1,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  }
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      }
-    },
+      ]
+    }
+  },
+  "links": [],
+  "liveNow": false,
+  "preferences": {
     "layout": {
-      "kind": "RowsLayout",
+      "kind": "GridLayout",
       "spec": {
-        "rows": [
-          {
-            "kind": "RowsLayoutRow",
-            "spec": {
-              "title": "Execution Time",
-              "collapse": false,
-              "layout": {
-                "kind": "GridLayout",
-                "spec": {
-                  "items": [
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 0,
-                        "width": 18,
-                        "height": 8,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-2"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 18,
-                        "y": 0,
-                        "width": 6,
-                        "height": 8,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-6"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 8,
-                        "width": 18,
-                        "height": 8,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-7"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 18,
-                        "y": 8,
-                        "width": 6,
-                        "height": 8,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-8"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "kind": "RowsLayoutRow",
-            "spec": {
-              "title": "Read Loads",
-              "collapse": false,
-              "layout": {
-                "kind": "GridLayout",
-                "spec": {
-                  "items": [
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 0,
-                        "width": 8,
-                        "height": 8,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-3"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 8,
-                        "y": 0,
-                        "width": 8,
-                        "height": 8,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-4"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 16,
-                        "y": 0,
-                        "width": 8,
-                        "height": 8,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-5"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        ]
-      }
-    },
-    "links": [],
-    "liveNow": false,
-    "preload": false,
-    "tags": [],
-    "timeSettings": {
-      "timezone": "browser",
-      "from": "now-1y",
-      "to": "now",
-      "autoRefresh": "",
-      "autoRefreshIntervals": [
-        "5s",
-        "10s",
-        "30s",
-        "1m",
-        "5m",
-        "15m",
-        "30m",
-        "1h",
-        "2h",
-        "1d"
-      ],
-      "hideTimepicker": false,
-      "fiscalYearStartMonth": 0
-    },
-    "title": "Flight Analysis — Performance Metrics",
-    "variables": [
-      {
-        "kind": "CustomVariable",
-        "spec": {
-          "name": "query_name",
-          "query": "monthly_performance, arrival_delay_ranking, hourly_delay_percentiles",
-          "current": {
-            "text": "hourly_delay_percentiles",
-            "value": "hourly_delay_percentiles"
-          },
-          "options": [],
-          "multi": false,
-          "includeAll": false,
-          "label": "Query",
-          "hide": "dontHide",
-          "skipUrlSync": false,
-          "allowCustomValue": false,
-          "valuesFormat": "csv"
-        }
-      }
-    ],
-    "preferences": {
-      "layout": {
-        "kind": "GridLayout",
-        "spec": {
-          "items": []
-        }
+        "items": []
       }
     }
-  }
+  },
+  "preload": false,
+  "tags": [],
+  "timeSettings": {
+    "autoRefresh": "",
+    "autoRefreshIntervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "fiscalYearStartMonth": 0,
+    "from": "now-1y",
+    "hideTimepicker": false,
+    "timezone": "browser",
+    "to": "now"
+  },
+  "title": "Flight Analysis — Performance Metrics",
+  "variables": [
+    {
+      "kind": "CustomVariable",
+      "spec": {
+        "allowCustomValue": false,
+        "current": {
+          "text": "hourly_delay_percentiles",
+          "value": "hourly_delay_percentiles"
+        },
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Query",
+        "multi": false,
+        "name": "query_name",
+        "options": [],
+        "query": "monthly_performance, arrival_delay_ranking, hourly_delay_percentiles",
+        "skipUrlSync": false,
+        "valuesFormat": "csv"
+      }
+    }
+  ]
 }

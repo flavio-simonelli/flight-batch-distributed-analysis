@@ -217,7 +217,7 @@ def flight_analysis():
         class_name=JAR_CLASS,
         args=spark_args,
         name=f"spark-{{{{ params.selected_query }}}}-{{{{ ti.xcom_pull(task_ids='sanitize_id') }}}}",
-        polling_interval=15
+        polling_interval=5
     )
 
     # Routing from Start
