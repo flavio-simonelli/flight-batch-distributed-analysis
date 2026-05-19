@@ -87,8 +87,12 @@ def flight_analysis():
         print(f"[AIRFLOW] Variable '{var_name}' initialized.")
 
         # 2. Fetch JWT Token for the callback
-        login_url = f"http://airflow.flight-analysis.local:8088/auth/token"
-        login_res = requests.post(login_url, json={"username": "admin", "password": "admin_password"})
+        af_host = os.getenv("AIRFLOW_HOST", "airflow.flight-analysis.local")
+        af_user = os.getenv("AIRFLOW_USER", "admin")
+        af_pass = os.getenv("AIRFLOW_PASSWORD", "admin_password")
+        
+        login_url = f"http://{af_host}:8088/auth/token"
+        login_res = requests.post(login_url, json={"username": af_user, "password": af_pass})
         login_res.raise_for_status()
         jwt_token = login_res.json().get("access_token")
 

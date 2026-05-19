@@ -60,6 +60,8 @@ x-airflow-common: &airflow-common
         AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
         AIRFLOW_CONN_LIVY_DEFAULT: http://${AIRFLOW_CONN_LIVY_HOST}:${AIRFLOW_CONN_LIVY_PORT}
         AIRFLOW_CONN_NIFI_HTTP: ${AIRFLOW_CONN_NIFI_HTTP}
+        AIRFLOW_USER: ${AIRFLOW_USER}
+        AIRFLOW_PASSWORD: ${AIRFLOW_PASSWORD}
         # --- AWS CONFIGURATION (Pass-through) ---
         AWS_ACCESS_KEY_ID:
         AWS_SECRET_ACCESS_KEY:
