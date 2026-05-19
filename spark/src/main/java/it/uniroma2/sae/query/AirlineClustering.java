@@ -8,11 +8,13 @@ import org.apache.spark.ml.clustering.KMeansModel;
 import org.apache.spark.ml.evaluation.ClusteringEvaluator;
 import org.apache.spark.ml.feature.StandardScaler;
 import org.apache.spark.ml.feature.VectorAssembler;
+import org.apache.spark.ml.linalg.Vector;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import scala.Tuple2;
 
@@ -27,6 +29,9 @@ import static org.apache.spark.sql.functions.*;
  * Uses Spark MLlib to group airlines based on their operational performance features.
  */
 public class AirlineClustering extends BaseQuery {
+
+    private final static int TOP_CARRIER_NUM = 10;
+    private final static int MAX_K = 8;
 
     @Override
     protected Dataset<Row> loadData(FlightRepository repository, ApplicationConfig config) {
@@ -50,7 +55,7 @@ public class AirlineClustering extends BaseQuery {
         Dataset<Row> topCarriers = dataset.groupBy("OP_UNIQUE_CARRIER")
                 .count()
                 .orderBy(col("count").desc())
-                .limit(10)
+                .limit(TOP_CARRIER_NUM)
                 .select("OP_UNIQUE_CARRIER");
 
         // 2. Aggregate features for these top carriers
@@ -100,8 +105,8 @@ public class AirlineClustering extends BaseQuery {
         double bestScore = -1.0;
         
         System.out.println("--- Finding optimal K using Silhouette Score ---");
-        for (int k = 2; k <= 8; k++) {
-            KMeans kmeans = new KMeans().setK(k).setSeed(42L).setFeaturesCol("features");
+        for (int k = 2; k <= MAX_K; k++) {
+            KMeans kmeans = new KMeans().setK(k).setSeed(42L).setFeaturesCol("features").setInitMode("k-means||");
             KMeansModel model = kmeans.fit(scaledData);
             Dataset<Row> predictions = model.transform(scaledData);
             double score = evaluator.evaluate(predictions);
@@ -114,24 +119,26 @@ public class AirlineClustering extends BaseQuery {
         System.out.println("Best K identified: " + bestK);
 
         // 6. Final Clustering with the best K
-        KMeans kmeansFinal = new KMeans().setK(bestK).setSeed(42L).setFeaturesCol("features");
+        KMeans kmeansFinal = new KMeans().setK(bestK).setSeed(42L).setFeaturesCol("features").setInitMode("k-means||");
         KMeansModel modelFinal = kmeansFinal.fit(scaledData);
         Dataset<Row> finalPredictions = modelFinal.transform(scaledData);
 
         // 7. Extract Cluster Centers for interpretation
         SparkSession spark = dataset.sparkSession();
         List<Row> centerRows = new ArrayList<>();
-        org.apache.spark.ml.linalg.Vector[] centers = modelFinal.clusterCenters();
+        Vector[] centers = modelFinal.clusterCenters();
         for (int i = 0; i < centers.length; i++) {
             double[] centerValues = centers[i].toArray();
             Object[] rowValues = new Object[centerValues.length + 1];
-            rowValues[0] = i; // Cluster ID
-            System.arraycopy(centerValues, 0, rowValues, 1, centerValues.length);
+            rowValues[0] = i;
+            for (int j = 0; j < centerValues.length; j++) {
+                rowValues[j + 1] = centerValues[j];
+            }
             centerRows.add(RowFactory.create(rowValues));
         }
 
         // Define schema for centers (for visualization in Grafana)
-        List<org.apache.spark.sql.types.StructField> fields = new ArrayList<>();
+        List<StructField> fields = new ArrayList<>();
         fields.add(DataTypes.createStructField("cluster", DataTypes.IntegerType, false));
         for (String colName : featureCols) {
             fields.add(DataTypes.createStructField(colName + "_center", DataTypes.DoubleType, false));
