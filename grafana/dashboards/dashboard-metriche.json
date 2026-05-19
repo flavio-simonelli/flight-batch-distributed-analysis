@@ -2,21 +2,21 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "adz5hzw",
+    "name": "ad4ghzr",
     "namespace": "default",
-    "uid": "abb0d777-d745-4d5c-9a4b-1b285451e406",
-    "resourceVersion": "1778890187301018",
-    "generation": 47,
-    "creationTimestamp": "2026-05-15T20:01:18Z",
+    "uid": "4e03b3c9-2b8c-4f12-9513-0a6e8cba212d",
+    "resourceVersion": "1779210367834992",
+    "generation": 2,
+    "creationTimestamp": "2026-05-19T17:05:54Z",
     "labels": {
-      "grafana.app/deprecatedInternalID": "1736578810589184"
+      "grafana.app/deprecatedInternalID": "3141988374749184"
     },
     "annotations": {
-      "grafana.app/createdBy": "user:cfm5rx942fytcb",
+      "grafana.app/createdBy": "user:afmjwte1da03kd",
       "grafana.app/folder": "",
       "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f)",
-      "grafana.app/updatedBy": "user:cfm5rx942fytcb",
-      "grafana.app/updatedTimestamp": "2026-05-16T00:09:47Z"
+      "grafana.app/updatedBy": "user:afmjwte1da03kd",
+      "grafana.app/updatedTimestamp": "2026-05-19T17:06:07Z"
     }
   },
   "spec": {
@@ -241,7 +241,7 @@
                   "placement": "right",
                   "showLegend": true
                 },
-                "orientation": "auto",
+                "orientation": "horizontal",
                 "showValue": "always",
                 "stacking": "normal",
                 "tooltip": {
@@ -765,10 +765,10 @@
                       },
                       "orderByMode": "manual",
                       "renameByName": {
-                        "shuffleRead (mean)": "Mean Shuffle Read",
                         "shuffleRead (max)": "Max Shuffle Read",
-                        "shuffleWrite (mean)": "Mean Shuffle Write",
-                        "shuffleWrite (max)": "Max Shuffle Write"
+                        "shuffleRead (mean)": "Mean Shuffle Read",
+                        "shuffleWrite (max)": "Max Shuffle Write",
+                        "shuffleWrite (mean)": "Mean Shuffle Write"
                       }
                     }
                   }
@@ -1580,7 +1580,7 @@
                   "placement": "right",
                   "showLegend": true
                 },
-                "orientation": "auto",
+                "orientation": "horizontal",
                 "showValue": "auto",
                 "stacking": "normal",
                 "tooltip": {
@@ -2053,8 +2053,8 @@
           "name": "query_name",
           "query": "monthly_performance, arrival_delay_ranking, hourly_delay_percentiles",
           "current": {
-            "text": "hourly_delay_percentiles",
-            "value": "hourly_delay_percentiles"
+            "text": "monthly_performance",
+            "value": "monthly_performance"
           },
           "options": [],
           "multi": false,

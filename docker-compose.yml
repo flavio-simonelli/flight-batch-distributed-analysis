@@ -285,6 +285,7 @@ services:
                 aliases:
                     - databases.flight-analysis.local
                     - postgres.flight-analysis.local
+                    - postgres-databases.flight-analysis.local
         ports:
             - "${POSTGRES_PORT}:5432"
         environment:
@@ -302,6 +303,7 @@ services:
         networks:
             sae-net:
                 aliases:
+                    - hbase-databases.flight-analysis.local
                     - hbase.flight-analysis.local
         ports:
             - "${HBASE_UI_PORT}:16010" # Master UI
@@ -319,6 +321,7 @@ services:
         networks:
             sae-net:
                 aliases:
+                    - redis-databases.flight-analysis.local
                     - redis-output.flight-analysis.local
         ports:
             - "6380:6379"
