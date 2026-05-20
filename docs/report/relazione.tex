@@ -192,6 +192,23 @@ Il flusso \texttt{SAE\_Ingestion\_Pipeline} esegue un processo Extract-Load-Tran
 La scelta di Parquet è strategica: la sua struttura a blocchi con dizionari integrati abilita il \textit{predicate pushdown} nel motore Catalyst di Spark.
 Se una query analizza solo American Airlines, Spark legge dai dischi HDFS/S3 esclusivamente i blocchi Parquet contenenti tale compagnia, riducendo l'I/O di rete di ordini di grandezza rispetto alla scansione lineare di un file CSV\@.
 
+\subsubsection{Pre-processing e Data Quality}
+% TODO: impostiamo a NULL tutte le componenti di ritardo negative
+% TODO: filtriamo i voli (e li cancelliamo) se hanno:
+% - anno, mese, giorno, compagnia nulle
+% - volo cancellato ma DEP_TIME non nullo
+% - volo non cancellato ma DEP_TIME nullo O ARR_TIME nullo
+% - volo con ARR_DELAY negativo ma somma dei componenti di ritardo positiva
+%
+% SELECT * FROM FLOWFILE
+% WHERE "YEAR" IS NULL
+%         OR "MONTH" IS NULL
+%         OR DAY_OF_MONTH IS NULL
+%         OR OP_UNIQUE_CARRIER IS NULL
+%         OR (CANCELLED = 1.0 AND DEP_TIME IS NOT NULL)
+%         OR (CANCELLED = 0.0 AND (DEP_TIME IS NULL OR ARR_TIME IS NULL))
+%         OR ( (COALESCE(CARRIER_DELAY, 0.0) + COALESCE(WEATHER_DELAY, 0.0) + COALESCE(NAS_DELAY, 0.0) + COALESCE(SECURITY_DELAY, 0.0) + COALESCE(LATE_AIRCRAFT_DELAY, 0.0)) > 0.0 AND ARR_DELAY < 0.0 )
+
 \subsection{Livello di Processing}\label{subsec:processing_layer}
 Il cuore computazionale di SAE è l'applicazione Spark, sviluppata in Java 11.
 La modularità del codice sorgente è stata ottenuta applicando rigorosamente i design pattern della programmazione orientata agli oggetti\@.

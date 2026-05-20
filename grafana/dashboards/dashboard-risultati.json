@@ -5,8 +5,8 @@
     "name": "adtcqd9",
     "namespace": "default",
     "uid": "583932fe-86a4-4d50-bea9-b03c979fc3ed",
-    "resourceVersion": "1779225715212983",
-    "generation": 6,
+    "resourceVersion": "1779231993064990",
+    "generation": 24,
     "creationTimestamp": "2026-05-19T20:49:09Z",
     "labels": {
       "grafana.app/deprecatedInternalID": "3198170599473152"
@@ -16,7 +16,7 @@
       "grafana.app/folder": "",
       "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f)",
       "grafana.app/updatedBy": "user:dfmjx2mxhodmoc",
-      "grafana.app/updatedTimestamp": "2026-05-19T21:21:55Z"
+      "grafana.app/updatedTimestamp": "2026-05-19T23:06:33Z"
     }
   },
   "spec": {
@@ -209,12 +209,7 @@
               "options": {
                 "cellHeight": "sm",
                 "showHeader": true,
-                "sortBy": [
-                  {
-                    "desc": true,
-                    "displayName": "cluster"
-                  }
-                ]
+                "sortBy": []
               },
               "fieldConfig": {
                 "defaults": {
@@ -327,7 +322,6 @@
               "options": {
                 "barRadius": 0,
                 "barWidth": 0.97,
-                "colorByField": "airlines",
                 "fullHighlight": false,
                 "groupWidth": 0.7,
                 "legend": {
@@ -491,7 +485,7 @@
                     ]
                   },
                   "color": {
-                    "mode": "palette-classic"
+                    "mode": "continuous-plasma"
                   },
                   "custom": {
                     "axisBorderShow": false,
@@ -859,7 +853,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\n  LPAD(hour::text, 2, '0') || ':00' AS hour_label,\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p25::numeric,1) END) AS \"AA p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p50::numeric,1) END) AS \"AA p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p75::numeric,1) END) AS \"AA p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p90::numeric,1) END) AS \"AA p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p25::numeric,1) END) AS \"DL p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p50::numeric,1) END) AS \"DL p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p75::numeric,1) END) AS \"DL p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p90::numeric,1) END) AS \"DL p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p25::numeric,1) END) AS \"UA p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p50::numeric,1) END) AS \"UA p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p75::numeric,1) END) AS \"UA p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p90::numeric,1) END) AS \"UA p90\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p25::numeric,1) END) AS \"WN p25\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p50::numeric,1) END) AS \"WN p50\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p75::numeric,1) END) AS \"WN p75\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p90::numeric,1) END) AS \"WN p90\"\nFROM hourly_delay_percentiles_rdd_kll_1\nWHERE \"opUniqueCarrier\" IN ($TargetCarrier)\nGROUP BY hour\nORDER BY hour",
+                        "rawSql": "SELECT\n  hour,\n  p25,\n  p50,\n  p75,\n  p90\nFROM hourly_delay_percentiles_rdd_kll_1\nWHERE \"opUniqueCarrier\" = '$TargetCarrier'\nORDER BY hour",
                         "sql": {
                           "columns": [
                             {
@@ -890,35 +884,25 @@
           },
           "vizConfig": {
             "kind": "VizConfig",
-            "group": "barchart",
+            "group": "trend",
             "version": "13.0.1",
             "spec": {
               "options": {
-                "barRadius": 0.03,
-                "barWidth": 0.7,
-                "fullHighlight": false,
-                "groupWidth": 0.85,
                 "legend": {
                   "calcs": [],
                   "displayMode": "list",
-                  "placement": "right",
+                  "placement": "bottom",
                   "showLegend": true
                 },
-                "orientation": "auto",
-                "showValue": "never",
-                "stacking": "none",
                 "tooltip": {
-                  "hideZeros": true,
-                  "mode": "multi",
-                  "sort": "desc"
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
                 },
-                "xTickLabelRotation": 0,
-                "xTickLabelSpacing": 0
+                "xField": "hour"
               },
               "fieldConfig": {
                 "defaults": {
-                  "unit": "short",
-                  "decimals": 1,
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -939,130 +923,56 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "Delay (min)",
+                    "axisLabel": "",
                     "axisPlacement": "auto",
-                    "fillOpacity": 75,
-                    "gradientMode": "none",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 4,
+                    "gradientMode": "opacity",
                     "hideFrom": {
                       "legend": false,
                       "tooltip": false,
                       "viz": false
                     },
-                    "lineWidth": 0,
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 2,
+                    "pointSize": 10,
                     "scaleDistribution": {
                       "type": "linear"
+                    },
+                    "showPoints": "always",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  }
+                  },
+                  "fieldMinMax": false
                 },
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*p25"
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "hour"
                     },
                     "properties": [
                       {
-                        "id": "custom.fillOpacity",
-                        "value": 40
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*p50"
-                    },
-                    "properties": [
+                        "id": "min",
+                        "value": 0
+                      },
                       {
-                        "id": "custom.fillOpacity",
-                        "value": 65
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*p75"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 80
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": ".*p90"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 100
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": "AA.*"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "blue",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": "DL.*"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": "UA.*"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "orange",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byRegexp",
-                      "options": "WN.*"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "red",
-                          "mode": "fixed"
-                        }
+                        "id": "max",
+                        "value": 24
                       }
                     ]
                   }
@@ -1098,7 +1008,24 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\n  LPAD(hour::text, 2, '0') || ':00' AS hour_label,\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'AA' THEN ROUND(p50::numeric,1) END) AS \"AA\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'DL' THEN ROUND(p50::numeric,1) END) AS \"DL\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'UA' THEN ROUND(p50::numeric,1) END) AS \"UA\",\n  MAX(CASE WHEN \"opUniqueCarrier\" = 'WN' THEN ROUND(p50::numeric,1) END) AS \"WN\"\nFROM hourly_delay_percentiles_rdd_kll_1\nWHERE \"opUniqueCarrier\" IN ($TargetCarrier)\nGROUP BY hour\nORDER BY hour"
+                        "rawSql": "SELECT\n  \"opUniqueCarrier\",\n  hour,\n  p50\nFROM hourly_delay_percentiles_rdd_kll_1\nWHERE \"opUniqueCarrier\" = '$TargetCarrier'\nORDER BY hour",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
                       }
                     },
                     "refId": "A",
@@ -1112,35 +1039,25 @@
           },
           "vizConfig": {
             "kind": "VizConfig",
-            "group": "barchart",
+            "group": "trend",
             "version": "13.0.1",
             "spec": {
               "options": {
-                "barRadius": 0.03,
-                "barWidth": 0.6,
-                "fullHighlight": false,
-                "groupWidth": 0.8,
                 "legend": {
                   "calcs": [],
                   "displayMode": "list",
                   "placement": "bottom",
                   "showLegend": true
                 },
-                "orientation": "auto",
-                "showValue": "never",
-                "stacking": "none",
                 "tooltip": {
-                  "hideZeros": true,
-                  "mode": "multi",
-                  "sort": "desc"
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
                 },
-                "xTickLabelRotation": -45,
-                "xTickLabelSpacing": 0
+                "xField": "hour"
               },
               "fieldConfig": {
                 "defaults": {
-                  "unit": "short",
-                  "decimals": 1,
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -1161,82 +1078,60 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "Median delay (min)",
+                    "axisLabel": "",
                     "axisPlacement": "auto",
-                    "fillOpacity": 80,
-                    "gradientMode": "none",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 20,
+                    "gradientMode": "opacity",
                     "hideFrom": {
                       "legend": false,
                       "tooltip": false,
                       "viz": false
                     },
-                    "lineWidth": 0,
+                    "insertNulls": false,
+                    "lineInterpolation": "smooth",
+                    "lineStyle": {
+                      "dash": [
+                        10,
+                        10
+                      ],
+                      "fill": "dash"
+                    },
+                    "lineWidth": 3,
+                    "pointSize": 15,
                     "scaleDistribution": {
                       "type": "linear"
+                    },
+                    "showPoints": "always",
+                    "showValues": true,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
                     }
-                  }
+                  },
+                  "fieldMinMax": false
                 },
                 "overrides": [
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "AA"
+                      "scope": "series",
+                      "options": "hour"
                     },
                     "properties": [
                       {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "blue",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "DL"
-                    },
-                    "properties": [
+                        "id": "min",
+                        "value": 0
+                      },
                       {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "UA"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "orange",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "WN"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "red",
-                          "mode": "fixed"
-                        }
+                        "id": "max",
+                        "value": 24
                       }
                     ]
                   }
@@ -1272,7 +1167,24 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \"opUniqueCarrier\", min_delay_global, max_delay_global\nFROM hourly_delay_percentiles_rdd_kll_2\nWHERE \"opUniqueCarrier\" IN ($TargetCarrier)\nORDER BY \"opUniqueCarrier\""
+                        "rawSql": "SELECT \"opUniqueCarrier\", min_delay_global, max_delay_global\nFROM hourly_delay_percentiles_rdd_kll_2\nWHERE \"opUniqueCarrier\" = '$TargetCarrier'",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
                       }
                     },
                     "refId": "A",
@@ -1280,31 +1192,54 @@
                   }
                 }
               ],
-              "transformations": [],
+              "transformations": [
+                {
+                  "kind": "Transformation",
+                  "group": "partitionByValues",
+                  "spec": {
+                    "options": {
+                      "fields": [
+                        "opUniqueCarrier"
+                      ],
+                      "keepFields": true,
+                      "naming": {
+                        "asLabels": false
+                      }
+                    }
+                  }
+                }
+              ],
               "queryOptions": {}
             }
           },
           "vizConfig": {
             "kind": "VizConfig",
-            "group": "stat",
+            "group": "barchart",
             "version": "13.0.1",
             "spec": {
               "options": {
-                "colorMode": "value",
-                "graphMode": "area",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
+                "barRadius": 0,
+                "barWidth": 0.97,
+                "colorByField": "opUniqueCarrier",
+                "fullHighlight": false,
+                "groupWidth": 0.7,
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
                 },
-                "showPercentChange": false,
-                "textMode": "auto",
-                "wideLayout": true
+                "orientation": "horizontal",
+                "showValue": "always",
+                "stacking": "none",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                },
+                "xField": "opUniqueCarrier",
+                "xTickLabelRotation": 0,
+                "xTickLabelSpacing": 0
               },
               "fieldConfig": {
                 "defaults": {
@@ -1316,13 +1251,34 @@
                         "color": "green"
                       },
                       {
-                        "value": 80,
+                        "value": 0,
                         "color": "red"
                       }
                     ]
                   },
                   "color": {
                     "mode": "thresholds"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "fillOpacity": 80,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineWidth": 1,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
                   }
                 },
                 "overrides": []
@@ -1773,8 +1729,8 @@
                       "spec": {
                         "x": 0,
                         "y": 0,
-                        "width": 12,
-                        "height": 8,
+                        "width": 24,
+                        "height": 12,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-5"
@@ -1784,9 +1740,9 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 12,
-                        "y": 0,
-                        "width": 12,
+                        "x": 0,
+                        "y": 12,
+                        "width": 20,
                         "height": 8,
                         "element": {
                           "kind": "ElementReference",
@@ -1797,9 +1753,9 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 0,
-                        "y": 8,
-                        "width": 12,
+                        "x": 20,
+                        "y": 12,
+                        "width": 4,
                         "height": 8,
                         "element": {
                           "kind": "ElementReference",
@@ -1891,8 +1847,8 @@
     ],
     "timeSettings": {
       "timezone": "browser",
-      "from": "2025-01-01T00:00:00.000Z",
-      "to": "2025-04-01T00:00:00.000Z",
+      "from": "2024-02-21T00:00:00.000Z",
+      "to": "2026-02-10T00:00:00.000Z",
       "autoRefresh": "",
       "autoRefreshIntervals": [
         "5s",
@@ -1917,25 +1873,15 @@
           "name": "TargetCarrier",
           "query": "AA, DL, UA, WN",
           "current": {
-            "text": [
-              "AA",
-              "DL",
-              "UA",
-              "WN"
-            ],
-            "value": [
-              "AA",
-              "DL",
-              "UA",
-              "WN"
-            ]
+            "text": "AA",
+            "value": "AA"
           },
           "options": [],
-          "multi": true,
+          "multi": false,
           "includeAll": false,
           "allValue": "All",
-          "label": "Target Carrier to display in charts",
-          "hide": "inControlsMenu",
+          "label": "Carrier",
+          "hide": "dontHide",
           "skipUrlSync": false,
           "allowCustomValue": false,
           "valuesFormat": "csv"
