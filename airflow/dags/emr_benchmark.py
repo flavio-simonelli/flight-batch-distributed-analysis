@@ -65,7 +65,7 @@ def flight_benchmark_emr():
                     "Jar": "command-runner.jar",
                     "Args": [
                         "spark-submit",
-                        "--deploy-mode", "cluster",
+                        "--deploy-mode", "client",
                         "--class", JAR_CLASS,
                         JAR_PATH,
                         "--query", query,

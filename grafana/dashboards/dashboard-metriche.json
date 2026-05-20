@@ -2,21 +2,21 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "ad4ghzr",
+    "name": "ad7shgt",
     "namespace": "default",
-    "uid": "4e03b3c9-2b8c-4f12-9513-0a6e8cba212d",
-    "resourceVersion": "1779210367834992",
+    "uid": "a7bb2103-c9b2-4945-9511-3d5b9fcb13e8",
+    "resourceVersion": "1779283808826989",
     "generation": 2,
-    "creationTimestamp": "2026-05-19T17:05:54Z",
+    "creationTimestamp": "2026-05-20T13:09:29Z",
     "labels": {
-      "grafana.app/deprecatedInternalID": "3141988374749184"
+      "grafana.app/deprecatedInternalID": "3444878708883456"
     },
     "annotations": {
-      "grafana.app/createdBy": "user:afmjwte1da03kd",
+      "grafana.app/createdBy": "user:bfmmvnmmkhudcc",
       "grafana.app/folder": "",
       "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f)",
-      "grafana.app/updatedBy": "user:afmjwte1da03kd",
-      "grafana.app/updatedTimestamp": "2026-05-19T17:06:07Z"
+      "grafana.app/updatedBy": "user:bfmmvnmmkhudcc",
+      "grafana.app/updatedTimestamp": "2026-05-20T13:30:08Z"
     }
   },
   "spec": {
@@ -42,6 +42,7 @@
       }
     ],
     "cursorSync": "Off",
+    "description": "Detailed monitoring of Spark job execution, data movement, and resource utilization.",
     "editable": true,
     "elements": {
       "panel-2": {
@@ -63,8 +64,7 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "Redis",
-                        "uid": "redis-datasource-uid"
+                        "name": "Redis"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -79,6 +79,7 @@
                           "spark-duration"
                         ],
                         "searchQuery": "@phase:{EXECUTION}",
+                        "sortBy": "approach",
                         "sortDirection": "ASC",
                         "streaming": false,
                         "type": "search"
@@ -232,18 +233,13 @@
                 "fullHighlight": false,
                 "groupWidth": 0.66,
                 "legend": {
-                  "calcs": [
-                    "min",
-                    "max",
-                    "mean",
-                    "median"
-                  ],
-                  "displayMode": "table",
-                  "placement": "right",
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
                   "showLegend": true
                 },
                 "orientation": "horizontal",
-                "showValue": "always",
+                "showValue": "never",
                 "stacking": "normal",
                 "tooltip": {
                   "hideZeros": false,
@@ -321,8 +317,7 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "Redis",
-                        "uid": "redis-datasource-uid"
+                        "name": "Redis"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -339,6 +334,8 @@
                           "execId"
                         ],
                         "searchQuery": "@phase:{EXECUTION}",
+                        "sortBy": "approach",
+                        "sortDirection": "ASC",
                         "type": "search"
                       }
                     },
@@ -611,8 +608,7 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "Redis",
-                        "uid": "redis-datasource-uid"
+                        "name": "Redis"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -629,6 +625,8 @@
                           "execId"
                         ],
                         "searchQuery": "@phase:{EXECUTION}",
+                        "sortBy": "approach",
+                        "sortDirection": "ASC",
                         "type": "search"
                       }
                     },
@@ -902,8 +900,7 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "Redis",
-                        "uid": "redis-datasource-uid"
+                        "name": "Redis"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -918,6 +915,8 @@
                           "read"
                         ],
                         "searchQuery": "@phase:{EXECUTION}",
+                        "sortBy": "approach",
+                        "sortDirection": "ASC",
                         "type": "search"
                       }
                     },
@@ -1158,7 +1157,7 @@
         "kind": "Panel",
         "spec": {
           "id": 6,
-          "title": "Cluster Elasticity: Active Executors",
+          "title": "Active Executors",
           "description": "Mean number of compute nodes participating in the job execution.",
           "links": [],
           "data": {
@@ -1173,8 +1172,7 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "Redis",
-                        "uid": "redis-datasource-uid"
+                        "name": "Redis"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -1189,6 +1187,8 @@
                           "read"
                         ],
                         "searchQuery": "@phase:{EXECUTION}",
+                        "sortBy": "approach",
+                        "sortDirection": "ASC",
                         "type": "search"
                       }
                     },
@@ -1287,6 +1287,8 @@
                   "spec": {
                     "options": {
                       "excludeByName": {
+                        "execId (count) (max)": true,
+                        "execId (count) (min)": true,
                         "query": true,
                         "read (max)": true
                       },
@@ -1313,7 +1315,7 @@
             "spec": {
               "options": {
                 "barRadius": 0,
-                "barWidth": 0.9,
+                "barWidth": 0.4,
                 "fullHighlight": false,
                 "groupWidth": 0.7,
                 "legend": {
@@ -1322,7 +1324,7 @@
                   "placement": "bottom",
                   "showLegend": true
                 },
-                "orientation": "auto",
+                "orientation": "vertical",
                 "showValue": "always",
                 "stacking": "none",
                 "tooltip": {
@@ -1331,7 +1333,7 @@
                   "sort": "none"
                 },
                 "xField": "approach",
-                "xTickLabelRotation": 0,
+                "xTickLabelRotation": 45,
                 "xTickLabelSpacing": 0
               },
               "fieldConfig": {
@@ -1399,8 +1401,7 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "Redis",
-                        "uid": "redis-datasource-uid"
+                        "name": "Redis"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -1416,6 +1417,7 @@
                           "gcTime"
                         ],
                         "searchQuery": "@phase:{EXECUTION}",
+                        "sortBy": "approach",
                         "sortDirection": "ASC",
                         "streaming": false,
                         "type": "search"
@@ -1584,10 +1586,10 @@
                   ],
                   "displayMode": "table",
                   "placement": "right",
-                  "showLegend": true
+                  "showLegend": false
                 },
                 "orientation": "horizontal",
-                "showValue": "auto",
+                "showValue": "never",
                 "stacking": "normal",
                 "tooltip": {
                   "hideZeros": false,
@@ -1651,7 +1653,7 @@
         "kind": "Panel",
         "spec": {
           "id": 8,
-          "title": "Job Complexity: Execution Stages",
+          "title": "Execution Stages",
           "description": "Average number of logical stages generated by the Spark optimizer for the specific query.",
           "links": [],
           "data": {
@@ -1666,8 +1668,7 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "Redis",
-                        "uid": "redis-datasource-uid"
+                        "name": "Redis"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -1682,6 +1683,8 @@
                           "read"
                         ],
                         "searchQuery": "@phase:{EXECUTION}",
+                        "sortBy": "approach",
+                        "sortDirection": "ASC",
                         "type": "search"
                       }
                     },
@@ -1806,7 +1809,9 @@
                     "options": {
                       "excludeByName": {
                         "query": true,
-                        "read (max)": true
+                        "read (max)": true,
+                        "stageId (count) (max)": true,
+                        "stageId (count) (min)": true
                       },
                       "includeByName": {},
                       "indexByName": {},
@@ -1834,7 +1839,7 @@
             "spec": {
               "options": {
                 "barRadius": 0,
-                "barWidth": 0.9,
+                "barWidth": 0.4,
                 "fullHighlight": false,
                 "groupWidth": 0.7,
                 "legend": {
@@ -1843,8 +1848,8 @@
                   "placement": "bottom",
                   "showLegend": true
                 },
-                "orientation": "auto",
-                "showValue": "never",
+                "orientation": "vertical",
+                "showValue": "always",
                 "stacking": "none",
                 "tooltip": {
                   "hideZeros": false,
@@ -1852,7 +1857,7 @@
                   "sort": "none"
                 },
                 "xField": "approach",
-                "xTickLabelRotation": 0,
+                "xTickLabelRotation": 45,
                 "xTickLabelSpacing": 0
               },
               "fieldConfig": {
@@ -1900,6 +1905,235 @@
             }
           }
         }
+      },
+      "panel-9": {
+        "kind": "Panel",
+        "spec": {
+          "id": 9,
+          "title": "Spark Execution Time Distribution",
+          "description": "Box plot analysis of Spark execution times across RDD, DataFrame, and SQL approaches. It displays the statistical distribution (Min, Q1, Median, Q3, Max) of computing times, where the gap visually isolates driver overhead and red markers pinpoint performance anomalies.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "redis-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "Redis"
+                      },
+                      "spec": {
+                        "command": "ft.search",
+                        "count": 10000,
+                        "keyName": "phaseIdx",
+                        "query": "",
+                        "returnFields": [
+                          "query",
+                          "approach",
+                          "phase",
+                          "wallclock-duration",
+                          "spark-duration"
+                        ],
+                        "searchQuery": "@phase:{EXECUTION}",
+                        "sortBy": "approach",
+                        "sortDirection": "ASC",
+                        "streaming": false,
+                        "type": "search"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [
+                {
+                  "kind": "Transformation",
+                  "group": "filterByValue",
+                  "spec": {
+                    "options": {
+                      "filters": [
+                        {
+                          "config": {
+                            "id": "equal",
+                            "options": {
+                              "value": "${query_name}"
+                            }
+                          },
+                          "fieldName": "query"
+                        }
+                      ],
+                      "match": "any",
+                      "type": "include"
+                    }
+                  }
+                },
+                {
+                  "kind": "Transformation",
+                  "group": "convertFieldType",
+                  "spec": {
+                    "options": {
+                      "conversions": [
+                        {
+                          "destinationType": "number",
+                          "targetField": "wallclock-duration"
+                        },
+                        {
+                          "destinationType": "number",
+                          "targetField": "spark-duration"
+                        }
+                      ],
+                      "fields": {}
+                    }
+                  }
+                },
+                {
+                  "kind": "Transformation",
+                  "group": "groupBy",
+                  "spec": {
+                    "disabled": true,
+                    "options": {
+                      "fields": {
+                        "approach": {
+                          "aggregations": [],
+                          "operation": "groupby"
+                        },
+                        "duration": {
+                          "aggregations": [
+                            "sum"
+                          ],
+                          "operation": "aggregate"
+                        },
+                        "query": {
+                          "aggregations": [],
+                          "operation": "groupby"
+                        },
+                        "spark-duration": {
+                          "aggregations": [
+                            "mean"
+                          ],
+                          "operation": "aggregate"
+                        },
+                        "wallclock-duration": {
+                          "aggregations": [
+                            "mean"
+                          ],
+                          "operation": "aggregate"
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "Transformation",
+                  "group": "calculateField",
+                  "spec": {
+                    "disabled": true,
+                    "options": {
+                      "alias": "overhead-time",
+                      "binary": {
+                        "left": {
+                          "matcher": {
+                            "id": "byName",
+                            "options": "wallclock-duration (mean)"
+                          }
+                        },
+                        "operator": "-",
+                        "right": {
+                          "matcher": {
+                            "id": "byName",
+                            "options": "spark-duration (mean)"
+                          }
+                        }
+                      },
+                      "mode": "binary",
+                      "reduce": {
+                        "reducer": "sum"
+                      },
+                      "replaceFields": false
+                    }
+                  }
+                },
+                {
+                  "kind": "Transformation",
+                  "group": "organize",
+                  "spec": {
+                    "options": {
+                      "excludeByName": {
+                        "keyName": true,
+                        "overhead-time": true,
+                        "phase": true,
+                        "query": true,
+                        "spark-duration": false,
+                        "wallclock-duration": true,
+                        "wallclock-duration (mean)": true
+                      },
+                      "includeByName": {},
+                      "indexByName": {},
+                      "renameByName": {
+                        "approach": "Backend",
+                        "overhead-time": "Wall Clock Overhead",
+                        "query": "Query",
+                        "spark-duration": "Spark Duration",
+                        "spark-duration (mean)": "Spark Time",
+                        "wallclock-duration (mean)": "Wall Clock Time"
+                      }
+                    }
+                  }
+                }
+              ],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "volkovlabs-echarts-panel",
+            "version": "7.2.4",
+            "spec": {
+              "options": {
+                "baidu": {
+                  "callback": "bmapReady",
+                  "key": ""
+                },
+                "editor": {
+                  "format": "auto"
+                },
+                "editorMode": "code",
+                "gaode": {
+                  "key": "",
+                  "plugin": "AMap.Scale,AMap.ToolBar"
+                },
+                "getOption": "// 1. Recupera la serie di dati da Grafana\nconst series = context.panel.data.series[0];\nif (!series || !series.fields) return {};\n\n// 2. Trova le colonne basandoti sulle trasformazioni\nconst backendField = series.fields.find(f => f.name === 'approach');\nconst durationField = series.fields.find(f => f.name === 'spark-duration');\n\nif (!backendField || !durationField) {\n  return { title: { text: \"Errore: Colonne 'approach' o 'spark-duration' non trovate.\", left: \"center\" } };\n}\n\nconst backendTypes = backendField.values.buffer || backendField.values;\nconst durationValues = durationField.values.buffer || durationField.values;\n\nconst rddValues = [];\nconst dataframeValues = [];\nconst sqlValues = [];\n\n// Smista i tempi nei tre gruppi numerici\nfor (let i = 0; i < backendTypes.length; i++) {\n  const type = String(backendTypes[i]).toUpperCase().trim();\n  const duration = parseInt(durationValues[i], 10);\n\n  if (isNaN(duration)) continue;\n\n  if (type === 'RDD') rddValues.push(duration);\n  else if (type === 'DATAFRAME') dataframeValues.push(duration);\n  else if (type === 'SQL') sqlValues.push(duration);\n}\n\n// Funzione per calcolare Min, Q1, Mediana, Q3, Max e Outliers\nfunction getBoxplotStats(data) {\n  if (data.length === 0) return { box: [], outliers: [] };\n  const sorted = [...data].sort((a, b) => a - b);\n  const min = sorted[0];\n  const max = sorted[sorted.length - 1];\n\n  const getPercentile = (p) => {\n    const idx = (sorted.length - 1) * p;\n    const base = Math.floor(idx);\n    const rest = idx - base;\n    if (sorted[base + 1] !== undefined) {\n      return sorted[base] + rest * (sorted[base + 1] - sorted[base]);\n    }\n    return sorted[base];\n  };\n\n  const q1 = getPercentile(0.25);\n  const median = getPercentile(0.5);\n  const q3 = getPercentile(0.75);\n\n  const iqr = q3 - q1;\n  const lowerBound = q1 - 1.5 * iqr;\n  const upperBound = q3 + 1.5 * iqr;\n\n  const outliers = [];\n  const cleanData = [];\n\n  sorted.forEach(v => {\n    if (v < lowerBound || v > upperBound) {\n      outliers.push(v);\n    } else {\n      cleanData.push(v);\n    }\n  });\n\n  const finalMin = cleanData.length ? cleanData[0] : min;\n  const finalMax = cleanData.length ? cleanData[cleanData.length - 1] : max;\n\n  return {\n    box: [finalMin, q1, median, q3, finalMax],\n    outliers: outliers\n  };\n}\n\nconst rddStats = getBoxplotStats(rddValues);\nconst dfStats = getBoxplotStats(dataframeValues);\nconst sqlStats = getBoxplotStats(sqlValues);\n\nconst allOutliers = [\n  ...rddStats.outliers.map(v => [0, v]),\n  ...dfStats.outliers.map(v => [1, v]),\n  ...sqlStats.outliers.map(v => [2, v])\n];\n\n// 5. Configurazione Grafica Renderizzata\nreturn {\n  title: {\n    // text: 'Spark vs Wall Clock Execution Time',\n    // left: 'center',\n    // textStyle: { color: '#e0e0e0', fontSize: 16, fontWeight: 'bold' }\n  },\n  backgroundColor: 'transparent',\n  tooltip: {\n    trigger: 'item',\n    axisPointer: { type: 'shadow' },\n    backgroundColor: 'rgba(30, 30, 30, 0.9)',\n    borderColor: '#569cd6',\n    textStyle: { color: '#fff' }\n  },\n  grid: {\n    left: '8%',\n    right: '8%',\n    bottom: '12%',\n    top: '18%',\n    containLabel: true\n  },\n  xAxis: {\n    type: 'category',\n    data: ['RDD', 'DATAFRAME', 'SQL'],\n    axisLine: { lineStyle: { color: '#555', width: 2 } },\n    axisLabel: { textStyle: { color: '#aaa', fontSize: 13 }, margin: 15 }\n  },\n  yAxis: {\n    type: 'value',\n    name: 'Durata (ms)',\n    nameTextStyle: { color: '#ccc', fontSize: 12, pad: 10 },\n    scale: true,\n    splitLine: { show: true, lineStyle: { color: '#2c2c2c', type: 'dashed' } },\n    axisLine: { show: true, lineStyle: { color: '#555' } },\n    axisLabel: { textStyle: { color: '#aaa' } }\n  },\n  series: [\n    {\n      name: 'Distribuzione',\n      type: 'boxplot',\n      // Allarga la dimensione delle candele riducendo lo spazio vuoto tra le colonne\n      barCategoryGap: '25%',\n      // Configurazione delle singole candele con colori dedicati e mediana evidenziata in rosso rosso\n      data: [\n        {\n          value: rddStats.box,\n          itemStyle: {\n            color: 'rgba(230, 126, 34, 0.2)',\n            borderColor: '#e67e22',\n            borderWidth: 2\n          }\n        },\n        {\n          value: dfStats.box,\n          itemStyle: {\n            color: 'rgba(46, 204, 113, 0.2)',\n            borderColor: '#2ecc71',\n            borderWidth: 2\n          }\n        },\n        {\n          value: sqlStats.box,\n          itemStyle: {\n            color: 'rgba(155, 89, 182, 0.2)',\n            borderColor: '#9b59b6',\n            borderWidth: 2\n          }\n        }\n      ],\n      // Stile globale applicato alle linee di controllo interne\n      medianStyle: {\n        color: '#ff3333', // Colore differente (Rosso vivo) per la linea interna della mediana\n        width: 3\n      },\n      tooltip: {\n        formatter: function (param) {\n          if (!param.data) return '';\n          // Estrae i parametri sia se l'oggetto è avvolto da dizionario itemStyle che da array nativo\n          const dataValues = param.data.value || param.data;\n          return [\n            '<b>Backend: ' + param.name + '</b><hr style=\"border-color:#555; margin: 5px 0;\">',\n            'Massimo: ' + Math.round(dataValues[5]) + ' ms',\n            'Q3 (75%): ' + Math.round(dataValues[4]) + ' ms',\n            'Mediana (Linea Rossa): ' + Math.round(dataValues[3]) + ' ms',\n            'Q1 (25%): ' + Math.round(dataValues[2]) + ' ms',\n            'Minimo: ' + Math.round(dataValues[1]) + ' ms'\n          ].join('<br/>');\n        }\n      }\n    },\n    {\n      name: 'Outliers',\n      type: 'scatter',\n      data: allOutliers,\n      symbolSize: 8,\n      itemStyle: {\n        color: '#ff5c5c',\n        shadowBlur: 4,\n        shadowColor: '#ff5c5c'\n      },\n      tooltip: {\n        formatter: function (param) {\n          return '<b>Outlier Anomalie:</b> ' + param.data[1] + ' ms';\n        }\n      }\n    }\n  ]\n};",
+                "google": {
+                  "callback": "gmapReady",
+                  "key": ""
+                },
+                "map": "none",
+                "renderer": "canvas",
+                "themeEditor": {
+                  "config": "{}",
+                  "name": "default"
+                },
+                "visualEditor": {
+                  "code": "// 1. Recupera la stringa grezza inviata da Redis/Grafana\nconst series = context.panel.data.series[0];\nif (!series) return {};\n\n// Sostituisci 'value' con il nome reale del campo se la tua query usa un alias\nconst rawDataString = series.fields.find(f => f.name === 'value').values.buffer[0];\nif (!rawDataString) return {};\n\n// 2. Parsing della stringa (Separiamo i tempi per RDD, DATAFRAME e SQL)\nconst rddValues = [];\nconst dataframeValues = [];\nconst sqlValues = [];\n\n// Usiamo una Regex per intercettare pattern come \"8762RDD\" o \"7772DATAFRAME\"\nconst regex = /(\\d+)(RDD|DATAFRAME|SQL)/g;\nlet match;\n\nwhile ((match = regex.exec(rawDataString)) !== null) {\n  const duration = parseInt(match[1], 10);\n  const type = match[2];\n\n  if (type === 'RDD') rddValues.push(duration);\n  if (type === 'DATAFRAME') dataframeValues.push(duration);\n  if (type === 'SQL') sqlValues.push(duration);\n}\n\n// 3. Prepariamo i dati per il Box Plot tramite lo strumento nativo di ECharts\n// Passiamo un array contenente i tre gruppi di dati\nconst boxplotData = echarts.dataTool.prepareBoxplotData([\n  rddValues,\n  dataframeValues,\n  sqlValues\n]);\n\n// 4. Configurazione dell'interfaccia visiva del grafico\nreturn {\n  title: {\n    text: 'Analisi Prestazioni Backend Spark (spark-duration)',\n    left: 'center',\n    textStyle: { color: '#e0e0e0', fontSize: 16 }\n  },\n  tooltip: {\n    trigger: 'item',\n    axisPointer: { type: 'shadow' }\n  },\n  grid: {\n    left: '10%',\n    right: '10%',\n    bottom: '15%',\n    top: '15%'\n  },\n  xAxis: {\n    type: 'category',\n    data: ['RDD', 'DATAFRAME', 'SQL'],\n    axisLine: { lineStyle: { color: '#888' } },\n    axisLabel: { textStyle: { color: '#ccc' } }\n  },\n  yAxis: {\n    type: 'value',\n    name: 'Durata (ms)',\n    nameTextStyle: { color: '#ccc' },\n    splitLine: { show: true, lineStyle: { color: '#333' } },\n    axisLine: { lineStyle: { color: '#888' } },\n    axisLabel: { textStyle: { color: '#ccc' } }\n  },\n  series: [\n    {\n      name: 'Distribuzione Durata',\n      type: 'boxplot',\n      data: boxplotData.boxData,\n      itemStyle: {\n        borderColor: '#569cd6',\n        fill: '#1e1e1e',\n        borderWidth: 2\n      },\n      // Formattiamo il popup al passaggio del mouse per leggere i quartili\n      tooltip: {\n        formatter: function (param) {\n          return [\n            '<b>Backend: ' + param.name + '</b>',\n            'Massimo (Max): ' + param.data[5] + ' ms',\n            'Q3 (75%): ' + param.data[4] + ' ms',\n            'Mediana (50%): ' + param.data[3] + ' ms',\n            'Q1 (25%): ' + param.data[2] + ' ms',\n            'Minimo (Min): ' + param.data[1] + ' ms'\n          ].join('<br/>');\n        }\n      }\n    },\n    {\n      name: 'Outliers',\n      type: 'scatter',\n      data: boxplotData.outliers,\n      itemStyle: { color: '#ff5c5c' }\n    }\n  ]\n};",
+                  "dataset": [],
+                  "series": []
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "fieldMinMax": false
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
       }
     },
     "layout": {
@@ -1920,7 +2154,7 @@
                       "spec": {
                         "x": 0,
                         "y": 0,
-                        "width": 18,
+                        "width": 11,
                         "height": 8,
                         "element": {
                           "kind": "ElementReference",
@@ -1931,9 +2165,22 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 18,
+                        "x": 11,
                         "y": 0,
-                        "width": 6,
+                        "width": 9,
+                        "height": 8,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-9"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 20,
+                        "y": 0,
+                        "width": 4,
                         "height": 8,
                         "element": {
                           "kind": "ElementReference",
@@ -1946,7 +2193,7 @@
                       "spec": {
                         "x": 0,
                         "y": 8,
-                        "width": 18,
+                        "width": 20,
                         "height": 8,
                         "element": {
                           "kind": "ElementReference",
@@ -1957,9 +2204,9 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 18,
+                        "x": 20,
                         "y": 8,
-                        "width": 6,
+                        "width": 4,
                         "height": 8,
                         "element": {
                           "kind": "ElementReference",
@@ -2081,7 +2328,6 @@
           "items": []
         }
       }
-    },
-    "description": "Detailed monitoring of Spark job execution, data movement, and resource utilization."
+    }
   }
 }
