@@ -193,7 +193,36 @@ La scelta di Parquet è strategica: la sua struttura a blocchi con dizionari int
 Se una query analizza solo American Airlines, Spark legge dai dischi HDFS/S3 esclusivamente i blocchi Parquet contenenti tale compagnia, riducendo l'I/O di rete di ordini di grandezza rispetto alla scansione lineare di un file CSV\@.
 
 \subsubsection{Pre-processing e Data Quality}
-% TODO: impostiamo a NULL tutte le componenti di ritardo negative
+% TODO: impostiamo a NULL tutte le componenti di ritardo negative e a 0 quelle nulle con almeno una componente di ritardo positiva
+% def delayFields = ["CARRIER_DELAY", "WEATHER_DELAY", "NAS_DELAY", "SECURITY_DELAY", "LATE_AIRCRAFT_DELAY"]
+%
+% // Check if there is at least one non-null delay cause
+% boolean hasSignificantDelay = false
+% delayFields.each { field ->
+% def val = record.getValue(field)
+% if (val != null) {
+%     hasSignificantDelay = true
+% }
+% }
+%
+% // Apply the imputation logic
+% if (hasSignificantDelay) {
+%     // The flight has a significant delay: set null causes to 0 (they did not contribute)
+%     // and fix any dirty negative values
+%     delayFields.each { field ->
+%     def val = record.getValue(field)
+%     if (val == null) {
+%         record.setValue(field, 0.0d)
+%     } else if (((Number) val).doubleValue() < 0) {
+%         record.setValue(field, 0.0d)
+%     }
+%     }
+% }
+% // If hasSignificantDelay is false, all fields are null and remain untouched.
+%
+% return record
+%
+%
 % TODO: filtriamo i voli (e li cancelliamo) se hanno:
 % - anno, mese, giorno, compagnia nulle
 % - volo cancellato ma DEP_TIME non nullo
