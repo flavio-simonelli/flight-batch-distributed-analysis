@@ -2,19 +2,21 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "adflxnj",
+    "name": "admxdzl",
     "namespace": "default",
-    "uid": "274dca4f-36d8-4d1f-bc56-5ce6e9164160",
-    "resourceVersion": "1779242990785986",
-    "generation": 1,
-    "creationTimestamp": "2026-05-20T02:09:50Z",
+    "uid": "a942a35b-1c02-4a94-9809-de7c16e28022",
+    "resourceVersion": "1779245921985013",
+    "generation": 2,
+    "creationTimestamp": "2026-05-20T02:56:45Z",
     "labels": {
-      "grafana.app/deprecatedInternalID": "3278874854264832"
+      "grafana.app/deprecatedInternalID": "3290679033200640"
     },
     "annotations": {
-      "grafana.app/createdBy": "user:ffmkylro94ydce",
+      "grafana.app/createdBy": "user:afmldjatzwj5sc",
       "grafana.app/folder": "",
-      "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f)"
+      "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f)",
+      "grafana.app/updatedBy": "user:afmldjatzwj5sc",
+      "grafana.app/updatedTimestamp": "2026-05-20T02:58:41Z"
     }
   },
   "spec": {
@@ -40,15 +42,15 @@
       }
     ],
     "cursorSync": "Off",
-    "description": "Results of Queries 1, 2 and 3 on flight analysis: monthly performance AA vs DL, arrival delay ranking, hourly percentiles by carrier.",
+    "description": "Visual exploration of flight performance, delays, and airline behavior profiles.",
     "editable": true,
     "elements": {
       "panel-1": {
         "kind": "Panel",
         "spec": {
           "id": 1,
-          "title": "Q1 — Average Monthly Departure Delay: AA vs DL",
-          "description": "Monthly comparison of average departure delay (minutes) between American Airlines (AA) and Delta Air Lines (DL). Only non-cancelled flights.",
+          "title": "Q1 — Average Departure Delay Trend (AA vs DL)",
+          "description": "Monthly comparison of average departure delays (minutes) for American Airlines and Delta Air Lines.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -62,7 +64,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "postgres-datasource-uid"
+                        "name": "PostgreSQL"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -137,7 +139,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "Average delay (min)",
+                    "axisLabel": "Delay (min)",
                     "axisPlacement": "auto",
                     "fillOpacity": 80,
                     "gradientMode": "opacity",
@@ -165,8 +167,8 @@
         "kind": "Panel",
         "spec": {
           "id": 10,
-          "title": "Q4 — Airline Assignments (Sorted by Cluster)",
-          "description": "Full airline data and predictions, ordered for easy comparison.",
+          "title": "Q4 — Final Airline Classification Matrix",
+          "description": "Sorted list of airlines with their assigned cluster and full performance metrics for direct comparison.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -180,14 +182,14 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "postgres-datasource-uid"
+                        "name": "PostgreSQL"
                       },
                       "spec": {
                         "dataset": "flight_db",
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\n  \"OP_UNIQUE_CARRIER\" AS carrier,\n  prediction AS cluster,\n  ROUND(avg_dep_delay::numeric, 2) AS dep_delay,\n  ROUND(avg_arr_delay::numeric, 2) AS arr_delay,\n  ROUND(avg_flight_makeup::numeric, 2) AS delay_makeup,\n  ROUND(arr_delay_stddev::numeric, 2) AS delay_stddev,\n  ROUND(cancellation_rate::numeric, 2) AS cancel_rate,\n  ROUND(diverted_rate::numeric, 2) AS diverted_rate,\n  ROUND(avg_carrier_delay::numeric, 2) AS carrier_d,\n  ROUND(avg_weather_delay::numeric, 2) AS weather_d,\n  ROUND(avg_nas_delay::numeric, 2) AS nas_d,\n  ROUND(avg_security_delay::numeric, 2) AS security_d,\n  ROUND(avg_late_aircraft_delay::numeric, 2) AS late_ac_d\nFROM airline_clustering_dataframe_1\nORDER BY prediction, carrier",
+                        "rawSql": "SELECT\n  \"op_unique_carrier\" AS carrier,\n  prediction AS cluster,\n  ROUND(avg_dep_delay::numeric, 2) AS dep_delay,\n  ROUND(avg_arr_delay::numeric, 2) AS arr_delay,\n  ROUND(avg_flight_makeup::numeric, 2) AS delay_makeup,\n  ROUND(arr_delay_stddev::numeric, 2) AS delay_stddev,\n  ROUND(cancellation_rate::numeric, 2) AS cancel_rate,\n  ROUND(diverted_rate::numeric, 2) AS diverted_rate,\n  ROUND(avg_carrier_delay::numeric, 2) AS carrier_d,\n  ROUND(avg_weather_delay::numeric, 2) AS weather_d,\n  ROUND(avg_nas_delay::numeric, 2) AS nas_d,\n  ROUND(avg_security_delay::numeric, 2) AS security_d,\n  ROUND(avg_late_aircraft_delay::numeric, 2) AS late_ac_d\nFROM airline_clustering_dataframe_1\nORDER BY prediction, carrier",
                         "sql": {
                           "columns": [
                             {
@@ -278,8 +280,8 @@
         "kind": "Panel",
         "spec": {
           "id": 11,
-          "title": "New panel",
-          "description": "",
+          "title": "Q4 — Population Distribution by Cluster",
+          "description": "Count of airlines assigned to each cluster.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -293,7 +295,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "postgres-datasource-uid"
+                        "name": "PostgreSQL"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -384,7 +386,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "",
+                    "axisLabel": "Number of Airlines",
                     "axisPlacement": "auto",
                     "fillOpacity": 80,
                     "gradientMode": "none",
@@ -412,8 +414,8 @@
         "kind": "Panel",
         "spec": {
           "id": 2,
-          "title": "Q1 — Monthly Cancellation Rate: AA vs DL",
-          "description": "Monthly percentage of cancelled flights out of total observed flights for AA and DL. Calculated on all flights (cancelled + non-cancelled).",
+          "title": "Q1 — Monthly Cancellation Probability (AA vs DL)",
+          "description": "Percentage of cancelled flights relative to the total number of scheduled flights per month.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -427,7 +429,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "postgres-datasource-uid"
+                        "name": "PostgreSQL"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -506,7 +508,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "Cancellation rate (%)",
+                    "axisLabel": "Cancellation Rate (%)",
                     "axisPlacement": "auto",
                     "fillOpacity": 80,
                     "gradientMode": "opacity",
@@ -534,8 +536,8 @@
         "kind": "Panel",
         "spec": {
           "id": 3,
-          "title": "Q2 — Top 10 Airlines by Average Arrival Delay",
-          "description": "Ranking of the 10 airlines with the highest average arrival delay (minutes). Only non-cancelled and non-diverted flights with at least 500 valid flights.",
+          "title": "Q2 — Top 10 Delayed Airlines (Arrival)",
+          "description": "Airlines with the highest average arrival delays (minimum 500 flights observed).",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -549,7 +551,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "postgres-datasource-uid"
+                        "name": "PostgreSQL"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -628,7 +630,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "Average arrival delay (min)",
+                    "axisLabel": "Avg Arrival Delay (min)",
                     "axisPlacement": "auto",
                     "fillOpacity": 85,
                     "gradientMode": "none",
@@ -656,8 +658,8 @@
         "kind": "Panel",
         "spec": {
           "id": 4,
-          "title": "Q2 — Average Contribution of Delay Causes by Airline",
-          "description": "Percentage breakdown of delay causes for the top 10 airlines. Missing component values are treated as 0.",
+          "title": "Q2 — Detailed Delay Decomposition by Cause",
+          "description": "Stack analysis of delay contributors (Carrier, Weather, NAS, Security, Late Aircraft) for the top delayed airlines.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -671,7 +673,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "postgres-datasource-uid"
+                        "name": "PostgreSQL"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -742,7 +744,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "Average delay (min)",
+                    "axisLabel": "Aggregated Delay (min)",
                     "axisPlacement": "auto",
                     "fillOpacity": 85,
                     "gradientMode": "none",
@@ -846,8 +848,8 @@
         "kind": "Panel",
         "spec": {
           "id": 5,
-          "title": "Q3 — Departure Delay Percentiles by Hour of Day ($TargetCarrier)",
-          "description": "Hourly distribution of departure delay (p25, p50, p75, p90) for selected airlines. Only non-cancelled flights.",
+          "title": "Q3 — Departure Delay Probabilistic Distribution ($TargetCarrier)",
+          "description": "Percentiles (p25, p50, p75, p90) showing the hourly spread of departure delays for selected carriers.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -861,14 +863,14 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "postgres-datasource-uid"
+                        "name": "PostgreSQL"
                       },
                       "spec": {
                         "dataset": "flight_db",
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\n  hour,\n  p25,\n  p50,\n  p75,\n  p90\nFROM hourly_delay_percentiles_rdd_kll_1\nWHERE \"opUniqueCarrier\" = '$TargetCarrier'\nORDER BY hour",
+                        "rawSql": "SELECT\n  hour,\n  p25,\n  p50,\n  p75,\n  p90\nFROM hourly_delay_percentiles_rdd_kll_1\nWHERE opuniquecarrier = '$TargetCarrier'\nORDER BY hour",
                         "sql": {
                           "columns": [
                             {
@@ -938,7 +940,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "",
+                    "axisLabel": "Delay Percentile (min)",
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "barWidthFactor": 0.6,
@@ -1001,8 +1003,8 @@
         "kind": "Panel",
         "spec": {
           "id": 6,
-          "title": "Q3 — Departure Delay Median Heatmap by Hour and Carrier ($TargetCarrier)",
-          "description": "Median (p50) departure delay by hour of day and airline. Darker colors indicate higher delays.",
+          "title": "Q3 — Hourly Median Delay Intensity ($TargetCarrier)",
+          "description": "Focus on the median delay (p50) behavior across 24 hours to identify daily bottleneck patterns.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1016,14 +1018,14 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "postgres-datasource-uid"
+                        "name": "PostgreSQL"
                       },
                       "spec": {
                         "dataset": "flight_db",
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\n  \"opUniqueCarrier\",\n  hour,\n  p50\nFROM hourly_delay_percentiles_rdd_kll_1\nWHERE \"opUniqueCarrier\" = '$TargetCarrier'\nORDER BY hour",
+                        "rawSql": "SELECT\n  opuniquecarrier,\n  hour,\n  p50\nFROM hourly_delay_percentiles_rdd_kll_1\nWHERE opuniquecarrier = '$TargetCarrier'\nORDER BY hour",
                         "sql": {
                           "columns": [
                             {
@@ -1093,7 +1095,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "",
+                    "axisLabel": "Median Delay (min)",
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "barWidthFactor": 0.6,
@@ -1160,8 +1162,8 @@
         "kind": "Panel",
         "spec": {
           "id": 7,
-          "title": "Q3 — Global Min/Max Delay by Carrier ($TargetCarrier)",
-          "description": "Absolute minimum and maximum departure delay across the entire dataset for each selected airline.",
+          "title": "Q3 — Absolute Extremes by Carrier ($TargetCarrier)",
+          "description": "Global minimum and maximum departure delays observed across the entire analysis period.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1175,14 +1177,14 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "postgres-datasource-uid"
+                        "name": "PostgreSQL"
                       },
                       "spec": {
                         "dataset": "flight_db",
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \"opUniqueCarrier\", min_delay_global, max_delay_global\nFROM hourly_delay_percentiles_rdd_kll_2\nWHERE \"opUniqueCarrier\" = '$TargetCarrier'",
+                        "rawSql": "SELECT opuniquecarrier, min_delay_global, max_delay_global\nFROM hourly_delay_percentiles_rdd_kll_2\nWHERE opuniquecarrier = '$TargetCarrier'",
                         "sql": {
                           "columns": [
                             {
@@ -1306,8 +1308,8 @@
         "kind": "Panel",
         "spec": {
           "id": 8,
-          "title": "Q4 — Airline Clustering Distribution (8D Logic, 2D PCA Projection)",
-          "description": "True projection of 8D clusters. Small dots = Airlines, Large dots = Centers. All grouped by Cluster ID.",
+          "title": "Q4 — Latent Performance Clusters (PCA Projection)",
+          "description": "Mathematical 2D projection of 8D operational features. Small dots = Airlines, Large dots = Cluster Centroids.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1328,7 +1330,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\n  \"OP_UNIQUE_CARRIER\" as carrier,\n  pca_x,\n  pca_y,\n  prediction AS cluster,\n  'Airline' AS type\nFROM airline_clustering_dataframe_1\nUNION ALL\nSELECT\n  'center' as carrier,\n  pca_x,\n  pca_y,\n  cluster,\n  'Center' AS type\nFROM airline_clustering_dataframe_2\nORDER BY cluster ASC",
+                        "rawSql": "SELECT\r\n  \"op_unique_carrier\" as carrier,\r\n  pca_x,\r\n  pca_y,\r\n  prediction AS cluster,\r\n  'Airline' AS type\r\nFROM airline_clustering_dataframe_1\r\nUNION ALL\r\nSELECT\r\n  'center' as carrier,\r\n  pca_x,\r\n  pca_y,\r\n  cluster,\r\n  'Center' AS type\r\nFROM airline_clustering_dataframe_2\r\nORDER BY cluster ASC",
                         "sql": {
                           "columns": [
                             {
@@ -1363,7 +1365,10 @@
                         "cluster",
                         "type"
                       ],
-                      "keepFields": false
+                      "keepFields": false,
+                      "naming": {
+                        "asLabels": true
+                      }
                     }
                   }
                 },
@@ -1387,6 +1392,10 @@
             "version": "13.0.1",
             "spec": {
               "options": {
+                "dims": {
+                  "color": "cluster_id",
+                  "size": "radius"
+                },
                 "legend": {
                   "calcs": [],
                   "displayMode": "list",
@@ -1410,11 +1419,14 @@
                     }
                   }
                 ],
+                "showLegend": true,
                 "tooltip": {
                   "hideZeros": false,
                   "mode": "single",
                   "sort": "none"
-                }
+                },
+                "xField": "pca_x",
+                "yField": "pca_y"
               },
               "fieldConfig": {
                 "defaults": {
@@ -1438,7 +1450,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "",
+                    "axisLabel": "First Principal Component",
                     "axisPlacement": "auto",
                     "fillOpacity": 50,
                     "hideFrom": {
@@ -1549,8 +1561,8 @@
         "kind": "Panel",
         "spec": {
           "id": 9,
-          "title": "Q4 — Cluster Center Profiles (8D Averages)",
-          "description": "Shows the average values of all 8 features that determined the cluster centers.",
+          "title": "Q4 — Multi-dimensional Centroid Profiles",
+          "description": "Averages of all 8 performance features for each cluster center, defining the behavior of each identified group.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1571,7 +1583,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\n  'Cluster ' || cluster::text AS cluster_label,\n  ROUND(avg_dep_delay_center::numeric, 2) AS \"Dep Delay\",\n  ROUND(avg_arr_delay_center::numeric, 2) AS \"Arr Delay\",\n  ROUND(avg_flight_makeup_center::numeric, 2) AS \"Delay Makeup\",\n  ROUND(arr_delay_stddev_center::numeric, 2) AS \"Delay Stddev\",\n  ROUND(cancellation_rate_center::numeric, 2) AS \"Cancel Rate\",\n  ROUND(diverted_rate_center::numeric, 2) AS \"Diverted Rate\",\n  ROUND(avg_carrier_delay_center::numeric, 2) AS \"Carrier D.\",\n  ROUND(avg_weather_delay_center::numeric, 2) AS \"Weather D.\",\n  ROUND(avg_nas_delay_center::numeric, 2) AS \"NAS D.\",\n  ROUND(avg_security_delay_center::numeric, 2) AS \"Security D.\",\n  ROUND(avg_late_aircraft_delay_center::numeric, 2) AS \"Late Ac. D.\"\nFROM airline_clustering_dataframe_2\nORDER BY cluster",
+                        "rawSql": "SELECT\r\n  'Cluster ' || cluster::text                       AS cluster_label,\r\n  ROUND(avg_dep_delay_center::numeric, 2)           AS \"Dep Delay\",\r\n  ROUND(avg_arr_delay_center::numeric, 2)           AS \"Arr Delay\",\r\n  ROUND(avg_flight_makeup_center::numeric, 2)       AS \"Delay Makeup\",\r\n  ROUND(arr_delay_stddev_center::numeric, 2)        AS \"Delay Stddev\",\r\n  ROUND(cancellation_rate_center::numeric, 2)       AS \"Cancel Rate\",\r\n  ROUND(diverted_rate_center::numeric, 2)           AS \"Diverted Rate\",\r\n  ROUND(avg_carrier_delay_center::numeric, 2)       AS \"Carrier D.\",\r\n  ROUND(avg_weather_delay_center::numeric, 2)       AS \"Weather D.\",\r\n  ROUND(avg_nas_delay_center::numeric, 2)           AS \"NAS D.\",\r\n  ROUND(avg_security_delay_center::numeric, 2)      AS \"Security D.\",\r\n  ROUND(avg_late_aircraft_delay_center::numeric, 2) AS \"Late Ac D.\"\r\nFROM \r\n  airline_clustering_dataframe_2\r\nORDER BY \r\n  cluster;",
                         "sql": {
                           "columns": [
                             {
@@ -1818,7 +1830,7 @@
           {
             "kind": "RowsLayoutRow",
             "spec": {
-              "title": "Q4 — Airline Clustering",
+              "title": "Q4 — Multi-dimensional Performance Clustering",
               "collapse": false,
               "layout": {
                 "kind": "GridLayout",
@@ -1842,7 +1854,7 @@
                       "spec": {
                         "x": 12,
                         "y": 0,
-                        "width": 8,
+                        "width": 9,
                         "height": 10,
                         "element": {
                           "kind": "ElementReference",
@@ -1853,9 +1865,9 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 20,
+                        "x": 21,
                         "y": 0,
-                        "width": 4,
+                        "width": 3,
                         "height": 10,
                         "element": {
                           "kind": "ElementReference",
@@ -1869,7 +1881,7 @@
                         "x": 0,
                         "y": 10,
                         "width": 24,
-                        "height": 13,
+                        "height": 12,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-10"
@@ -1908,7 +1920,7 @@
       "hideTimepicker": false,
       "fiscalYearStartMonth": 0
     },
-    "title": "Flight Analysis — Query Results Copy",
+    "title": "Sky Analytics Engine — Flight Analysis Results",
     "variables": [
       {
         "kind": "CustomVariable",

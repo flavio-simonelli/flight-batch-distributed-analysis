@@ -48,8 +48,8 @@
         "kind": "Panel",
         "spec": {
           "id": 2,
-          "title": "Execution Phase Duration",
-          "description": "Total wall clock duration vs Spark duration for the execution phase.",
+          "title": "Spark vs Wall Clock Execution Time",
+          "description": "Comparison between total real-world time (Wall Clock) and the time spent inside Spark operations. The gap represents driver overhead.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -63,7 +63,8 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "redis-datasource-uid"
+                        "name": "Redis",
+                        "uid": "redis-datasource-uid"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -276,7 +277,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "Milliseconds (ms)",
+                    "axisLabel": "Duration (ms)",
                     "axisPlacement": "auto",
                     "fillOpacity": 80,
                     "gradientMode": "hue",
@@ -305,8 +306,8 @@
         "kind": "Panel",
         "spec": {
           "id": 3,
-          "title": "Data Movement",
-          "description": "Total bytes read and written by executors.",
+          "title": "I/O Throughput: Bytes Read/Written",
+          "description": "Total volume of data processed by executors, highlighting the external storage impact.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -320,7 +321,8 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "redis-datasource-uid"
+                        "name": "Redis",
+                        "uid": "redis-datasource-uid"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -538,7 +540,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "",
+                    "axisLabel": "Data Volume",
                     "axisPlacement": "auto",
                     "fillOpacity": 80,
                     "gradientMode": "none",
@@ -594,8 +596,8 @@
         "kind": "Panel",
         "spec": {
           "id": 4,
-          "title": "Data Movement",
-          "description": "Shuffle bytes read and written by executors.",
+          "title": "Shuffle Intensity: Internal Data Exchange",
+          "description": "Bytes read and written during shuffle phases, indicating the degree of data redistribution across the cluster.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -609,7 +611,8 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "redis-datasource-uid"
+                        "name": "Redis",
+                        "uid": "redis-datasource-uid"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -828,7 +831,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "",
+                    "axisLabel": "Shuffle Data Volume",
                     "axisPlacement": "auto",
                     "fillOpacity": 80,
                     "gradientMode": "none",
@@ -884,8 +887,8 @@
         "kind": "Panel",
         "spec": {
           "id": 5,
-          "title": "Read Load Imbalance",
-          "description": "Difference between maximum and mean read load across executors.",
+          "title": "Executor Workload Skewness (Read)",
+          "description": "Visualizes work imbalance by comparing the mean load with the extra load handled by the most strained executor.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -899,7 +902,8 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "redis-datasource-uid"
+                        "name": "Redis",
+                        "uid": "redis-datasource-uid"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -1093,7 +1097,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "",
+                    "axisLabel": "Load Distribution (Bytes)",
                     "axisPlacement": "auto",
                     "fillOpacity": 80,
                     "gradientMode": "hue",
@@ -1154,8 +1158,8 @@
         "kind": "Panel",
         "spec": {
           "id": 6,
-          "title": "Average Number of Executors",
-          "description": "Mean number of executors participating in the execution phase.",
+          "title": "Cluster Elasticity: Active Executors",
+          "description": "Mean number of compute nodes participating in the job execution.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1169,7 +1173,8 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "redis-datasource-uid"
+                        "name": "Redis",
+                        "uid": "redis-datasource-uid"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -1351,7 +1356,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "",
+                    "axisLabel": "Node Count",
                     "axisPlacement": "auto",
                     "fillOpacity": 80,
                     "gradientMode": "opacity",
@@ -1379,8 +1384,8 @@
         "kind": "Panel",
         "spec": {
           "id": 7,
-          "title": "Execution Phase Duration",
-          "description": "Duration of different stages in the execution phase.",
+          "title": "Stage Breakdown: Latency Analysis",
+          "description": "Heatmap-style matrix showing the duration of individual Spark stages across different backends.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1394,7 +1399,8 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "redis-datasource-uid"
+                        "name": "Redis",
+                        "uid": "redis-datasource-uid"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -1616,7 +1622,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "Milliseconds (ms)",
+                    "axisLabel": "Latency (ms)",
                     "axisPlacement": "auto",
                     "fillOpacity": 80,
                     "gradientMode": "hue",
@@ -1645,8 +1651,8 @@
         "kind": "Panel",
         "spec": {
           "id": 8,
-          "title": "Average Number of Stages",
-          "description": "Mean number of stages executed in the execution phase.",
+          "title": "Job Complexity: Execution Stages",
+          "description": "Average number of logical stages generated by the Spark optimizer for the specific query.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1660,7 +1666,8 @@
                       "group": "redis-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "redis-datasource-uid"
+                        "name": "Redis",
+                        "uid": "redis-datasource-uid"
                       },
                       "spec": {
                         "command": "ft.search",
@@ -1870,7 +1877,7 @@
                     "axisBorderShow": false,
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
-                    "axisLabel": "",
+                    "axisLabel": "Stage Count",
                     "axisPlacement": "auto",
                     "fillOpacity": 80,
                     "gradientMode": "opacity",
@@ -2045,13 +2052,13 @@
       "hideTimepicker": false,
       "fiscalYearStartMonth": 0
     },
-    "title": "Flight Analysis — Performance Metrics",
+    "title": "Sky Analytics Engine — Performance & Infrastructure Metrics",
     "variables": [
       {
         "kind": "CustomVariable",
         "spec": {
           "name": "query_name",
-          "query": "monthly_performance, arrival_delay_ranking, hourly_delay_percentiles",
+          "query": "monthly_performance, arrival_delay_ranking, hourly_delay_percentiles, airline_clustering",
           "current": {
             "text": "monthly_performance",
             "value": "monthly_performance"
@@ -2074,6 +2081,7 @@
           "items": []
         }
       }
-    }
+    },
+    "description": "Detailed monitoring of Spark job execution, data movement, and resource utilization."
   }
 }
