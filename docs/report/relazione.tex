@@ -420,7 +420,7 @@ I backend DataFrame e SQL beneficiano invece dell'ottimizzazione nativa della fu
 
 \subsubsection{Impatto dell'Infrastruttura}
 Un aspetto cruciale che emerge dall'analisi comparativa è l'impatto dell'infrastruttura sul cosiddetto \textbf{Wall Clock Time} (il tempo totale reale percepito dall'utente per completare il job).
-Come evidenziato dai grafici dettagliati posizionati in Appendice A (Fig.~\ref{fig:wallclock_overehead}), esiste un overhead fisso di Wall Clock Time che si somma al tempo puro di calcolo degli executor Spark.
+Come evidenziato dai grafici dettagliati posizionati in Appendice A, esiste un overhead di Wall Clock Time che si somma al tempo puro di calcolo degli executor Spark.
 
 Questo overhead della telemetria è causato da fattori estranei al processamento dei dati in senso stretto:
 \begin{itemize}
@@ -429,18 +429,71 @@ Questo overhead della telemetria è causato da fattori estranei al processamento
     \item \textbf{Negoziazione della rete ed I/O:} La serializzazione e la spedizione dei task compilati dal driver ai vari nodi di calcolo.
 \end{itemize}
 
-Questo tempo morto rimane costante (oscillando tra 1.5 e 3 secondi a seconda della query) e incide proporzionalmente di più sulle query rapide (Query 1 e 2).
-L'infrastruttura gioca un ruolo determinante nel mitigare questo overhead:
-\begin{enumerate}
-    \item \textbf{AWS EMR:} Il cluster gestito minimizza drasticamente il Wall Clock Time overhead grazie all'integrazione nativa ottimizzata con Hadoop YARN e l'uso di vCPU dedicate.
-    EMR accelera l'inizializzazione del job e la comunicazione interna del cluster, dimezzando i tempi di calcolo.
-    La disponibilità di 16 GB di RAM per istanza \texttt{m6g.xlarge} previene completamente lo spilling su disco durante lo shuffle, mantenendo le distribuzioni estremamente compatte.
-    \item \textbf{AWS EC2 Standalone:} Le istanze containerizzate della famiglia \texttt{t3} esauriscono rapidamente i propri crediti CPU sotto sforzo prolungato, subendo un drastico throttling delle prestazioni.
-    Lo spazio in RAM ristretto costringe Spark a frequenti operazioni di spilling su disco HDFS (configurato su volumi EBS standard), provocando un allungamento dei tempi e un'accentuata dispersione statistica con numerosi outlier.
-\end{enumerate}
+Questo tempo morto incide proporzionalmente di più sulle query rapide (Query 1 e 2).
+L'infrastruttura gioca un ruolo determinante nel mitigare questo overhead\@.
 
 
-\section{Conclusioni e Sviluppi Futuri}
+\subsection{Discussione dei Risultati Analitici}\label{subsec:analytical_results_discussion}
+
+\subsubsection{Query 1: Performance Mensili delle Compagnie}
+I risultati analitici estratti per American Airlines e Delta Air Lines rivelano comportamenti operativi divergenti durante il quadrimestre Gennaio-Aprile 2025 (Fig.~\ref{fig:results_q1_average_delay_trend}). In particolare, a Gennaio si riscontra il picco massimo nel tasso di cancellazione per entrambe le compagnie (AA: $3,65\%$, DL: $2,67\%$).
+
+Tuttavia, l'andamento del ritardo medio di partenza evidenzia una differenza sostanziale nell'efficienza operativa post-invernale:
+\begin{itemize}
+    \item \textbf{Delta Air Lines:} Mostra una costante e progressiva riduzione del ritardo medio di partenza, scendendo da $12,82$ minuti a Gennaio fino a un eccellente $8,71$ minuti ad Aprile, accompagnato da una drastica riduzione del tasso di cancellazione che si stabilizza sotto lo $0,50\%$ (con un minimo dello $0,21\%$ a Febbraio).
+    \item \textbf{American Airlines:} Al contrario, AA sperimenta un costante incremento del ritardo medio di partenza, che sale da $12,89$ minuti a Gennaio a ben $15,96$ minuti ad Aprile, mantenendo un tasso di cancellazione fisso attorno all'$1,40\%$.
+\end{itemize}
+
+\subsubsection{Query 2: Decomposizione delle Cause di Ritardo}
+La classifica dei top 10 vettori per ritardo medio all'arrivo (Fig.~\ref{fig:results_q2_top10_arrival_delay}) rivela dinamiche profonde inerenti alla struttura delle compagnie aeree statunitensi.
+Il vettore in assoluto più inefficiente risulta essere \textbf{PSA Airlines (OH)}, con un ritardo medio all'arrivo di ben $17,16$ minuti.
+L'analisi disaggregata delle cause mostra che OH soffre del valore più alto in assoluto di \textit{late aircraft delay} (ritardo dovuto all'arrivo tardivo del velivolo precedente), pari a ben $43,51$ minuti di media condizionata.
+Questo dato evidenzia il classico fenomeno di \textbf{propagazione dei ritardi}, dovuto probabilmente al fatto che OH pianifica voli estremamente serrati con tempi di turnaround minimi; di conseguenza, un singolo ritardo accumulato al mattino si propaga geometricamente su tutti i voli successivi della giornata.
+
+All'estremo opposto, \textbf{United Airlines (UA)} mostra il ritardo all'arrivo medio più basso tra i grandi vettori tradizionali ($2,46$ minuti), ma registra il valore più elevato di \textit{NAS delay} (ritardi imputabili al sistema di controllo del traffico aereo nazionale), pari a $21,33$ minuti.
+Questo ci evidenzia che UA, pur gestendo in modo efficiente le proprie operazioni interne (basso carrier delay di $18,85$ minuti), i suoi voli vengono costantemente penalizzati dalla congestione dello spazio aereo.
+
+\subsubsection{Query 3: Distribuzione Oraria dei Percentili di Ritardo}
+L'analisi oraria dei percentili di ritardo (riportata in Appendice B) rivela marcate discrepanze strutturali tra i dati analizzati, riflettendo le rispettive efficienze operative e la resilienza del network di ciascuna compagnia.
+
+Per favorire un confronto immediato, viene discusso in dettaglio il confronto diretto tra American Airlines e Delta Air Lines, le due compagnie che mostrano i trend più divergenti e rappresentativi.
+Nelle prime ore del mattino (dalle 05:00 alle 09:00), i ritardi sono minimi per entrambe le compagnie, con il 50° percentile e persino il 75° percentile stabili vicino allo zero o a valori negativi (indicando arrivi in anticipo).
+Ciò è dovuto al fatto che i primi voli della giornata utilizzano aeromobili che hanno sostato negli aeroporti durante la notte, azzerando la propagazione del giorno precedente.
+
+Tuttavia, a partire dalle ore 12:00, si assiste a una crescita costante di tutti i percentili, che raggiunge il picco massimo nella fascia serale (dalle 18:00 alle 22:00). In questa finestra emerge la discrepanza fondamentale:
+\begin{itemize}
+    \item \textbf{American Airlines:} Mostra una severa incapacità di assorbire i ritardi accumulati durante la giornata.
+    Il 90° percentile di AA sale rapidamente nel pomeriggio superando la soglia critica dei $45$ minuti e mantenendosi elevatissimo fino a tarda notte.
+    Questo denota una propagazione non controllata dovuta a tempi di sosta troppo ristretti e congestione sistematica nei propri hub.
+    \item \textbf{Delta Air Lines:} Evidenzia invece un controllo notevole dell'effetto accumulazione: pur registrando una crescita serale, i percentili di DL rimangono significativamente più bassi e mostrano una pendenza di crescita assai più dolce, segno di una pianificazione con margini di recupero più robusti ed efficienti routine di turnaround negli hub.
+\end{itemize}
+
+\subsubsection{Query 4: Clustering delle Compagnie Aeree}
+L'applicazione dell'algoritmo K-Means con selezione automatica del modello tramite Silhouette Score ha identificato $K=4$ come il numero ottimale di raggruppamenti statistici per descrivere i vettori (Fig.~\ref{fig:Q4_cluster_distribution}).
+La proiezione spaziale tramite \textbf{Principal Component Analysis (PCA)} (Fig.~\ref{fig:results_q4_cluster_distribution}) e la matrice di classificazione delineano quattro cluster operativi ben definiti (i valori medi delle feature per ciascun cluster sono riportati in Fig.~\ref{fig:results_q4_cluster_center} e sono stati normalizzati per evidenziare le differenze relative tra i cluster):
+
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../charts/result/Q4_cluster_center}
+    \caption{Valori medi delle feature per ciascun cluster identificato nella Query 4. Le barre rappresentano le medie normalizzate delle singole features.}
+    \label{fig:results_q4_cluster_center}
+\end{figure*}
+
+\begin{itemize}
+    \item \textbf{Cluster 0 - Alta Efficienza e Operazioni Scalabili:} Include \texttt{UA}, \texttt{NK}, \texttt{B6}, \texttt{DL}, \texttt{MQ}, \texttt{YX}, \texttt{AS}, \texttt{WN}.
+    Questo è il cluster più numeroso ed è caratterizzato da ritardi medi molto contenuti e tassi di cancellazione inferiori all'$1,2\%$.
+    \item \textbf{Cluster 1 - Alta Inefficienza e Volatilità Operativa:} Comprende \texttt{AA}, \texttt{F9}, \texttt{OH}.
+    Questi vettori mostrano ritardi medi elevati, ma soprattutto un'altissima variabilità (deviazione standard superiore a $70$ minuti, con OH che raggiunge $82,75$ minuti) e tassi di cancellazione elevati (OH detiene il record negativo del $6,09\%$). Questo cluster raggruppa vettori afflitti da gravi colli di bottiglia operativi, in cui l'instabilità delle connessioni e la propagazione dei ritardi rendono i tempi di volo altamente imprevedibili per l'utente finale.
+    \item \textbf{Cluster 2 - Sensibilità Meteorologica ed Operativa:} Formato da \texttt{OO} e \texttt{G4}.
+    Come discusso nella Query 2, questi vettori presentano una forte dipendenza da fattori esterni: registrano ritardi meteorologici estremi ($12,11$ minuti per OO, $8,92$ minuti per G4) uniti ad alti carrier delay, collocandosi in una posizione intermedia dello spazio PCA, caratterizzata da un profilo di rischio meteorologico non trascurabile.
+    \item \textbf{Cluster 3 - Isolamento Geografico:} Costituito esclusivamente da \textbf{HA}.
+    HA si mappa come un \textit{outlier} spaziale netto nella proiezione PCA.
+    Presenta una combinazione unica al mondo: NAS delay quasi a zero ($0,58$ minuti) e un tasso di deviazione minimo, dovuto al fatto che il suo network inter-insulare opera al di fuori dei corridoi congestionati del continente, rendendo le sue dinamiche del tutto non confrontabili con qualsiasi altra compagnia statunitense.
+\end{itemize}
+
+% ------------------------------
+
+\section{Conclusioni e Sviluppi Futuri}\label{sec:conclusions_future_work}
 Il progetto Sky Analytics Engine dimostra che l'implementazione rigorosa di pattern architetturali distribuiti e l'adozione di formati dati ottimizzati sono requisiti imprescindibili per gestire la complessità inerente ai Big Data.
 L'orchestrazione asincrona tra Airflow e NiFi, combinata con la modularità polyglot dell'engine Spark, fornisce un ambiente robusto ed enterprise-ready.
 L'introduzione di tecniche algoritmiche avanzate, quali i Quantile Sketches e il Model Selection automatizzato tramite Silhouette Score, dota SAE di capacità analitiche di altissimo livello pur mantenendo confinati i costi computazionali.
@@ -497,44 +550,220 @@ L'integrazione di Apache Kafka e Spark Structured Streaming permetterebbe a SAE 
 \appendices
 
 \section{Dettaglio dei Tempi di Esecuzione}\label{sec:appendix_telemetry}
-In questa appendice vengono riportati in dettaglio i singoli pannelli di telemetria dedicati ai tempi medi di elaborazione Spark estratti da Grafana per i due ambienti di test: AWS EC2 standalone (sinistra) e AWS EMR gestito (destra), per tutte le quattro query eseguite.
+In questa appendice vengono riportati in dettaglio i pannelli di telemetria estratti dalle dashboard di Grafana, relativi ai tempi di esecuzione delle quattro query di processamento Spark. 
 
-\begin{figure*}[!htbp]
-    \centering
-    \begin{tabular}{cc}
-        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_ec2_q1_time} &
-        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_emr_q1_time} \\ \vspace{0.15cm}
+Per ogni query viene presentato prima il pannello relativo all'ambiente \textbf{AWS EC2 Standalone} e, immediatamente a seguire, il pannello relativo all'ambiente \textbf{AWS EMR}.
 
-        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_ec2_q2_time} &
-        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_emr_q2_time} \\ \vspace{0.05cm}
-
-        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_ec2_q3_time} &
-        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_emr_q3_time} \\ \vspace{0.05cm}
-
-        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_ec2_q4_time} &
-        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_emr_q4_time}
-    \end{tabular}
-    \caption{Wall Clock Overhead su AWS EC2 (sinistra) e AWS EMR (destra) per la Query 1 (prima riga), Query 2 (seconda riga), Query 3 (terza riga) e Query 4 (quarta riga). I grafici evidenziano i tempi per ciascun backend.}
-    \label{fig:wallclock_overehead}
-\end{figure*}
-
+Ogni pannello all'interno della plancia di monitoraggio è posizionato in modo da fornire una visione granulare delle performance del sistema, organizzato su tre livelli logici:
+\begin{itemize}
+    \item \textbf{Spark vs Wall Clock Execution Time (In alto a sinistra):} Un grafico che confronta l'overhead misurato tramite \texttt{System.currentTimeMillis()} sul driver Java con il tempo di esecuzione effettivo dei job intercettato dai listener di Spark.
+    Il divario evidenzia il tempo speso per lo scheduling e la negoziazione delle risorse.
+    \item \textbf{Distribuzione Statistica dello Spark Time (In alto al centro):} Mostra la dispersione statistica dei tempi di calcolo di Spark attraverso le diverse run, permettendo di identificare la stabilità delle performance per il backend selezionato.
+    \item \textbf{Active Executors (In alto a destra):} Indica il numero medio di nodi executor che hanno partecipato attivamente alla computazione durante le varie esecuzioni del benchmark.
+    \item \textbf{Stage Breakdown (Al centro a sinistra):} Uno spaccato temporale dettagliato che scompone l'esecuzione nei singoli stage di computazione di Spark, utile per isolare la fase logica della query che presenta la latenza maggiore.
+    \item \textbf{Execution Stages (Al centro a destra):} Rappresenta il numero medio di stage generati dall'ottimizzatore di Spark durante le esecuzioni, fornendo un'indicazione della complessità del piano fisico.
+    \item \textbf{I/O Throughput (In basso a sinistra):} Monitoraggio del volume di dati letti e scritti su disco/HDFS/S3, che permette di valutare l'impatto delle operazioni di input/output persistente.
+    \item \textbf{Shuffle I/O (In basso al centro):} Analisi del traffico dati generato esclusivamente durante le fasi di shuffle per la redistribuzione dei record tra i nodi del cluster.
+    \item \textbf{Executor Workload Skew (In basso a destra):} Valuta il bilanciamento del carico tra i nodi.
+    Il grafico confronta il valore medio dei byte letti (caso ideale di distribuzione uniforme, in verde) con il valore massimo letto da un singolo nodo (in rosso), evidenziando lo sbilanciamento del carico di lavoro rispetto alla configurazione ideale.
+\end{itemize}
 
 \clearpage
 
-\section{Distribuzioni Orarie dei Percentili Estese}\label{sec:appendix_percentiles}
-Per completezza scientifica e accuratezza metodologica del documento, in questa sezione vengono riportati i grafici dettagliati della distribuzione oraria dei percentili di ritardo all'arrivo per tutte e quattro le compagnie aeree target.
-
-\begin{figure*}[!htbp]
+\begin{figure}[!htbp]
     \centering
-    \begin{tabular}{cc}
-        \includegraphics[width=0.42\textwidth]{../charts/Q3_delay_distribution_AA} &
-        \includegraphics[width=0.42\textwidth]{../charts/Q3_delay_distribution_DL} \\ \vspace{0.1cm}
+    \includegraphics[width=1\textwidth]{../charts/telemetry/metrics_ec2_monthly_performance_cropped}
+    \caption{Telemetria Query 1 - Ambiente AWS EC2 Standalone.}
+    \label{fig:telemetry_q1_ec2}
+\end{figure}
 
-        \includegraphics[width=0.42\textwidth]{../charts/Q3_delay_distribution_UA} &
-        \includegraphics[width=0.42\textwidth]{../charts/Q3_delay_distribution_WN}
-    \end{tabular}
-    \caption{Distribuzione oraria completa dei percentili di ritardo all'arrivo per tutte le compagnie aeree target: American Airlines (in alto a sinistra), Delta Air Lines (in alto a destra), United Airlines (in basso a sinistra) e Southwest Airlines (in basso a destra).}
-    \label{fig:metrics_q3_all}
-\end{figure*}
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/telemetry/metrics_emr_monthly_performance_cropped}
+    \caption{Telemetria Query 1 - Ambiente AWS EMR.}
+    \label{fig:telemetry_q1_emr}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/telemetry/metrics_ec2_arrival_delay_rankingpng_cropped}
+    \caption{Telemetria Query 2 - Ambiente AWS EC2 Standalone.}
+    \label{fig:telemetry_q2_ec2}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/telemetry/metrics_emr_arrival_delay_rankingpng_cropped}
+    \caption{Telemetria Query 2 - Ambiente AWS EMR.}
+    \label{fig:telemetry_q2_emr}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/telemetry/metrics_ec2_hourly_delay_percentiles_cropped}
+    \caption{Telemetria Query 3 - Dettaglio Tempi AWS EC2 Standalone.}
+    \label{fig:telemetry_q3_ec2}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/telemetry/metrics_emr_hourly_delay_percentiles_cropped}
+    \caption{Telemetria Query 3 - Dettaglio Tempi AWS EMR.}
+    \label{fig:telemetry_q3_emr}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/telemetry/metrics_ec2_airline_clustering_cropped}
+    \caption{Telemetria Query 4 - Ambiente AWS EC2 Standalone.}
+    \label{fig:telemetry_q4_ec2}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/telemetry/metrics_emr_airline_clustering_cropped}
+    \caption{Telemetria Query 4 - Ambiente AWS EMR.}
+    \label{fig:telemetry_q4_emr}
+\end{figure}
+
+\clearpage
+
+\section{Risultati Analitici delle Query}\label{sec:appendix_results}
+In questa appendice vengono riportati in dettaglio i risultati analitici ottenuti dall'applicazione della pipeline SAE.
+
+\subsection{Query 1}\label{subsec:results_q1}
+Per la Query 1, vengono presentati i risultati relativi al trend dei ritardi medi mensili e al tasso di cancellazione per le compagnie aeree in esame.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/result/Q1_average_delay_trend}
+    \caption{Risultati Query 1: Trend dei ritardi medi mensili.}
+    \label{fig:results_q1_average_delay_trend}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/result/Q1_cancellation_rate_probabilty}
+    \caption{Risultati Query 1: Tasso e probabilità di cancellazione.}
+    \label{fig:results_q1_cancellation_rate_probability}
+\end{figure}
+
+\clearpage
+
+\subsection{Query 2}\label{subsec:results_q2}
+Nella Query 2, vengono presentati i risultati relativi alla classifica delle tratte con i ritardi medi più elevati e la composizione percentuale delle cause di ritardo.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/result/Q2_top10_arrival_delay}
+    \caption{Risultati Query 2: Classifica delle 10 tratte con i ritardi medi più elevati.}
+    \label{fig:results_q2_top10_arrival_delay}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/result/Q2_delay_composition}
+    \caption{Risultati Query 2: Decomposizione percentuale delle cause di ritardo.}
+    \label{fig:results_q2_delay_composition}
+\end{figure}
+
+\clearpage
+
+\subsection{Query 3}\label{subsec:results_q3}
+Per la Query 3, vengono presentati, per le quattro compagnie aeree in esame, la distribuzione mediana oraria e il trend dei percentili critici stimati.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.93\textwidth]{../charts/result/Q3_percentiles_trend_AA}
+    \caption{Risultati Query 3 (AA): Trend orario dei percentili di ritardo critici.}
+    \label{fig:results_q3_percentiles_trend_AA}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.93\textwidth]{../charts/result/Q3_percentiles_trend_DL}
+    \caption{Risultati Query 3 (DL): Trend orario dei percentili di ritardo critici.}
+    \label{fig:results_q3_percentiles_trend_DL}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.93\textwidth]{../charts/result/Q3_percentiles_trend_UA}
+    \caption{Risultati Query 3 (UA): Trend orario dei percentili di ritardo critici.}
+    \label{fig:results_q3_percentiles_trend_UA}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.93\textwidth]{../charts/result/Q3_percentiles_trend_WN}
+    \caption{Risultati Query 3 (WN): Trend orario dei percentili di ritardo critici.}
+    \label{fig:results_q3_percentiles_trend_WN}
+\end{figure}
+
+\clearpage
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../charts/result/Q3_median_distribution_detail_AA}
+    \caption{Risultati Query 3 (AA): Distribuzione oraria del ritardo mediano.}
+    \label{fig:results_Q3_median_distribution_detail_AA}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../charts/result/Q3_median_distribution_detail_DL}
+    \caption{Risultati Query 3 (DL): Distribuzione oraria del ritardo mediano.}
+    \label{fig:results_Q3_median_distribution_detail_DL}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../charts/result/Q3_median_distribution_detail_UA}
+    \caption{Risultati Query 3 (UA): Distribuzione oraria del ritardo mediano.}
+    \label{fig:results_Q3_median_distribution_detail_UA}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../charts/result/Q3_median_distribution_detail_WN}
+    \caption{Risultati Query 3 (WN): Distribuzione oraria del ritardo mediano.}
+    \label{fig:results_Q3_median_distribution_detail_WN}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.22\textwidth]{../charts/result/Q3_median_distribution_min_max_AA}
+    \includegraphics[width=0.22\textwidth]{../charts/result/Q3_median_distribution_min_max_DL}
+    \includegraphics[width=0.22\textwidth]{../charts/result/Q3_median_distribution_min_max_UA}
+    \includegraphics[width=0.22\textwidth]{../charts/result/Q3_median_distribution_min_max_WN}
+    \caption{Risultati Query 3: Valori estremi dei ritardi per American Airlines (AA), Delta Air Lines (DL), United Airlines (UA) e Southwest Airlines (WN) (da sinistra a destra).}
+    \label{fig:results_q3_min_max}
+\end{figure}
+
+\clearpage
+
+\subsection{Query 4}\label{subsec:results_q4}
+Per la Query 4, vengono presentati i risultati relativi alla distribuzione geometrica dei cluster identificati tramite PCA e le coordinate dei centroidi per ciascun cluster.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/result/Q4_cluster_distribution}
+    \caption{Risultati Query 4: Distribuzione geometrica dei cluster estratti tramite PCA.}
+    \label{fig:results_q4_cluster_distribution}
+\end{figure}
+
+% \begin{figure}[!htbp]
+%     \centering
+%     \includegraphics[width=1\textwidth]{../charts/result/Q4_cluster_center}
+%     \caption{Risultati Query 4: Coordinate dei centroidi per i cluster identificati.}
+%     \label{fig:results_q4_cluster_center}
+% \end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/result/Q4_clustering_table}
+    \caption{Risultati Query 4: Tabella riepilogativa delle compagnie aeree e dei cluster di appartenenza.}
+    \label{fig:results_q4_clustering_table}
+\end{figure}
 
 \end{document}
