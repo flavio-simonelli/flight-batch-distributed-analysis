@@ -490,4 +490,51 @@ L'integrazione di Apache Kafka e Spark Structured Streaming permetterebbe a SAE 
 
 \end{thebibliography}
 
+\clearpage
+\onecolumn
+
+
+\appendices
+
+\section{Dettaglio dei Tempi di Esecuzione}\label{sec:appendix_telemetry}
+In questa appendice vengono riportati in dettaglio i singoli pannelli di telemetria dedicati ai tempi medi di elaborazione Spark estratti da Grafana per i due ambienti di test: AWS EC2 standalone (sinistra) e AWS EMR gestito (destra), per tutte le quattro query eseguite.
+
+\begin{figure*}[!htbp]
+    \centering
+    \begin{tabular}{cc}
+        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_ec2_q1_time} &
+        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_emr_q1_time} \\ \vspace{0.15cm}
+
+        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_ec2_q2_time} &
+        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_emr_q2_time} \\ \vspace{0.05cm}
+
+        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_ec2_q3_time} &
+        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_emr_q3_time} \\ \vspace{0.05cm}
+
+        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_ec2_q4_time} &
+        \includegraphics[width=0.49\textwidth]{../charts/telemetry/panel_emr_q4_time}
+    \end{tabular}
+    \caption{Wall Clock Overhead su AWS EC2 (sinistra) e AWS EMR (destra) per la Query 1 (prima riga), Query 2 (seconda riga), Query 3 (terza riga) e Query 4 (quarta riga). I grafici evidenziano i tempi per ciascun backend.}
+    \label{fig:wallclock_overehead}
+\end{figure*}
+
+
+\clearpage
+
+\section{Distribuzioni Orarie dei Percentili Estese}\label{sec:appendix_percentiles}
+Per completezza scientifica e accuratezza metodologica del documento, in questa sezione vengono riportati i grafici dettagliati della distribuzione oraria dei percentili di ritardo all'arrivo per tutte e quattro le compagnie aeree target.
+
+\begin{figure*}[!htbp]
+    \centering
+    \begin{tabular}{cc}
+        \includegraphics[width=0.42\textwidth]{../charts/Q3_delay_distribution_AA} &
+        \includegraphics[width=0.42\textwidth]{../charts/Q3_delay_distribution_DL} \\ \vspace{0.1cm}
+
+        \includegraphics[width=0.42\textwidth]{../charts/Q3_delay_distribution_UA} &
+        \includegraphics[width=0.42\textwidth]{../charts/Q3_delay_distribution_WN}
+    \end{tabular}
+    \caption{Distribuzione oraria completa dei percentili di ritardo all'arrivo per tutte le compagnie aeree target: American Airlines (in alto a sinistra), Delta Air Lines (in alto a destra), United Airlines (in basso a sinistra) e Southwest Airlines (in basso a destra).}
+    \label{fig:metrics_q3_all}
+\end{figure*}
+
 \end{document}
