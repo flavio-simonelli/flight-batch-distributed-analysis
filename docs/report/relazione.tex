@@ -44,6 +44,19 @@
 %\acmDOI{}
 %\acmISBN{}
 
+
+% Page numbering
+\makeatletter
+\def\ps@headings{%
+\def\@oddhead{\mbox{}\scriptsize\rightmark \hfil \thepage}%
+\def\@evenhead{\scriptsize\thepage \hfil \leftmark\mbox{}}%
+\def\@oddfoot{}%
+\def\@evenfoot{}}
+\makeatother
+
+\pagestyle{headings}
+
+
 \begin{document}
 
 \title{Sky Analytics Engine: Architettura Distribuita per l'Analisi Big Data del Traffico Aereo \\ \large Sviluppo di una Pipeline Integrata con Spark, NiFi e Airflow}
@@ -80,6 +93,7 @@
 
 % IEEE Configuration
 \maketitle
+\thispagestyle{headings}
 
 % ------------------------------
 
@@ -105,6 +119,7 @@ Architetture Big Data, Apache Spark, Apache NiFi, Apache Airflow, Orchestrazione
 
 % ACM Configuration
 % \maketitle
+% \thispagestyle{headings}
 
 \section{Introduzione}\label{sec:introduction}
 La crescita esponenziale dei dati generati dai sistemi operanti nel settore del trasporto aereo richiede architetture di elaborazione che superino agilmente i limiti imposti dai sistemi monolitici tradizionali.
@@ -186,7 +201,7 @@ Il flusso \texttt{SAE\_Ingestion\_Pipeline} esegue un processo Extract-Load-Tran
     Un processore custom calcola l'hash SHA-1 in streaming e lo confronta con la firma attesa, garantendo la non-ripudio del dato.
     \item \textbf{Conversione Colonnare Parquet:} Questo è il passaggio più critico per l'ottimizzazione delle performance a valle. Utilizzando \texttt{ConvertRecord} basato su uno schema Avro fortemente tipizzato, NiFi trasforma i dati da formato testuale CSV a formato colonnare Parquet.
     Questa operazione preserva i tipi nativi (Integer per i tempi, Double per i ritardi) e scarta i record malformati inviandoli a una coda di dead-letter.
-\end{enumerate}
+\end{itemize}
 
 \subsubsection{Formato dei Dati}
 La scelta di Parquet è strategica: la sua struttura a blocchi con dizionari integrati abilita il \textit{predicate pushdown} nel motore Catalyst di Spark.
@@ -280,7 +295,7 @@ Questo operatore combina i valori parzialmente all'interno di ogni singola parti
 La \textit{Query 2} introduce logiche di \textit{feature engineering} per gestire i dati sparsi, imputando i valori nulli delle cause di ritardo a zero e filtrando i carrier non statisticamente significativi.
 
 \subsection{Approssimazione tramite KLL Sketch}
-Il calcolo dei percentili su finestre orarie nella \textii{Query 3} rappresenta la sfida computazionale più ardua.
+Il calcolo dei percentili su finestre orarie nella \textit{Query 3} rappresenta la sfida computazionale più ardua.
 Un calcolo esatto richiederebbe l'ordinamento globale di milioni di record, un'operazione che su un cluster distribuito causa enormi colli di bottiglia dovuti allo scambio di dati.
 
 SAE risolve questo problema implementando tecniche di "Quantile Sketching".
@@ -340,16 +355,90 @@ L'agilità di SAE è esaltata dalle sue procedure di deployment, strutturate in 
 Tutta la configurazione è esternalizzata in file YAML e \texttt{.env}.
 L'assenza di stringhe di connessione o path assoluti hardcoded nel codice Java permette di compilare il JAR una sola volta (tramite Maven) e di eseguirlo in contesti completamente diversi.
 
-% TODO
+\subsection{Ambiente Standalone AWS EC2}
+Il primo macro-scenario simula un'infrastruttura di tipo locale o on-premise virtualizzata in cloud.
+Il deployment si avvale di una suite di istanze Amazon EC2 attestate all'interno della medesima Virtual Private Cloud e collegate in una sottorete privata:
+\begin{itemize}
+    \item \textbf{Master Node (1x \texttt{t3.medium}):} Ospita i servizi di coordinamento primari, tra cui Apache Airflow, Apache NiFi, Apache Livy, il master di Apache Spark, e i database di serving PostgreSQL e Redis.
+    Dispone di 2 vCPU e 4 GB di RAM.
+    \item \textbf{Worker Nodes (3x \texttt{t3.small}):} Dedicati esclusivamente al calcolo distribuito.
+    \item Ciascun nodo ospita un demone worker di Spark e un datanode HDFS all'interno di container Docker coordinati tramite Docker Compose.
+    Ciascun worker dispone di 2 vCPU e 2 GB di RAM.
+\end{itemize}
+In questa configurazione, HDFS funge da file system distribuito primario, mentre la sottomissione dei job Spark avviene in modalità client tramite Apache Livy, garantendo il completo disaccoppiamento logico ed architetturale\@.
+
+\subsection{Ambiente Cloud-Native AWS EMR}
+Il secondo scenario proietta SAE in una dimensione pienamente elastica ed enterprise-ready, sfruttando il servizio gestito Amazon Elastic MapReduce.
+L'infrastruttura è configurata come segue:
+\begin{itemize}
+    \item \textbf{Master Node (1x \texttt{m6g.xlarge}):} Coordina il resource manager Hadoop YARN.
+    \item \textbf{Core Nodes (3x \texttt{m6g.xlarge}):} Eseguono i demoni executor di Spark sotto il controllo di YARN e memorizzano i dati intermedi.
+    Ciascun nodo dispone di 4 vCPU e 16 GB di RAM.
+\end{itemize}
+Il vantaggio cardine di questo scenario risiede nell'integrazione nativa dello storage con Amazon S3 mediante il protocollo \texttt{s3a://}.
+Questo abilita un paradigma \textbf{Shared-Nothing} puro, in cui le risorse di calcolo possono essere scalate o spente in modo del tutto indipendente dallo storage persistente, azzerando i costi di idle e ottimizzando il total cost of ownership.
+L'orchestrazione da Airflow avviene in questo caso sfruttando le API native di AWS tramite operatori Spark dedicati\@.
 
 % ------------------------------
 
-\section{Analisi Sperimentale e Discussione}\label{sec:experimental_analysis}
+\section{Valutazione Sperimentale}\label{sec:experimental_evaluation}
+Definita l'architettura e implementati i componenti, è stata condotta una fase di validazione sperimentale sistematica per valutare la robustezza, la scalabilità e le performance di Sky Analytics Engine.
+I test sono stati orchestrati in modo sequenziale tramite il DAG \texttt{ec2\_benchmark} su EC2 e \texttt{emr\_benchmark} su EMR, garantendo l'assenza di interferenze computazionali e l'affidabilità della telemetria raccolta.\@.
 
-% TODO
-% Su EC2, esecuzione con 3 nodi worker t3.small con livy modalità client su macchina t3.medium
+\subsection{Analisi Comparativa delle Performance}\label{subsec:performance_analysis}
+Le misurazioni prestazionali raccolte evidenziano trend marcati circa l'efficacia dei diversi backend di Apache Spark e l'impatto dell'infrastruttura di deployment.
 
-% ------------------------------
+\subsubsection{Dispersione Statistica dei Backend}
+
+\begin{figure*}[!t]
+    \centering
+    \begin{tabular}{cc}
+        \includegraphics[width=0.48\textwidth]{../charts/telemetry/panel_ec2_q1_boxplot} &
+        \includegraphics[width=0.48\textwidth]{../charts/telemetry/panel_emr_q1_boxplot} \\
+        \includegraphics[width=0.48\textwidth]{../charts/telemetry/panel_ec2_q2_boxplot} &
+        \includegraphics[width=0.48\textwidth]{../charts/telemetry/panel_emr_q2_boxplot} \\
+        \includegraphics[width=0.48\textwidth]{../charts/telemetry/panel_ec2_q3_boxplot} &
+        \includegraphics[width=0.48\textwidth]{../charts/telemetry/panel_emr_q3_boxplot}
+    \end{tabular}
+    \caption{Dispersione statistica dei tempi di esecuzione su AWS EC2 (sinistra) e AWS EMR (destra) per la Query 1 (in alto), Query 2 (al centro) e Query 3 (in basso). I grafici evidenziano la distribuzione dei tempi per ciascun backend.}
+    \label{fig:performance_boxplots}
+\end{figure*}
+
+L'osservazione dei box plot (Fig.~\ref{fig:performance_boxplots}) rivela che le API strutturate presentano mediane prestazionali generalmente inferiori rispetto all'approccio RDD nelle query più complesse (Query 2 e Query 3), mostrando anche una dispersione statistica più contratta nella maggior parte dei casi.
+La scatola del box plot per DataFrame e SQL risulta estremamente stretta, con code di variabilità minime e una quasi totale assenza di outlier significativi nel caso della Query 1 e 3 su EMR\@.
+
+Questa notevole stabilità prestazionale è una conseguenza diretta del \textbf{Catalyst Optimizer} e del motore d'esecuzione \textbf{Tungsten}.
+Catalyst esegue l'ottimizzazione logica del piano di esecuzione (attraverso regole come il predicate pushdown e la column projection) prima di compilare il bytecode Java, assicurando che la pipeline fisica sia estremamente lineare ed efficiente.
+Dal canto suo, Tungsten memorizza i record in formato binario off-heap compresso, aggirando del tutto l'allocazione di oggetti Java sulla JVM. Ciò riduce a livelli trascurabili l'attività del Garbage Collector, neutralizzando una delle fonti principali di variabilità temporale nei sistemi distribuiti\@.
+
+Al contrario, le esecuzioni basate su RDD mostrano box più alti e ampi, indicando una marcata dispersione statistica e code di esecuzione lunghe.
+Non avendo alcuna visibilità sulla struttura dei dati, Spark tratta i record RDD come oggetti Java opachi, costringendo ad operazioni di serializzazione e deserializzazione pesante per ogni operazione di trasformazione o filtraggio.
+Questo continuo passaggio di oggetti generici carica pesantemente la memoria degli heap della JVM, innescando frequenti e imprevedibili cicli di garbage collection che dilatano casualmente i tempi di esecuzione, producendo la dispersione visibile in Fig.~\ref{fig:performance_boxplots}.
+
+Inoltre, nella Query 3, la dispersione del backend RDD è accentuata dall'overhead algoritmico del KLL Sketch implementato tramite la libreria esterna Apache DataSketches integrata manualmente.
+I backend DataFrame e SQL beneficiano invece dell'ottimizzazione nativa della funzione \texttt{percentile\_approx} basata sull'algoritmo di Greenwald-Khanna incorporato direttamente nelle routine Tungsten, che mantiene un footprint in memoria costante e una dispersione minima.
+
+\subsubsection{Impatto dell'Infrastruttura}
+Un aspetto cruciale che emerge dall'analisi comparativa è l'impatto dell'infrastruttura sul cosiddetto \textbf{Wall Clock Time} (il tempo totale reale percepito dall'utente per completare il job).
+Come evidenziato dai grafici dettagliati posizionati in Appendice A (Fig.~\ref{fig:wallclock_overehead}), esiste un overhead fisso di Wall Clock Time che si somma al tempo puro di calcolo degli executor Spark.
+
+Questo overhead della telemetria è causato da fattori estranei al processamento dei dati in senso stretto:
+\begin{itemize}
+    \item \textbf{Inizializzazione e allocazione delle risorse:} Il tempo speso dal Driver per comunicare con il Resource Manager per allocare i container degli executor.
+    \item \textbf{Compilazione del DAG:} La pianificazione logica e fisica eseguita da Catalyst a runtime.
+    \item \textbf{Negoziazione della rete ed I/O:} La serializzazione e la spedizione dei task compilati dal driver ai vari nodi di calcolo.
+\end{itemize}
+
+Questo tempo morto rimane costante (oscillando tra 1.5 e 3 secondi a seconda della query) e incide proporzionalmente di più sulle query rapide (Query 1 e 2).
+L'infrastruttura gioca un ruolo determinante nel mitigare questo overhead:
+\begin{enumerate}
+    \item \textbf{AWS EMR:} Il cluster gestito minimizza drasticamente il Wall Clock Time overhead grazie all'integrazione nativa ottimizzata con Hadoop YARN e l'uso di vCPU dedicate.
+    EMR accelera l'inizializzazione del job e la comunicazione interna del cluster, dimezzando i tempi di calcolo.
+    La disponibilità di 16 GB di RAM per istanza \texttt{m6g.xlarge} previene completamente lo spilling su disco durante lo shuffle, mantenendo le distribuzioni estremamente compatte.
+    \item \textbf{AWS EC2 Standalone:} Le istanze containerizzate della famiglia \texttt{t3} esauriscono rapidamente i propri crediti CPU sotto sforzo prolungato, subendo un drastico throttling delle prestazioni.
+    Lo spazio in RAM ristretto costringe Spark a frequenti operazioni di spilling su disco HDFS (configurato su volumi EBS standard), provocando un allungamento dei tempi e un'accentuata dispersione statistica con numerosi outlier.
+\end{enumerate}
+
 
 \section{Conclusioni e Sviluppi Futuri}
 Il progetto Sky Analytics Engine dimostra che l'implementazione rigorosa di pattern architetturali distribuiti e l'adozione di formati dati ottimizzati sono requisiti imprescindibili per gestire la complessità inerente ai Big Data.
