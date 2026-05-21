@@ -528,12 +528,31 @@ services:
             - POSTGRES_USER=${POSTGRES_USER}
             - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
             - REDIS_PORT=${REDIS_PORT}
+            - GF_RENDERING_SERVER_URL=http://grafana-renderer.flight-analysis.local:8081/render
+            - GF_RENDERING_CALLBACK_URL=http://grafana.flight-analysis.local:3000/
+            - GF_RENDERING_RENDERER_TOKEN=ilhbuhg234uygs87fjkhbnlbujyhgbjhsfliuh9834787t234hja
         volumes:
             - ./grafana/datasources:/etc/grafana/provisioning/datasources
             - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
         depends_on:
             - redis-metrics
             - postgres
+            - grafana-renderer
+
+    # Grafana Image Renderer Sidecar
+    grafana-renderer:
+        image: grafana/grafana-image-renderer:latest
+        container_name: grafana-renderer
+        hostname: grafana-renderer
+        networks:
+            sae-net:
+                aliases:
+                    - grafana-renderer.flight-analysis.local
+        environment:
+            - HTTP_HOST=0.0.0.0
+            - HTTP_PORT=8081
+            - BROWSER_TZ=Europe/Rome
+            - AUTH_TOKEN=ilhbuhg234uygs87fjkhbnlbujyhgbjhsfliuh9834787t234hja
 
 networks:
     sae-net:
