@@ -30,7 +30,7 @@ public abstract class JdbcFlightRepository extends DbFlightRepository<JdbcStorag
         if (config.getPort() == null || config.getPort() <= 0) throw new IllegalArgumentException("Invalid JDBC port.");
         if (config.getDatabase() == null || config.getDatabase().isEmpty()) throw new IllegalArgumentException("JDBC database name cannot be empty.");
         if (config.getUser() == null || config.getUser().isEmpty()) throw new IllegalArgumentException("JDBC user cannot be empty.");
-        if (config.getPassword() == null || config.getPassword().isEmpty()) throw new IllegalArgumentException("JDBC password cannot be empty.");
+        if (config.getPassword() == null) throw new IllegalArgumentException("JDBC password cannot be null (use empty string for no password).");
         if (config.getDriver() == null || config.getDriver().isEmpty()) throw new IllegalArgumentException("JDBC driver must be provided or derived.");
         if (config.getConnectionUri() == null || config.getConnectionUri().isEmpty() || !config.getConnectionUri().startsWith("jdbc:")) {
              throw new IllegalArgumentException("JDBC URL must be provided and start with 'jdbc:'.");
