@@ -12,6 +12,17 @@ datasources:
       database: flight_db
       sslmode: disable
       postgresVersion: 1500
+  - name: CockroachDB
+    type: postgres
+    uid: cockroachdb-datasource-uid
+    url: cockroachdb.flight-analysis.local:26257
+    user: root
+    secureJsonData:
+      password: ""
+    jsonData:
+      database: defaultdb
+      sslmode: disable
+      postgresVersion: 1000 # CockroachDB is wire-compatible with older Postgres versions
   - name: Redis
     type: redis-datasource
     uid: redis-datasource-uid
