@@ -25,7 +25,7 @@ AVAILABLE_QUERIES = ["monthly_performance", "arrival_delay_ranking", "hourly_del
 AVAILABLE_BACKENDS = ["rdd", "dataframe", "sql"]
 AVAILABLE_CONFIGS = ["local-config.yml", "ec2-config.yml", "emr-config.yml"]
 AVAILABLE_INPUTS = ["hdfs", "s3", "local"]
-AVAILABLE_OUTPUTS = ["hdfs", "postgres", "redis", "hbase", "s3", "local"]
+AVAILABLE_OUTPUTS = ["hdfs", "postgres", "redis", "hbase", "s3", "local", "cockroach"]
 AVAILABLE_METRICS = ["redis"]
 
 @dag(

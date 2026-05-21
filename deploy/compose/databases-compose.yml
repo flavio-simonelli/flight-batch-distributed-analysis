@@ -34,3 +34,13 @@ services:
     hostname: redis-output
     network_mode: host
     command: redis-server
+
+  # CockroachDB Single-Node Instance
+  cockroachdb:
+    image: cockroachdb/cockroach:latest
+    container_name: cockroachdb
+    hostname: cockroachdb
+    network_mode: host
+    command: start-single-node --insecure
+    volumes:
+      - ./data/databases/cockroach:/cockroach/cockroach-data

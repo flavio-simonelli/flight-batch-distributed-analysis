@@ -15,6 +15,7 @@ public class JdbcStorageConfig extends DbStorageConfig {
         if (getType() != null) {
             switch (getType()) {
                 case POSTGRES:
+                case COCKROACH:
                     return "org.postgresql.Driver";
             }
         }
@@ -32,6 +33,7 @@ public class JdbcStorageConfig extends DbStorageConfig {
         if (getType() != null) {
             switch (getType()) {
                 case POSTGRES:
+                case COCKROACH:
                     return String.format("jdbc:postgresql://%s:%d/%s", getHostname(), getPort(), getDatabase());
             }
         }

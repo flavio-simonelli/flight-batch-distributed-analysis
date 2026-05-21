@@ -30,6 +30,13 @@ outputs:
     database: "flight_db"
     user: "postgres"
     password: "postgres"
+  cockroach:
+    type: "cockroach"
+    hostname: "cockroachdb.flight-analysis.local"
+    port: 26257
+    database: "defaultdb"
+    user: "root"
+    password: ""
 
 # --- MONITORING LAYER (Metrics) ---
 metrics:
