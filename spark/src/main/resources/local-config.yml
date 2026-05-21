@@ -51,6 +51,13 @@ outputs:
     hostname: "redis-output.flight-analysis.local"
     port: 6379
     database: "0"
+  cockroach:
+    type: "cockroach"
+    hostname: "cockroachdb.flight-analysis.local"
+    port: 26257
+    database: "defaultdb"
+    user: "root"
+    password: ""
   hbase:
     type: "hbase"
     hostname: "hbase.flight-analysis.local"

@@ -12,7 +12,7 @@ BUCKET_NAME="${1:-spark-flight-analysis}"
 # Set up the local directory structure for data persistence.
 cd /home/ec2-user
 echo "[DEPLOY] Provisioning local database storage..."
-mkdir -p data/postgres
+mkdir -p data/postgres data/cockroach
 
 # Download the database-specific compose file and the DB selector script from S3.
 echo "[DEPLOY] Downloading database configurations and management scripts..."

@@ -27,7 +27,10 @@ public enum StorageType implements Serializable {
     REDIS("redis"),
 
     @JsonProperty("hbase")
-    HBASE("hbase");
+    HBASE("hbase"),
+
+    @JsonProperty("cockroach")
+    COCKROACH("cockroach");
 
     private final String type;
     private static final Map<String, StorageType> LOOKUP = Arrays

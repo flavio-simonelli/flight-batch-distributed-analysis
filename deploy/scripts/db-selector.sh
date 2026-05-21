@@ -4,7 +4,7 @@
 # This script allows the operator to toggle between different storage engines
 # without keeping all services active simultaneously, optimizing resource usage.
 
-# Usage: ./db-selector.sh {postgres|redis|hbase|all|stop}
+# Usage: ./db-selector.sh {postgres|redis|hbase|cockroach|all|stop}
 
 # Retrieve the selection target from the first command-line argument.
 TARGET=$1
@@ -25,6 +25,11 @@ case $TARGET in
         docker-compose stop
         docker-compose up -d hbase
         ;;
+    cockroach)
+        echo "[DB-SELECTOR] Activating CockroachDB service only..."
+        docker-compose stop
+        docker-compose up -d cockroachdb
+        ;;
     all)
         echo "[DB-SELECTOR] Activating all database services..."
         docker-compose up -d
@@ -35,8 +40,8 @@ case $TARGET in
         ;;
     *)
         # Display usage information for invalid or missing inputs.
-        echo "Usage: $0 {postgres|redis|hbase|all|stop}"
-        echo "Example: ./db-selector.sh postgres"
+        echo "Usage: $0 {postgres|redis|hbase|cockroach|all|stop}"
+        echo "Example: ./db-selector.sh cockroach"
         exit 1
         ;;
 esac

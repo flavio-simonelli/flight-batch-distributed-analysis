@@ -64,7 +64,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PostgreSQL"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -182,7 +182,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PostgreSQL"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -295,7 +295,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PostgreSQL"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -429,7 +429,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PostgreSQL"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -551,7 +551,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PostgreSQL"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -673,7 +673,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PostgreSQL"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -863,7 +863,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PostgreSQL"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -1018,7 +1018,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PostgreSQL"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -1177,7 +1177,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "PostgreSQL"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -1323,7 +1323,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "postgres-datasource-uid"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -1576,7 +1576,7 @@
                       "group": "grafana-postgresql-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "postgres-datasource-uid"
+                        "name": "${datasource}"
                       },
                       "spec": {
                         "dataset": "flight_db",
@@ -1922,6 +1922,26 @@
     },
     "title": "Sky Analytics Engine — Flight Analysis Results",
     "variables": [
+      {
+        "kind": "DatasourceVariable",
+        "spec": {
+          "allowCustomValue": true,
+          "current": {
+            "text": "CockroachDB",
+            "value": "cockroachdb-datasource-uid"
+          },
+          "hide": "dontHide",
+          "includeAll": false,
+          "label": "",
+          "multi": false,
+          "name": "datasource",
+          "options": [],
+          "pluginId": "grafana-postgresql-datasource",
+          "refresh": "onDashboardLoad",
+          "regex": "",
+          "skipUrlSync": false
+        }
+      },
       {
         "kind": "CustomVariable",
         "spec": {

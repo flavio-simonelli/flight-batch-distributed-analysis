@@ -96,6 +96,13 @@ public class FlightRepositoryFactory {
                 JdbcStorageConfig jdbcConfig = (JdbcStorageConfig) storageConfig;
                 return new PostgresFlightRepository(spark, jdbcConfig);
 
+            case COCKROACH:
+                if (!(storageConfig instanceof JdbcStorageConfig)) {
+                    throw new IllegalArgumentException("Configuration mismatch: Expected JdbcStorageConfig for COCKROACH output type.");
+                }
+                JdbcStorageConfig cockroachConfig = (JdbcStorageConfig) storageConfig;
+                return new CockroachFlightRepository(spark, cockroachConfig);
+
             case REDIS:
                 if (!(storageConfig instanceof RedisStorageConfig)) {
                     throw new IllegalArgumentException("Configuration mismatch: Expected RedisStorageConfig for REDIS output type.");
