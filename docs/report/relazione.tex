@@ -485,18 +485,18 @@ In questa finestra emerge la discrepanza fondamentale:
 
 \subsubsection{Query 4: Clustering delle Compagnie Aeree}
 L'applicazione dell'algoritmo K-Means con selezione automatica del modello tramite Silhouette Score ha identificato $K=4$ come il numero ottimale di raggruppamenti statistici per descrivere i vettori (Fig.~\ref{fig:results_q4_cluster_distribution}).
-La proiezione spaziale tramite \textbf{Principal Component Analysis (PCA)} (Fig.~\ref{fig:results_q4_cluster_distribution}) e la matrice di classificazione delineano quattro cluster operativi ben definiti (i valori medi delle feature per ciascun cluster sono riportati in Fig.~\ref{fig:results_q4_cluster_center} e sono stati normalizzati per evidenziare le differenze relative tra i cluster):
+La proiezione spaziale tramite \textbf{Principal Component Analysis} (Fig.~\ref{fig:results_q4_cluster_distribution}) e la matrice di classificazione delineano quattro cluster operativi ben definiti (i valori medi delle feature per ciascun cluster sono riportati in Fig.~\ref{fig:results_q4_cluster_center} e sono stati normalizzati per evidenziare le differenze relative tra i cluster, mentre la Tabella \ref{tab:results_q4_metrics} riporta i corrispondenti valori operativi reali per ogni vettore):
 
 \begin{figure*}[!t]
     \centering
     \includegraphics[width=0.9\textwidth]{../charts/result/Q4_cluster_center}
-    \caption{Valori medi delle feature per ciascun cluster identificato nella Query 4. Le barre rappresentano le medie normalizzate delle singole features.}
+    \caption{Valori medi delle feature per ciascun cluster identificato nella Query 4. Le barre rappresentano le medie normalizzate delle singole features per permettere un confronto relativo tra i cluster.}
     \label{fig:results_q4_cluster_center}
 \end{figure*}
 
 \begin{itemize}
     \item \textbf{Cluster 0 - Alta Efficienza e Operazioni Scalabili:} Include \texttt{UA}, \texttt{NK}, \texttt{B6}, \texttt{DL}, \texttt{MQ}, \texttt{YX}, \texttt{AS}, \texttt{WN}.
-    Questo è il cluster più numeroso ed è caratterizzato da ritardi medi molto contenuti e tassi di cancellazione inferiori all'$1,2\%$.
+    Questo è il cluster più numeroso ed è caratterizzato da ritardi medi molto contenuti.
     \item \textbf{Cluster 1 - Alta Inefficienza e Volatilità Operativa:} Comprende \texttt{AA}, \texttt{F9}, \texttt{OH}.
     Questi vettori mostrano ritardi medi elevati, ma soprattutto un'altissima variabilità (deviazione standard superiore a $70$ minuti, con OH che raggiunge $82,75$ minuti) e tassi di cancellazione elevati (OH detiene il record negativo del $6,09\%$). Questo cluster raggruppa vettori afflitti da gravi colli di bottiglia operativi, in cui l'instabilità delle connessioni e la propagazione dei ritardi rendono i tempi di volo altamente imprevedibili per l'utente finale.
     \item \textbf{Cluster 2 - Sensibilità Meteorologica ed Operativa:} Formato da \texttt{OO} e \texttt{G4}.
@@ -767,18 +767,43 @@ Per la Query 4, vengono presentati i risultati relativi alla distribuzione geome
     \label{fig:results_q4_cluster_distribution}
 \end{figure}
 
-% \begin{figure}[!htbp]
-%     \centering
-%     \includegraphics[width=1\textwidth]{../charts/result/Q4_cluster_center}
-%     \caption{Risultati Query 4: Coordinate dei centroidi per i cluster identificati.}
-%     \label{fig:results_q4_cluster_center}
-% \end{figure}
-
-\begin{figure}[!htbp]
+\begin{table*}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../charts/result/Q4_clustering_table}
-    \caption{Risultati Query 4: Tabella riepilogativa delle compagnie aeree e dei cluster di appartenenza.}
-    \label{fig:results_q4_clustering_table}
-\end{figure}
+    \footnotesize\sffamily
+    \caption{Risultati Query 4: Metriche operative medie (valori grezzi) e classificazione.}
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}l|ccccccc|ccccc@{}}
+        \toprule
+        \textbf{ID} & \textbf{Dep.} & \textbf{Arr.} & \textbf{Makeup} & \textbf{StdDev} & \textbf{Div.\%} & \textbf{Can.\%} & \textbf{Clus.} & \textbf{Carr.} & \textbf{Weat.} & \textbf{NAS} & \textbf{Secu.} & \textbf{Late Air.} \\
+        \midrule
+        \texttt{UA} & 9.03 & 2.46 & -6.52 & 47.56 & 0.21 & 0.69 & 0 & 18.85 & 3.40 & 21.33 & 0.00 & 24.93 \\
+        \texttt{NK} & 9.17 & 2.39 & -6.77 & 48.28 & 0.13 & 1.41 & 0 & 17.50 & 1.59 & 34.29 & 0.19 & 16.98 \\
+        \texttt{B6} & 12.51 & 6.14 & -6.33 & 56.11 & 0.25 & 1.23 & 0 & 19.44 & 1.88 & 18.64 & 0.11 & 30.64 \\
+        \texttt{DL} & 10.71 & 4.19 & -6.40 & 55.11 & 0.19 & 0.94 & 0 & 31.19 & 4.75 & 14.85 & 0.04 & 21.56 \\
+        \texttt{MQ} & 8.44 & 5.32 & -3.12 & 50.71 & 0.20 & 2.82 & 0 & 15.52 & 7.75 & 15.35 & 0.09 & 25.84 \\
+        \texttt{YX} & 4.78 & 0.69 & -4.04 & 42.22 & 0.16 & 2.26 & 0 & 16.85 & 3.15 & 21.93 & 0.04 & 20.26 \\
+        \texttt{AS} & 5.52 & 1.30 & -4.22 & 36.08 & 0.16 & 1.00 & 0 & 14.58 & 2.35 & 14.53 & 0.22 & 19.04 \\
+        \texttt{WN} & 9.35 & 1.76 & -7.58 & 35.25 & 0.16 & 1.14 & 0 & 15.26 & 1.61 & 11.46 & 0.14 & 28.27 \\
+        \midrule
+        \texttt{AA} & 14.59 & 8.98 & -5.59 & 74.97 & 0.25 & 1.94 & 1 & 27.11 & 4.61 & 13.51 & 0.11 & 33.72 \\
+        \texttt{F9} & 16.00 & 11.32 & -4.62 & 71.65 & 0.16 & 1.67 & 1 & 23.05 & 1.91 & 15.36 & 0.00 & 40.53 \\
+        \texttt{OH} & 19.78 & 17.16 & -2.60 & 82.75 & 0.21 & 6.09 & 1 & 25.98 & 5.96 & 11.86 & 0.12 & 43.51 \\
+        \midrule
+        \texttt{OO} & 11.68 & 7.59 & -4.04 & 62.92 & 0.24 & 1.47 & 2 & 38.93 & 12.11 & 13.15 & 0.10 & 16.58 \\
+        \texttt{G4} & 13.87 & 9.54 & -4.31 & 78.39 & 0.23 & 0.66 & 2 & 24.89 & 8.93 & 18.70 & 0.68 & 33.02 \\
+        \midrule
+        \texttt{HA} & 6.35 & 5.81 & -0.52 & 37.42 & 0.10 & 1.21 & 3 & 27.16 & 3.28 & 0.58 & 0.15 & 19.99 \\
+        \bottomrule
+    \end{tabular*}
+    \label{tab:results_q4_metrics}
+\end{table*}
+
+\centering
+\textbf{Legenda:}\\
+Dep./Arr.: ritardo medio partenza/arrivo;
+\\Makeup:capacità di recupero ritardo in volo;
+\\StdDev: deviazione standard ritardo arrivo;
+\\Div.\%/Can.\%: tasso deviazioni e cancellazioni;
+\\Clus.: ID Cluster;
+\\Carr./Weat./NAS/Secu./Late Air.: cause di ritardo medie in minuti;
 
 \end{document}
