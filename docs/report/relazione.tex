@@ -282,6 +282,11 @@ La pipeline implementa due logiche fondamentali per garantire l'integrità anali
 %         OR (CANCELLED = 0.0 AND (DEP_TIME IS NULL OR ARR_TIME IS NULL))
 %         OR ( (COALESCE(CARRIER_DELAY, 0.0) + COALESCE(WEATHER_DELAY, 0.0) + COALESCE(NAS_DELAY, 0.0) + COALESCE(SECURITY_DELAY, 0.0) + COALESCE(LATE_AIRCRAFT_DELAY, 0.0)) > 0.0 AND ARR_DELAY < 0.0 )
 
+\subsection{Livello di Storage}\label{subsec:storage_layer_datalake}
+Il cuore della persistenza intermedia di Sky Analytics Engine è rappresentato dal Data Lake, implementato tramite Hadoop HDFS in ambienti on-premise e Amazon S3 in configurazioni cloud.
+Questo strato funge da \textit{Single Source of Truth}, ospitando sia i dataset grezzi acquisiti da NiFi che i dati raffinati in formato Parquet.
+L'adozione di un'architettura Data Lake consente un disaccoppiamento totale tra le risorse di storage e quelle di calcolo, garantendo una scalabilità indipendente e abilitando ottimizzazioni avanzate come il \textit{predicate pushdown} e la \textit{column projection} durante la fase di analisi Spark.
+
 \subsection{Livello di Processing}\label{subsec:processing_layer}
 Il cuore computazionale di SAE è l'applicazione Spark, sviluppata in Java 11.
 La modularità del codice sorgente è stata ottenuta applicando rigorosamente i design pattern della programmazione orientata agli oggetti\@.
