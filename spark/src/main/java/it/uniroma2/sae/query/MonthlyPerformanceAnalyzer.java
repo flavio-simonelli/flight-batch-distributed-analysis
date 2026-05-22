@@ -112,9 +112,6 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
             return org.apache.spark.sql.RowFactory.create(month, carrier, avgDelay, minDelay, maxDelay, cancellationRate);
         });
 
-        // Sort the RDD by month and then by airline
-        JavaRDD<Row> sortedRDD = rowRDD.sortBy(row -> (row.getInt(0) < 10 ? "0" : "") + row.getInt(0) + "-" + row.getString(1), true, rowRDD.getNumPartitions());
-        
         // Define the schema for the RDD
         StructType schema = DataTypes.createStructType(new StructField[]{
                 DataTypes.createStructField("month", DataTypes.IntegerType, false),
@@ -125,7 +122,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
                 DataTypes.createStructField("cancellation_rate", DataTypes.DoubleType, false)
         });
 
-        return Collections.singletonList(new Tuple2<>(sortedRDD, schema));
+        return Collections.singletonList(new Tuple2<>(rowRDD, schema));
     }
 
     /**
@@ -149,8 +146,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
                         round(sum(col("CANCELLED")).divide(count("*")).multiply(100), 2).as("cancellation-rate")
                 )
                 .withColumnRenamed("MONTH", "month")
-                .withColumnRenamed("OP_UNIQUE_CARRIER", "carrier")
-                .orderBy("month", "carrier");
+                .withColumnRenamed("OP_UNIQUE_CARRIER", "carrier");
 
         return Collections.singletonList(result);
     }
@@ -175,8 +171,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
                 "ROUND(MAX(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-max`, " +
                 "ROUND((SUM(CANCELLED) / COUNT(*)) * 100, 2) AS `cancellation-rate` " +
                 "FROM flights " +
-                "GROUP BY MONTH, OP_UNIQUE_CARRIER " +
-                "ORDER BY month, carrier";
+                "GROUP BY MONTH, OP_UNIQUE_CARRIER ";
 
         Dataset<Row> result = spark.sql(sqlQuery);
         return Collections.singletonList(result);
