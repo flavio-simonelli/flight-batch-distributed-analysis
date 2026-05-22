@@ -91,15 +91,6 @@ public class HourlyDelayPercentiles extends BaseQuery {
             );
         });
 
-        // Diagnostic print
-        // SparkDiagnostics.profilePartitions(hourlyRows, "Q3 hourly percentiles");
-        // SparkDiagnostics.checkSkew(hourlyRows, "Q3 hourly percentiles", 3.0);
-
-        JavaRDD<Row> hourlySorted = hourlyRows
-                .sortBy(r -> r.getString(0) + (r.getInt(1) < 10 ? "_0" : "_") + r.getInt(1),
-                        true, hourlyRows.getNumPartitions())
-                .coalesce(1);
-
         StructType hourlySchema = DataTypes.createStructType(new StructField[]{
                 DataTypes.createStructField("opUniqueCarrier", DataTypes.StringType, false),
                 DataTypes.createStructField("hour",            DataTypes.IntegerType, false),
@@ -127,9 +118,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
                         return acc1;
                     }
                 )
-                .map(t -> RowFactory.create(t._1, t._2[0], t._2[1]))
-                .sortBy(r -> r.getString(0), true, 1)
-                .coalesce(1);
+                .map(t -> RowFactory.create(t._1, t._2[0], t._2[1]));
 
         StructType globalSchema = DataTypes.createStructType(new StructField[]{
                 DataTypes.createStructField("opUniqueCarrier",  DataTypes.StringType, false),
@@ -140,8 +129,8 @@ public class HourlyDelayPercentiles extends BaseQuery {
         validFlights.unpersist();
 
         return Arrays.asList(
-                new Tuple2<>(hourlySorted, hourlySchema),
-                new Tuple2<>(globalRows,   globalSchema)
+                new Tuple2<>(hourlyRows, hourlySchema),
+                new Tuple2<>(globalRows, globalSchema)
         );
     }
 
@@ -188,8 +177,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
                         round(expr("percentile_approx(DEP_DELAY, 0.75)"), 2).as("p75"),
                         round(expr("percentile_approx(DEP_DELAY, 0.90)"), 2).as("p90")
                 )
-                .withColumnRenamed("OP_UNIQUE_CARRIER", "opUniqueCarrier")
-                .orderBy("opUniqueCarrier", "hour");
+                .withColumnRenamed("OP_UNIQUE_CARRIER", "opUniqueCarrier");
 
         Dataset<Row> globalMinMax = flights
                 .groupBy("OP_UNIQUE_CARRIER")
@@ -197,8 +185,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
                     min("DEP_DELAY").as("min_delay_global"),
                     max("DEP_DELAY").as("max_delay_global")
                 )
-                .withColumnRenamed("OP_UNIQUE_CARRIER", "opUniqueCarrier")
-                .orderBy("opUniqueCarrier");
+                .withColumnRenamed("OP_UNIQUE_CARRIER", "opUniqueCarrier");
 
         flights.unpersist();
 
@@ -227,15 +214,13 @@ public class HourlyDelayPercentiles extends BaseQuery {
                 "ROUND(percentile_approx(DEP_DELAY, 0.90), 2) AS p90 " +
                 "FROM flights " +
                 "WHERE CANCELLED = 0 " +
-                "GROUP BY OP_UNIQUE_CARRIER, hour " +
-                "ORDER BY opUniqueCarrier, hour";
+                "GROUP BY OP_UNIQUE_CARRIER, hour";
         
         Dataset<Row> hourlyStats = spark.sql(hourlyStatsSql);
 
         String globalMinMaxSql = "SELECT OP_UNIQUE_CARRIER as opUniqueCarrier, MIN(DEP_DELAY) AS min_delay_global, MAX(DEP_DELAY) AS max_delay_global " +
                 "FROM flights " +
-                "GROUP BY OP_UNIQUE_CARRIER " +
-                "ORDER BY opUniqueCarrier";
+                "GROUP BY OP_UNIQUE_CARRIER";
         
         Dataset<Row> globalMinMax = spark.sql(globalMinMaxSql);
 
