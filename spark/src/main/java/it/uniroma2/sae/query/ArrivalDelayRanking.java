@@ -170,7 +170,7 @@ public class ArrivalDelayRanking extends BaseQuery {
                         round(avg(col("SECURITY_DELAY")), 2).as("security_delay_mean"),
                         round(avg(col("LATE_AIRCRAFT_DELAY")), 2).as("late_aircraft_delay_mean")
                 )
-                .filter(col("num_flights").gt(500))
+                .filter(col("num_flights").geq(500))
                 .orderBy(col("arrdelay_mean").desc())
                 .limit(10);
 
@@ -201,7 +201,7 @@ public class ArrivalDelayRanking extends BaseQuery {
                 "ROUND(AVG(LATE_AIRCRAFT_DELAY), 2) AS late_aircraft_delay_mean " +
                 "FROM flights " +
                 "GROUP BY OP_UNIQUE_CARRIER " +
-                "HAVING num_flights > 500 " +
+                "HAVING num_flights >= 500 " +
                 "ORDER BY arrdelay_mean DESC " +
                 "LIMIT 10";
 
