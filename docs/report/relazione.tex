@@ -208,6 +208,20 @@ La scelta di Parquet è strategica: la sua struttura a blocchi con dizionari int
 Se una query analizza solo American Airlines, Spark legge dai dischi HDFS/S3 esclusivamente i blocchi Parquet contenenti tale compagnia, riducendo l'I/O di rete di ordini di grandezza rispetto alla scansione lineare di un file CSV\@.
 
 \subsubsection{Pre-processing e Data Quality}
+La fase di ingestion non si limita alla mera conversione di formato, ma esegue un rigoroso controllo di qualità e pulizia del dato in streaming tramite processori NiFi dedicati.
+I dati grezzi, infatti, presentano potenzialmente diverse inconsistenze, come valori di ritardo negativi sporchi, campi chiave mancanti e stati logici contraddittori.
+
+La pipeline implementa due logiche fondamentali per garantire l'integrità analitica a valle:
+\begin{itemize}
+    \item \textbf{Imputazione e Normalizzazione dei Ritardi:} Utilizzando uno script all'interno del processore \texttt{UpdateRecord}, la pipeline analizza i campi relativi alle cause di ritardo (\textit{Carrier, Weather, NAS, Security, Late Aircraft}). Se esiste almeno una causa non nulla, le restanti cause nulle vengono imputate a $0.0$, in quanto non hanno contribuito al ritardo.
+    Contestualmente, eventuali valori negativi errati vengono corretti a $0.0$.
+    Tuttavia, se tutte le cause sono nulle, vengono mantenute tali.
+    Questo riflette una precisa logica di business: per legge federale, le compagnie aeree non sono tenute a dichiarare i motivi specifici del ritardo se quest'ultimo è inferiore ai 15 minuti.
+    Pertanto, i voli che registrano un ritardo all'arrivo effettivo (\texttt{ARR\_DELAY} $> 0$) ma presentano componenti nulle, rappresentano ritardi lievi non classificabili.
+    Questi record sono coerentemente ignorati nelle aggregazioni per causa (come richiesto dalla Query 2), preservando la fedeltà del dato.
+    \item \textbf{Filtraggio delle Inconsistenze Logiche:} Attraverso l'uso di query SQL sul processore \texttt{QueryRecord}, vengono scartati i record anomali (instradati su una coda di \textit{dead-letter}) che presentano discrepanze non recuperabili, quali: assenza di campi temporali o identificativi della compagnia, voli contrassegnati come cancellati ma recanti un orario di partenza effettivo, voli non cancellati ma privi di orario di arrivo/partenza, oppure evidenti errori matematici (es. ritardo totale negativo a fronte di una somma delle cause di ritardo positiva).
+\end{itemize}
+
 % TODO: impostiamo a NULL tutte le componenti di ritardo negative e a 0 quelle nulle con almeno una componente di ritardo positiva
 % def delayFields = ["CARRIER_DELAY", "WEATHER_DELAY", "NAS_DELAY", "SECURITY_DELAY", "LATE_AIRCRAFT_DELAY"]
 %
@@ -420,7 +434,7 @@ I backend DataFrame e SQL beneficiano invece dell'ottimizzazione nativa della fu
 
 \subsubsection{Impatto dell'Infrastruttura}
 Un aspetto cruciale che emerge dall'analisi comparativa è l'impatto dell'infrastruttura sul cosiddetto \textbf{Wall Clock Time} (il tempo totale reale percepito dall'utente per completare il job).
-Come evidenziato dai grafici dettagliati posizionati in Appendice A, esiste un overhead di Wall Clock Time che si somma al tempo puro di calcolo degli executor Spark.
+Come evidenziato dai grafici dettagliati posizionati in Appendice~\ref{sec:appendix_telemetry}, esiste un overhead di Wall Clock Time che si somma al tempo puro di calcolo degli executor Spark.
 
 Questo overhead della telemetria è causato da fattori estranei al processamento dei dati in senso stretto:
 \begin{itemize}
@@ -454,13 +468,14 @@ All'estremo opposto, \textbf{United Airlines (UA)} mostra il ritardo all'arrivo 
 Questo ci evidenzia che UA, pur gestendo in modo efficiente le proprie operazioni interne (basso carrier delay di $18,85$ minuti), i suoi voli vengono costantemente penalizzati dalla congestione dello spazio aereo.
 
 \subsubsection{Query 3: Distribuzione Oraria dei Percentili di Ritardo}
-L'analisi oraria dei percentili di ritardo (riportata in Appendice B) rivela marcate discrepanze strutturali tra i dati analizzati, riflettendo le rispettive efficienze operative e la resilienza del network di ciascuna compagnia.
+L'analisi oraria dei percentili di ritardo (riportata in Appendice~\ref{sec:appendix_results}) rivela marcate discrepanze strutturali tra i dati analizzati, riflettendo le rispettive efficienze operative e la resilienza del network di ciascuna compagnia.
 
 Per favorire un confronto immediato, viene discusso in dettaglio il confronto diretto tra American Airlines e Delta Air Lines, le due compagnie che mostrano i trend più divergenti e rappresentativi.
 Nelle prime ore del mattino (dalle 05:00 alle 09:00), i ritardi sono minimi per entrambe le compagnie, con il 50° percentile e persino il 75° percentile stabili vicino allo zero o a valori negativi (indicando arrivi in anticipo).
 Ciò è dovuto al fatto che i primi voli della giornata utilizzano aeromobili che hanno sostato negli aeroporti durante la notte, azzerando la propagazione del giorno precedente.
 
-Tuttavia, a partire dalle ore 12:00, si assiste a una crescita costante di tutti i percentili, che raggiunge il picco massimo nella fascia serale (dalle 18:00 alle 22:00). In questa finestra emerge la discrepanza fondamentale:
+Tuttavia, a partire dalle ore 12:00, si assiste a una crescita costante di tutti i percentili, che raggiunge il picco massimo nella fascia serale (dalle 18:00 alle 22:00).
+In questa finestra emerge la discrepanza fondamentale:
 \begin{itemize}
     \item \textbf{American Airlines:} Mostra una severa incapacità di assorbire i ritardi accumulati durante la giornata.
     Il 90° percentile di AA sale rapidamente nel pomeriggio superando la soglia critica dei $45$ minuti e mantenendosi elevatissimo fino a tarda notte.
@@ -469,7 +484,7 @@ Tuttavia, a partire dalle ore 12:00, si assiste a una crescita costante di tutti
 \end{itemize}
 
 \subsubsection{Query 4: Clustering delle Compagnie Aeree}
-L'applicazione dell'algoritmo K-Means con selezione automatica del modello tramite Silhouette Score ha identificato $K=4$ come il numero ottimale di raggruppamenti statistici per descrivere i vettori (Fig.~\ref{fig:Q4_cluster_distribution}).
+L'applicazione dell'algoritmo K-Means con selezione automatica del modello tramite Silhouette Score ha identificato $K=4$ come il numero ottimale di raggruppamenti statistici per descrivere i vettori (Fig.~\ref{fig:results_q4_cluster_distribution}).
 La proiezione spaziale tramite \textbf{Principal Component Analysis (PCA)} (Fig.~\ref{fig:results_q4_cluster_distribution}) e la matrice di classificazione delineano quattro cluster operativi ben definiti (i valori medi delle feature per ciascun cluster sono riportati in Fig.~\ref{fig:results_q4_cluster_center} e sono stati normalizzati per evidenziare le differenze relative tra i cluster):
 
 \begin{figure*}[!t]
