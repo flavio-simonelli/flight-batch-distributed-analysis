@@ -122,10 +122,17 @@ public class ArrivalDelayRanking extends BaseQuery {
                 });
 
         // Diagnostic print
+        // Diagnostic print
         // SparkDiagnostics.profilePartitions(processedRDD, "Airlines after 500 filter");
         // SparkDiagnostics.checkSkew(processedRDD, "Airlines", 3.0);
 
-
+        /*
+         * Note: We use a simple global sortBy followed by a filter on index because we know that
+         * the number of airlines remaining after the >= 500 flights filter is very small (approx. 14).
+         * In this specific case, implementing a complex distributed top-N (local sorts followed by
+         * global sort) would add unnecessary complexity without providing measurable performance gains,
+         * as the shuffle volume for 14 records is negligible.
+         */
         // Sort the result by average arrival delay in descending order
         JavaRDD<Row> sortedRDD = processedRDD.sortBy(r -> r.getDouble(2), false, processedRDD.getNumPartitions());
         JavaRDD<Row> top10RDD = sortedRDD.zipWithIndex()
