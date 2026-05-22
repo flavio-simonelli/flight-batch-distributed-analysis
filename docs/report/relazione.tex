@@ -64,12 +64,14 @@
 % IEEE Configuration
 \author{
     \IEEEauthorblockN{Flavio Simonelli}
-    \IEEEauthorblockA{Dipartimento di Ingegneria\\
+    \IEEEauthorblockA{Matricola 0365333\\
+    Dipartimento di Ingegneria\\
     Università di Roma "Tor Vergata"\\
     flavio.simonelli@alumni.uniroma2.eu}
     \and
     \IEEEauthorblockN{Francesco Masci}
-    \IEEEauthorblockA{Dipartimento di Ingegneria\\
+    \IEEEauthorblockA{Matricola 0365258\\
+    Dipartimento di Ingegneria\\
     Università di Roma "Tor Vergata"\\
     francesco.masci.02@alumni.uniroma2.eu}
 }
@@ -278,7 +280,7 @@ La modularità del codice sorgente è stata ottenuta applicando rigorosamente i 
 \subsubsection{Pattern Factory e Repository}
 Per astrarre l'accesso ai dati, SAE implementa il pattern Repository.
 L'interfaccia \texttt{FlightRepository} definisce metodi generici come \texttt{getFlights()} e \texttt{saveResults()}.
-Tramite la classe \texttt{FlightRepositoryFactory}, l'applicazione istanzia a runtime implementazioni specifiche (es. \texttt{HdfsFlightRepository}, \texttt{PostgresFlightRepository}, \texttt{RedisFlightRepository}) basandosi su un file di configurazione YAML , gestiti attraverso la classe \texttt{ApplicationConfig.java}.
+Tramite la classe \texttt{FlightRepositoryFactory}, l'applicazione istanzia a runtime implementazioni specifiche (es. \texttt{HdfsFlightRepository}, \texttt{PostgresFlightRepository}, \texttt{CockroachFlightRepository}, \texttt{RedisFlightRepository}) basandosi su un file di configurazione YAML , gestiti attraverso la classe \texttt{ApplicationConfig.java}.
 Questo significa che la logica di business analitica è completamente disaccoppiata dalla tecnologia di storage sottostante\@.
 
 \subsubsection{Astrazione delle Query}
@@ -487,16 +489,18 @@ In questa finestra emerge la discrepanza fondamentale:
     \item \textbf{Delta Air Lines:} Evidenzia invece un controllo notevole dell'effetto accumulazione: pur registrando una crescita serale, i percentili di DL rimangono significativamente più bassi e mostrano una pendenza di crescita assai più dolce, segno di una pianificazione con margini di recupero più robusti ed efficienti routine di turnaround negli hub.
 \end{itemize}
 
+\begin{figure*}[!t]
+
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/result/Q4_cluster_center}
+    \caption{Valori medi delle feature per ciascun cluster identificato nella Query 4. Le barre rappresentano le medie normalizzate delle singole features per permettere un confronto relativo tra i cluster.}
+    \label{fig:results_q4_cluster_center}
+\end{figure*}
+
 \subsubsection{Query 4: Clustering delle Compagnie Aeree}
 L'applicazione dell'algoritmo K-Means con selezione automatica del modello tramite Silhouette Score ha identificato $K=4$ come il numero ottimale di raggruppamenti statistici per descrivere i vettori (Fig.~\ref{fig:results_q4_cluster_distribution}).
 La proiezione spaziale tramite \textbf{Principal Component Analysis} (Fig.~\ref{fig:results_q4_cluster_distribution}) e la matrice di classificazione delineano quattro cluster operativi ben definiti (i valori medi delle feature per ciascun cluster sono riportati in Fig.~\ref{fig:results_q4_cluster_center} e sono stati normalizzati per evidenziare le differenze relative tra i cluster, mentre la Tabella \ref{tab:results_q4_metrics} riporta i corrispondenti valori operativi reali per ogni vettore):
 
-\begin{figure*}[!t]
-    \centering
-    \includegraphics[width=0.9\textwidth]{../charts/result/Q4_cluster_center}
-    \caption{Valori medi delle feature per ciascun cluster identificato nella Query 4. Le barre rappresentano le medie normalizzate delle singole features per permettere un confronto relativo tra i cluster.}
-    \label{fig:results_q4_cluster_center}
-\end{figure*}
 
 \begin{itemize}
     \item \textbf{Cluster 0 - Alta Efficienza e Operazioni Scalabili:} Include \texttt{UA}, \texttt{NK}, \texttt{B6}, \texttt{DL}, \texttt{MQ}, \texttt{YX}, \texttt{AS}, \texttt{WN}.
@@ -518,7 +522,7 @@ L'orchestrazione asincrona tra Airflow e NiFi, combinata con la modularità poly
 L'introduzione di tecniche algoritmiche avanzate, quali i Quantile Sketches e il Model Selection automatizzato tramite Silhouette Score, dota SAE di capacità analitiche di altissimo livello pur mantenendo confinati i costi computazionali.
 
 I potenziali sviluppi futuri della piattaforma includono la transizione da un paradigma puramente batch a un'architettura ibrida Lambda.
-L'integrazione di Apache Kafka e Spark Structured Streaming permetterebbe a SAE di acquisire eventi di volo in real-time, applicando i modelli ML di clustering precedentemente addestrati per prevedere ritardi anomali "on-the-fly".
+L'integrazione di Apache Kafka e Spark Structured Streaming permetterebbe a SAE di acquisire eventi di volo in real-time, applicando i modelli ML di clustering precedentemente addestrati per prevedere ritardi anomali "on-the-fly"\@.
 
 \begin{thebibliography}{10}
 
@@ -556,6 +560,10 @@ L'integrazione di Apache Kafka e Spark Structured Streaming permetterebbe a SAE 
     \bibitem{redis}
     Redis Ltd., "Redis Documentation," \url{https://redis.io/docs/latest/}, Consultato: Maggio 2026.
 
+    \bibitem{cockroachdb}
+    Cockroach Labs, "CockroachDB Documentation," \url{https://www.cockroachlabs.com/docs/}, Consultato: Maggio 2026.
+
+
     % Visualization & Monitoring
     \bibitem{grafana}
     Grafana Labs, "Grafana Official Documentation," \url{https://grafana.com/docs/}, Consultato: Maggio 2026.
@@ -566,7 +574,31 @@ L'integrazione di Apache Kafka e Spark Structured Streaming permetterebbe a SAE 
 \onecolumn
 
 
+\clearpage
+
+
 \appendices
+
+\section{Rappresentazione grafica dell'Architettura}\label{sec:appendix_architecture}
+In questa appendice viene riportato un diagramma dettagliato dell'architettura di Sky Analytics Engine, evidenziando i componenti principali, le loro interconnessioni e i flussi di lavoro tra i vari moduli.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../graphs/sequence_diagram}
+    \caption{Diagramma di Sequenza di Sky Analytics Engine. Il diagramma illustra i componenti principali e i flussi di dati e controllo tra di essi durante l'esecuzione.}
+    \label{fig:architecture_diagram}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.46\textwidth]{../graphs/BigDataStack}
+    \includegraphics[width=0.49\textwidth]{../graphs/DeploymentView}
+    \caption{Diagrammi di Deployment e Big Data Stack. Il primo illustra i livelli logici del Big Data Stack utilizzato da SAE, mentre il secondo diagramma mostra la distribuzione dei componenti su AWS EC2 e EMR, .}
+    \label{fig:deployment_bigdata_diagrams}
+\end{figure}
+
+\clearpage
+
 
 \section{Dettaglio dei Tempi di Esecuzione}\label{sec:appendix_telemetry}
 In questa appendice vengono riportati in dettaglio i pannelli di telemetria estratti dalle dashboard di Grafana, relativi ai tempi di esecuzione delle quattro query di processamento Spark. 
