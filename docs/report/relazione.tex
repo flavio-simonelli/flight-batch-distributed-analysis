@@ -228,12 +228,7 @@ I dati grezzi, infatti, presentano potenzialmente diverse inconsistenze, come va
 
 La pipeline implementa due logiche fondamentali per garantire l'integrità analitica a valle:
 \begin{itemize}
-    \item \textbf{Imputazione e Normalizzazione dei Ritardi:} Utilizzando uno script all'interno del processore \texttt{UpdateRecord}, la pipeline analizza i campi relativi alle cause di ritardo (\textit{Carrier, Weather, NAS, Security, Late Aircraft}). Se esiste almeno una causa non nulla, le restanti cause nulle vengono imputate a $0.0$, in quanto non hanno contribuito al ritardo.
-    Contestualmente, eventuali valori negativi errati vengono corretti a $0.0$.
-    Tuttavia, se tutte le cause sono nulle, vengono mantenute tali.
-    Questo riflette una precisa logica di business: per legge federale, le compagnie aeree non sono tenute a dichiarare i motivi specifici del ritardo se quest'ultimo è inferiore ai 15 minuti.
-    Pertanto, i voli che registrano un ritardo all'arrivo effettivo (\texttt{ARR\_DELAY} $> 0$) ma presentano componenti nulle, rappresentano ritardi lievi non classificabili.
-    Questi record sono coerentemente ignorati nelle aggregazioni per causa (come richiesto dalla Query 2), preservando la fedeltà del dato.
+    \item \textbf{Normalizzazione e Gestione dei Ritardi:} Tramite script dedicati nel processore \texttt{UpdateRecord}, la pipeline neutralizza eventuali valori di ritardo negativi errati e gestisce l'imputazione dei valori nulli, secondo la logica architetturale e di business.
     \item \textbf{Filtraggio delle Inconsistenze Logiche:} Attraverso l'uso di query SQL sul processore \texttt{QueryRecord}, vengono scartati i record anomali (instradati su una coda di \textit{dead-letter}) che presentano discrepanze non recuperabili, quali: assenza di campi temporali o identificativi della compagnia, voli contrassegnati come cancellati ma recanti un orario di partenza effettivo, voli non cancellati ma privi di orario di arrivo/partenza, oppure evidenti errori matematici (es. ritardo totale negativo a fronte di una somma delle cause di ritardo positiva).
 \end{itemize}
 
@@ -333,18 +328,30 @@ Tale integrazione permette di correlare in un unico ambiente le performance infr
 
 % ------------------------------
 
-\section{Dettagli Implementativi della Computazione}\label{sec:implementation_details}
+\section{Implementazioni delle Analisi Distribuite}\label{sec:implementation_details}
 Le quattro query richieste dal progetto sono state implementate in modo da testare diverse astrazioni di Spark e valutare i trade-off tra controllo a basso livello ed engine ottimizzati.
 
-\subsection{Analisi Base e Ottimizzazioni RDD}
+\subsection{Query 1: Statistiche Mensili}
 La \textit{Query 1} richiede il calcolo di statistiche mensili (media, min, max, tasso di cancellazione) per specifiche compagnie.
-Nell'implementazione RDD, si è evitato l'uso dell'operatore \texttt{groupByKey}, noto per causare gravi problemi di Out-Of-Memory a causa del trasferimento incontrollato di dati durante la fase di shuffle.
+Nell'implementazione RDD, si è evitato l'uso dell'operatore \texttt{groupByKey}, un'operazione che può causare gravi colli di bottiglia prestazionali a causa del trasferimento di dati sulla rete durante la fase di \textit{shuffle}.
 Al suo posto è stato utilizzato \texttt{aggregateByKey}.
-Questo operatore combina i valori parzialmente all'interno di ogni singola partizione del nodo worker prima di trasferirli sulla rete, riducendo l'impronta di memoria e i tempi di rete.
+Questo operatore combina i valori parzialmente all'interno di ogni singola partizione del nodo worker prima di trasferirli sulla rete, riducendo drasticamente il volume di dati movimentato nello shuffle e abbattendo i tempi di comunicazione tra i nodi.
 
-La \textit{Query 2} introduce logiche di \textit{feature engineering} per gestire i dati sparsi, imputando i valori nulli delle cause di ritardo a zero e filtrando i carrier non statisticamente significativi.
+\subsection{Query 2: Decomposizione dei Ritardi}\label{subsec:query2_details}
+La \textit{Query 2} analizza la composizione dei ritardi e richiede logiche di \textit{feature engineering} per gestire correttamente i dati sparsi.
+Una peculiarità del dominio applicativo riguarda la dichiarazione delle cause di ritardo: per legge federale, le compagnie aeree non sono tenute a specificare i motivi dettagliati se il ritardo complessivo all'arrivo è inferiore ai 15 minuti.
+Pertanto, per garantire l'integrità dei calcoli, è stata implementata una precisa logica di imputazione condizionale: se un volo presenta almeno una causa di ritardo dichiarata e non nulla, le restanti cause nulle vengono imputate a $0.0$, poiché è certo che non abbiano contribuito al disservizio complessivo.
+Tuttavia, se tutte le cause di un volo risultano simultaneamente nulle (caso tipico dei ritardi lievi non classificabili), esse vengono volutamente mantenute tali.
 
-\subsection{Approssimazione tramite KLL Sketch}
+La scelta di preservare l'assenza di dato per i voli con cause interamente omesse, anziché azzerarle massivamente, risponde a una precisa necessità di rigore statistico nel calcolo del contributo medio di ogni componente.
+Se si imputassero a zero i campi di tutti i voli con ritardi inferiori ai 15 minuti, questi record verrebbero inclusi nel denominatore durante il calcolo delle medie.
+Di conseguenza, l'elevato volume di questi voli con ritardi leggeri andrebbe a diluire artificialmente i risultati, distorcendo al ribasso l'impatto reale delle singole inefficienze operative.
+
+Mantenendo il valore nullo, il motore di calcolo distribuito esclude nativamente tali record dalle operazioni di riduzione e aggregazione.
+In questo modo, la determinazione del contributo medio si concentra esclusivamente sul sottoinsieme di dati in cui il ritardo è stato conclamato e categorizzato.
+L'imputazione a zero viene quindi limitata alla normalizzazione interna dei voli parzialmente descritti, mentre la conservazione del nullo agisce come un filtro statistico implicito che protegge le medie dall'effetto di diluizione e permette di isolare i reali profili di criticità dei carrier.
+
+\subsection{Query 3: Percentili per Fasce Orarie}
 Il calcolo dei percentili su finestre orarie nella \textit{Query 3} rappresenta la sfida computazionale più ardua.
 Un calcolo esatto richiederebbe l'ordinamento globale di milioni di record, un'operazione che su un cluster distribuito causa enormi colli di bottiglia dovuti allo scambio di dati.
 
@@ -356,7 +363,7 @@ Questo permette di calcolare i percentili orari in un singolo passaggio sui dati
 
 Nell'implementazione DataFrame, SAE delega questa approssimazione alla funzione nativa \texttt{percentile\_approx}, la quale utilizza un approccio simile derivato dall'algoritmo Greenwald-Khanna.
 
-\subsection{Machine Learning e Ottimizzazione Modelli}
+\subsection{Query 4: Clustering delle Compagnie}
 L'obiettivo della \textit{Query 4} è raggruppare le compagnie aeree in base alle loro feature prestazionali.
 
 L'implementazione in \texttt{AirlineClustering.java} costruisce una complessa pipeline:
@@ -383,12 +390,20 @@ L'assenza di stringhe di connessione o path assoluti hardcoded nel codice Java p
 
 \subsection{Ambiente Standalone AWS EC2}
 Il primo macro-scenario simula un'infrastruttura di tipo locale o on-premise virtualizzata in cloud.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.50\textwidth]{../graphs/DeploymentView}
+    \caption{Diagramma di deployment di Sky Analytics Engine su AWS EC2: rappresentazione dei componenti distribuiti.}
+    \label{fig:deployment_bigdata_diagrams}
+\end{figure}
+
 Il deployment si avvale di una suite di istanze Amazon EC2 attestate all'interno della medesima Virtual Private Cloud e collegate in una sottorete privata:
 \begin{itemize}
     \item \textbf{Master Node (1x \texttt{t3.medium}):} Ospita i servizi di coordinamento primari, tra cui Apache Airflow, Apache NiFi, Apache Livy, il master di Apache Spark, e i database di serving PostgreSQL e Redis.
     Dispone di 2 vCPU e 4 GB di RAM.
     \item \textbf{Worker Nodes (3x \texttt{t3.small}):} Dedicati esclusivamente al calcolo distribuito.
-    \item Ciascun nodo ospita un demone worker di Spark e un datanode HDFS all'interno di container Docker coordinati tramite Docker Compose.
+    Ciascun nodo ospita un demone worker di Spark e un datanode HDFS all'interno di container Docker coordinati tramite Docker Compose.
     Ciascun worker dispone di 2 vCPU e 2 GB di RAM.
 \end{itemize}
 In questa configurazione, HDFS funge da file system distribuito primario, mentre la sottomissione dei job Spark avviene in modalità client tramite Apache Livy, garantendo il completo disaccoppiamento logico ed architetturale\@.
@@ -416,6 +431,7 @@ Le misurazioni prestazionali raccolte evidenziano trend marcati circa l'efficaci
 
 \subsubsection{Dispersione Statistica dei Backend}
 
+% Placed here to avoid breaking the flow of the text, as the figure is quite large and would disrupt the reading if placed in the middle of the discussion.
 \begin{figure*}[!t]
     \centering
     \begin{tabular}{cc}
@@ -461,6 +477,15 @@ L'infrastruttura gioca un ruolo determinante nel mitigare questo overhead\@.
 
 \subsection{Discussione dei Risultati Analitici}\label{subsec:analytical_results_discussion}
 
+% Placed here to avoid breaking the flow of the text, as the figure is quite large and would disrupt the reading if placed in the middle of the discussion.
+\begin{figure*}[!t]
+
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/result/Q4_cluster_center}
+    \caption{Valori medi delle feature per ciascun cluster identificato nella Query 4. Le barre rappresentano le medie normalizzate delle singole features per permettere un confronto relativo tra i cluster.}
+    \label{fig:results_q4_cluster_center}
+\end{figure*}
+
 \subsubsection{Query 1: Performance Mensili delle Compagnie}
 I risultati analitici estratti per American Airlines e Delta Air Lines rivelano comportamenti operativi divergenti durante il quadrimestre Gennaio-Aprile 2025 (Fig.~\ref{fig:results_q1_average_delay_trend}). In particolare, a Gennaio si riscontra il picco massimo nel tasso di cancellazione per entrambe le compagnie (AA: $3,65\%$, DL: $2,67\%$).
 
@@ -494,14 +519,6 @@ In questa finestra emerge la discrepanza fondamentale:
     Questo denota una propagazione non controllata dovuta a tempi di sosta troppo ristretti e congestione sistematica nei propri hub.
     \item \textbf{Delta Air Lines:} Evidenzia invece un controllo notevole dell'effetto accumulazione: pur registrando una crescita serale, i percentili di DL rimangono significativamente più bassi e mostrano una pendenza di crescita assai più dolce, segno di una pianificazione con margini di recupero più robusti ed efficienti routine di turnaround negli hub.
 \end{itemize}
-
-\begin{figure*}[!t]
-
-    \centering
-    \includegraphics[width=1\textwidth]{../charts/result/Q4_cluster_center}
-    \caption{Valori medi delle feature per ciascun cluster identificato nella Query 4. Le barre rappresentano le medie normalizzate delle singole features per permettere un confronto relativo tra i cluster.}
-    \label{fig:results_q4_cluster_center}
-\end{figure*}
 
 \subsubsection{Query 4: Clustering delle Compagnie Aeree}
 L'applicazione dell'algoritmo K-Means con selezione automatica del modello tramite Silhouette Score ha identificato $K=4$ come il numero ottimale di raggruppamenti statistici per descrivere i vettori (Fig.~\ref{fig:results_q4_cluster_distribution}).
@@ -593,14 +610,6 @@ In questa appendice viene riportato un diagramma dettagliato dell'architettura d
     \includegraphics[width=1\textwidth]{../graphs/sequence_diagram}
     \caption{Diagramma di Sequenza di Sky Analytics Engine. Il diagramma illustra i componenti principali e i flussi di dati e controllo tra di essi durante l'esecuzione.}
     \label{fig:architecture_diagram}
-\end{figure}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=0.46\textwidth]{../graphs/BigDataStack}
-    \includegraphics[width=0.49\textwidth]{../graphs/DeploymentView}
-    \caption{Diagrammi di Deployment e Big Data Stack. Il primo illustra i livelli logici del Big Data Stack utilizzato da SAE, mentre il secondo diagramma mostra la distribuzione dei componenti su AWS EC2 e EMR, .}
-    \label{fig:deployment_bigdata_diagrams}
 \end{figure}
 
 \clearpage
