@@ -138,21 +138,30 @@ Questo design permette a SAE di operare con la medesima efficacia e senza altera
 % ------------------------------
 
 \section{Architettura del Sistema e Modularità}\label{sec:system_architecture}
-L'architettura di Sky Analytics Engine è stata concepita seguendo i rigidi principi della "Separation of Concerns" e della "Microservices-oriented Infrastructure".
-Il sistema rifugge l'approccio monolitico, configurandosi come un'aggregazione di servizi distribuiti coordinati che comunicano esclusivamente attraverso interfacce standardizzate\@.
+L'architettura di Sky Analytics Engine è stata concepita seguendo i rigidi principi della "Separation of Concerns".
 
-\subsection{Decomposizione Funzionale}\label{subsec:functional_decomposition}
-L'infrastruttura SAE è organizzata in macro-livelli gerarchici indipendenti.
-Questa netta separazione assicura che il sistema sia "future-proof": è possibile scalare o sostituire il motore di processing o qualsiasi componente in generale senza impattare il sistema di orchestrazione o le logiche di visualizzazione.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.38\textwidth]{../graphs/BigDataStack}
+    \caption{Big Data Stack di Sky Analytics Engine: rappresentazione dei livelli logici e delle tecnologie integrate.}
+    \label{fig:big_data_stack}
+\end{figure}
 
-I livelli principali sono:
-\begin{enumerate}
-    \item \textbf{Orchestration Layer:} Gestisce lo scheduling e lo stato delle esecuzioni.
-    \item \textbf{Ingestion Layer:} Si occupa dell'acquisizione sicura e della trasformazione grezza dei dati.
-    \item \textbf{Processing Layer:} Esegue il calcolo distribuito e l'addestramento dei modelli ML.
-    \item \textbf{Storage Layer:} Implementa la persistenza multi-modello.
-    \item \textbf{Monitoring Layer:} Raccoglie la telemetria di sistema.
-\end{enumerate}
+Il sistema rifugge l'approccio monolitico, configurandosi come un'aggregazione di servizi distribuiti coordinati che comunicano esclusivamente attraverso interfacce standardizzate.
+
+L'infrastruttura è organizzata in macro-livelli gerarchici indipendenti, come illustrato nel Big Data Stack di riferimento (Fig.~\ref{fig:big_data_stack}).
+Questa netta separazione assicura che il sistema sia "future-proof": è possibile scalare o sostituire il motore di processing o qualsiasi componente in generale senza impattare il sistema di orchestrazione o le logiche di visualizzazione\@.
+
+% I livelli principali sono:
+% \begin{enumerate}
+%     \item \textbf{Orchestration Layer:} Gestisce lo scheduling e lo stato delle esecuzioni.
+%     \item \textbf{Extraction \& Ingestion Layer:} Si occupa dell'acquisizione sicura e della trasformazione dei dati.
+%     \item \textbf{Storage Layer:} Funge da repository per i dati raw e pre-processati .
+%     \item \textbf{Processing Layer:} Esegue il calcolo distribuito e l'addestramento dei modelli ML.
+%     \item \textbf{Persistence Layer:} Implementa la persistenza multi-modello dei risultati.
+%     \item \textbf{Metrics Store Layer:} Memorizza la telemetria di sistema.
+%     \item \textbf{Visualization Layer:} Fornisce l'interfaccia di analisi visiva.
+% \end{enumerate}
 
 \subsection{Livello di Orchestrazione}\label{subsec:orchestration_layer}
 In Sky Analytics Engine, Apache Airflow 3.0 non viene utilizzato per un singolo flusso lineare, ma gestisce una suite di tre DAG specializzati, ciascuno progettato per coprire un aspetto specifico del ciclo di vita del software e della validazione sperimentale\@.
@@ -280,7 +289,7 @@ La modularità del codice sorgente è stata ottenuta applicando rigorosamente i 
 \subsubsection{Pattern Factory e Repository}
 Per astrarre l'accesso ai dati, SAE implementa il pattern Repository.
 L'interfaccia \texttt{FlightRepository} definisce metodi generici come \texttt{getFlights()} e \texttt{saveResults()}.
-Tramite la classe \texttt{FlightRepositoryFactory}, l'applicazione istanzia a runtime implementazioni specifiche (es. \texttt{HdfsFlightRepository}, \texttt{PostgresFlightRepository}, \texttt{CockroachFlightRepository}, \texttt{RedisFlightRepository}) basandosi su un file di configurazione YAML , gestiti attraverso la classe \texttt{ApplicationConfig.java}.
+Tramite la classe \texttt{FlightRepositoryFactory}, l'applicazione istanzia a runtime implementazioni specifiche basandosi su un file di configurazione YAML, gestiti attraverso la classe \texttt{ApplicationConfig.java}.
 Questo significa che la logica di business analitica è completamente disaccoppiata dalla tecnologia di storage sottostante\@.
 
 \subsubsection{Astrazione delle Query}
@@ -288,18 +297,23 @@ Ogni query estende la classe astratta \texttt{BaseQuery}.
 Questa classe si fa carico del boilerplate code: istanziazione della \texttt{SparkSession}, gestione del logging strutturato, iniezione del listener delle metriche e recupero dei dati dal repository.
 Le classi figlie devono implementare esclusivamente tre metodi: \texttt{runQueryRDD}, \texttt{runQueryDataFrame} e \texttt{runQuerySQL}, focalizzandosi solo sulla trasformazione del dato\@.
 
-\subsection{Livello di Storage}\label{subsec:storage_layer}
-Un'architettura Big Data moderna non può fare affidamento su un singolo paradigma di database.
-SAE implementa una strategia "Polyglot Persistence" per ottimizzare i costi e le latenze di accesso in base al caso d'uso:
+\subsection{Livello di Persistenza}\label{subsec:persistence_layer}
+Al fine di supportare una strategia di "Polyglot Persistence" per il serving dei risultati, SAE integra diversi motori di database specializzati:
 \begin{itemize}
-    \item \textbf{Hadoop HDFS / Amazon S3:} Fungono da \textit{Single Source of Truth}.
-    Conservano i dati raw e pre-processati in Parquet, offrendo throughput elevato per le letture batch di Spark.
-    \item \textbf{PostgreSQL:} Utilizzato come \textit{Serving Layer} relazionale.
-    I risultati aggregati delle query vengono salvati qui per essere facilmente interrogati da strumenti di Business Intelligence tradizionali come Grafana.
-    \item \textbf{Redis Stack:} Funge da database per le metriche di telemetria emesse in tempo reale da Spark.
+    \item \textbf{CockroachDB:} Costituisce il database relazionale distribuito primario per il serving dei risultati analitici.
+    Grazie alla sua architettura cloud-native e alla compatibilità con il protocollo PostgreSQL, offre i vantaggi della scalabilità orizzontale e della consistenza distribuita pur mantenendo un'interfaccia SQL standard per l'integrazione nativa con strumenti come Grafana.
+    \item \textbf{PostgreSQL:} Utilizzato come alternativa lightweight per deployment standalone o ambienti di sviluppo locale.
     \item \textbf{Apache HBase:} Implementa il paradigma NoSQL a colonne larghe.
-    È impiegato per memorizzare dataset di risultati estremamente granulari, garantendo tempi di accesso nell'ordine dei millisecondi per singole chiavi.
+    È impiegato per memorizzare dataset di risultati estremamente granulari, garantendo tempi di accesso nell'ordine dei millisecondi per singole chiavi su volumi massivi.
 \end{itemize}
+
+\subsection{Metrics Store Layer}\label{subsec:metrics_store_layer}
+Redis Stack è il componente dedicato esclusivamente alla memorizzazione della telemetria applicativa emessa in tempo reale. 
+Tramite il listener Spark personalizzato, il sistema cattura metriche granulari e le persiste su Redis per permetterne la visualizzazione immediata e l'analisi dei benchmark prestazionali.
+
+\subsection{Visualization Layer}\label{subsec:visualization_layer}
+Grafana rappresenta il punto di accesso finale per l'analisi visiva dei dati. 
+Configurato per interrogare sia CockroachDB (per i risultati di business) che Redis (per la telemetria tecnica), fornisce dashboard interattive che permettono di correlare le performance del sistema con gli insight analitici estratti.
 
 % ------------------------------
 

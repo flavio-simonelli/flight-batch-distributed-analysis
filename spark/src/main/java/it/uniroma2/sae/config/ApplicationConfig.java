@@ -48,7 +48,7 @@ public class ApplicationConfig {
 
     // --- Selection State (ignored by Jackson deserialization from YAML) ---
     private String selectedInput = "hdfs";
-    private String selectedOutput = "postgres";
+    private String selectedOutput = "cockroach";
     private String selectedMetrics = "redis";
 
     // --- Getters and Setters (Standard) ---
@@ -114,7 +114,7 @@ public class ApplicationConfig {
 
     @JsonIgnore
     public StorageConfig getOutput() {
-        return outputs.getOrDefault(selectedOutput, outputs.get("postgres"));
+        return outputs.getOrDefault(selectedOutput, outputs.get("cockroach"));
     }
 
     @JsonIgnore
