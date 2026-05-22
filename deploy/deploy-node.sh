@@ -282,6 +282,7 @@ cat <<EOF > "$DNS_BATCH_FILE"
   "Comment": "Creating aliases for Databases",
   "Changes": [
     { "Action": "UPSERT", "ResourceRecordSet": { "Name": "postgres-databases.${PRIVATE_DOMAIN_NAME}", "Type": "CNAME", "TTL": 300, "ResourceRecords": [{ "Value": "databases.${PRIVATE_DOMAIN_NAME}" }] } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "cockroachdb-databases.${PRIVATE_DOMAIN_NAME}", "Type": "CNAME", "TTL": 300, "ResourceRecords": [{ "Value": "databases.${PRIVATE_DOMAIN_NAME}" }] } },
     { "Action": "UPSERT", "ResourceRecordSet": { "Name": "redis-databases.${PRIVATE_DOMAIN_NAME}", "Type": "CNAME", "TTL": 300, "ResourceRecords": [{ "Value": "databases.${PRIVATE_DOMAIN_NAME}" }] } },
     { "Action": "UPSERT", "ResourceRecordSet": { "Name": "hbase-databases.${PRIVATE_DOMAIN_NAME}", "Type": "CNAME", "TTL": 300, "ResourceRecords": [{ "Value": "databases.${PRIVATE_DOMAIN_NAME}" }] } }
   ]

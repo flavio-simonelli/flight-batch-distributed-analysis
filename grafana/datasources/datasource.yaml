@@ -4,7 +4,7 @@ datasources:
   - name: PostgreSQL
     type: postgres
     uid: postgres-datasource-uid
-    url: databases.flight-analysis.local:5432
+    url: postgres-databases.flight-analysis.local:5432
     user: postgres
     secureJsonData:
       password: postgres
@@ -15,7 +15,7 @@ datasources:
   - name: CockroachDB
     type: postgres
     uid: cockroachdb-datasource-uid
-    url: cockroachdb.flight-analysis.local:26257
+    url: cockroachdb-databases.flight-analysis.local:26257
     user: root
     secureJsonData:
       password: ""

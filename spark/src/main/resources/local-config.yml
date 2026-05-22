@@ -41,7 +41,7 @@ outputs:
     path: "/data/res"
   postgres:
     type: "postgres"
-    hostname: "postgres.flight-analysis.local"
+    hostname: "postgres-databases.flight-analysis.local"
     port: 5432
     database: "flight_db"
     user: "postgres"
@@ -53,14 +53,14 @@ outputs:
     database: "0"
   cockroach:
     type: "cockroach"
-    hostname: "cockroachdb.flight-analysis.local"
+    hostname: "cockroachdb-databases.flight-analysis.local"
     port: 26257
     database: "defaultdb"
     user: "root"
     password: ""
   hbase:
     type: "hbase"
-    hostname: "hbase.flight-analysis.local"
+    hostname: "hbase-databases.flight-analysis.local"
     port: 2181
     database: "flight_results"
 

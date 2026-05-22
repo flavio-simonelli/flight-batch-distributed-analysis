@@ -285,7 +285,6 @@ services:
         networks:
             sae-net:
                 aliases:
-                    - databases.flight-analysis.local
                     - postgres.flight-analysis.local
                     - postgres-databases.flight-analysis.local
         ports:
@@ -337,6 +336,8 @@ services:
         networks:
             sae-net:
                 aliases:
+                    - databases.flight-analysis.local
+                    - cockroachdb-databases.flight-analysis.local
                     - cockroachdb.flight-analysis.local
         ports:
             - "${COCKROACH_PORT:-26257}:26257"

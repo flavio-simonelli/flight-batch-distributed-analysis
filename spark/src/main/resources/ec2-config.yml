@@ -42,7 +42,7 @@ outputs:
     database: "0"
   cockroach:
     type: "cockroach"
-    hostname: "cockroachdb.flight-analysis.local"
+    hostname: "cockroachdb-databases.flight-analysis.local"
     port: 26257
     database: "defaultdb"
     user: "root"
