@@ -59,7 +59,7 @@
 
 \begin{document}
 
-\title{Sky Analytics Engine: Architettura Distribuita per l'Analisi Big Data del Traffico Aereo \\ \large Sviluppo di una Pipeline Integrata con Spark, NiFi e Airflow}
+\title{Sky Analytics Engine: Architettura Distribuita per l'Analisi Big Data del Traffico Aereo \\ \large Sviluppo di una Pipeline di batch processing con Spark, NiFi e Airflow}
 
 % IEEE Configuration
 \author{
@@ -98,10 +98,10 @@
 % ------------------------------
 
 \begin{abstract}
-Il presente documento descrive in dettaglio la progettazione, lo sviluppo e la validazione sperimentale di Sky Analytics Engine, una piattaforma Big Data concepita per l'analisi distribuita e l'orchestrazione di pipeline analitiche complesse relative al traffico aereo statunitense.
-SAE integra componenti leader del settore come Apache Airflow per l'orchestrazione, Apache NiFi per l'ingestion asincrona, e Apache Spark per il processamento distribuito su cluster Hadoop.
-L'architettura proposta si distingue per la sua estrema modularità, implementata attraverso un approccio "polyglot persistence" e una netta separazione tra i piani di controllo e di esecuzione.
-Il sistema è in grado di gestire dataset massivi, applicando tecniche avanzate di approssimazione algoritmica e modelli di machine learning non supervisionato per estrarre insight operativi con alta efficienza computazionale.
+Il presente documento descrive in dettaglio la progettazione, lo sviluppo e la validazione sperimentale di Sky Analytics Engine, una piattaforma Big Data concepita per l'analisi distribuita e l'orchestrazione di pipeline di batch processing relative al traffico aereo statunitense.
+SAE integra componenti quali Apache Airflow per l'orchestrazione, Apache NiFi per l'ingestion asincrona e Apache Spark per il processamento distribuito su cluster Hadoop.
+L'architettura proposta si distingue per la sua estrema modularità, implementata attraverso un approccio di "polyglot persistence" e una netta separazione tra i piani di controllo e di esecuzione.
+Il sistema è in grado di gestire dataset massivi, spaziando dall'esecuzione di semplici query distribuite all'applicazione di tecniche avanzate di approssimazione algoritmica per il calcolo dei percentili, fino a modelli di machine learning non supervisionato per estrarre insight operativi.
 I risultati sperimentali confermano la superiorità delle API strutturate di Spark (DataFrame/SQL) rispetto all'approccio a basso livello (RDD) e dimostrano l'efficacia del formato colonnare Parquet nel ridurre drasticamente l'I/O overhead in ambienti distribuiti, sia in implementazioni on-premise che in scenari cloud-native.
 \end{abstract}
 
@@ -109,7 +109,7 @@ I risultati sperimentali confermano la superiorità delle API strutturate di Spa
 
 % IEEE Configuration
 \begin{IEEEkeywords}
-Architetture Big Data, Apache Spark, Apache NiFi, Apache Airflow, Orchestrazione di Pipeline, Data Ingestion, Machine Learning, Scalabilità, Polyglot Persistence.
+Architetture Big Data, Apache Spark, Apache NiFi, Apache Airflow, Orchestrazione di Pipeline, Data Ingestion, Machine Learning, Scalabilità, Polyglot Persistence, Batch Processing.
 \end{IEEEkeywords}
 
 % ACM Configuration
@@ -128,21 +128,20 @@ Sky Analytics Engine è stato concepito e sviluppato per rispondere in modo esau
 
 L'obiettivo primario di SAE è fornire una piattaforma che non si limiti ad essere un mero strumento di calcolo, bensì un ecosistema completo in cui ogni fase del ciclo di vita del dato (Ingestion, Storage, Processing, Serving e Monitoring) sia isolata, tracciabile e facilmente estensibile.
 Il caso d'uso affrontato in questo progetto si focalizza sull'analisi dei dati storici relativi ai ritardi dei voli commerciali negli Stati Uniti nel periodo Gennaio-Aprile 2025, forniti dal Bureau of Transportation Statistics.
-Questo dominio applicativo offre una notevole complessità strutturale (come presenza di valori nulli, anomalie statistiche, dipendenze temporali) e rappresenta un banco di prova ideale per l'implementazione di ottimizzazioni algoritmiche avanzate.
+Questo dominio applicativo offre una notevole complessità strutturale (come presenza di valori nulli, anomalie statistiche, dipendenze temporali) e rappresenta un banco di prova ideale per l'implementazione di una pipeline di batch processing in ambito Big Data.
 
 Nelle sezioni successive, esploreremo in dettaglio come la modularità implementata a livello di codice sorgente, attraverso l'utilizzo estensivo del pattern GoF Factory e interfacce astratte in Java, si rifletta coerentemente nella modularità dell'infrastruttura di deployment.
-Questo design permette a SAE di operare con la medesima efficacia e senza alterazioni alla logica di business sia su un ambiente di sviluppo locale containerizzato tramite Docker Compose, sia su un cluster cloud di produzione basato su Amazon Web Services tramite i servizi di AWS EMR ed EC2.
+Questo design permette a SAE di operare con la medesima efficacia e senza alterazioni alla logica di business sia su un ambiente di sviluppo locale containerizzato tramite Docker Compose, sia su un cluster cloud di produzione basato su Amazon Web Services tramite i servizi di AWS EMR e/o EC2.
 
 % ------------------------------
 
 \section{Architettura del Sistema e Modularità}\label{sec:system_architecture}
-L'architettura di Sky Analytics Engine rappresenta il fulcro innovativo del progetto.
-È stata concepita seguendo i rigidi principi della "Separation of Concerns" e della "Microservices-oriented Infrastructure".
+L'architettura di Sky Analytics Engine è stata concepita seguendo i rigidi principi della "Separation of Concerns" e della "Microservices-oriented Infrastructure".
 Il sistema rifugge l'approccio monolitico, configurandosi come un'aggregazione di servizi distribuiti coordinati che comunicano esclusivamente attraverso interfacce standardizzate\@.
 
 \subsection{Decomposizione Funzionale}\label{subsec:functional_decomposition}
 L'infrastruttura SAE è organizzata in macro-livelli gerarchici indipendenti.
-Questa netta separazione assicura che il sistema sia "future-proof": è possibile scalare o sostituire il motore di processing (es. passare da Spark a Flink) senza impattare il sistema di orchestrazione o le logiche di visualizzazione.
+Questa netta separazione assicura che il sistema sia "future-proof": è possibile scalare o sostituire il motore di processing o qualsiasi componente in generale senza impattare il sistema di orchestrazione o le logiche di visualizzazione.
 
 I livelli principali sono:
 \begin{enumerate}
