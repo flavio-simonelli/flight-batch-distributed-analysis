@@ -314,11 +314,22 @@ Al fine di supportare una strategia di "Polyglot Persistence" per il serving dei
 
 \subsection{Metrics Store Layer}\label{subsec:metrics_store_layer}
 Redis Stack è il componente dedicato esclusivamente alla memorizzazione della telemetria applicativa emessa in tempo reale. 
-Tramite il listener Spark personalizzato, il sistema cattura metriche granulari e le persiste su Redis per permetterne la visualizzazione immediata e l'analisi dei benchmark prestazionali.
+Per alimentare questo layer di persistenza, SAE implementa la classe \texttt{JobTimerListener}, che estende le interfacce native dello \texttt{SparkListener} e viene agganciata al bus degli eventi di Spark durante l'inizializzazione della sessione.
+
+Il Listener intercetta eventi cruciali (come \texttt{onJobStart}, \texttt{onStageCompleted} e \texttt{onTaskEnd}), registrando metriche relative alle tempistiche impiegate e al volume di dati letti e scritti.
+Alla fine del ciclo di vita dell'applicazione, il sistema aggrega questi dati e, sfruttando la Redis, persiste i record di telemetria.
+Questo approccio permette di scorporare il "vero" tempo di calcolo sui dati dal tempo fisiologico speso da Spark per negoziare le risorse con YARN o allocare i container, garantendo un'analisi dei benchmark estremamente accurata.
 
 \subsection{Visualization Layer}\label{subsec:visualization_layer}
 Grafana rappresenta il punto di accesso finale per l'analisi visiva dei dati. 
-Configurato per interrogare sia CockroachDB (per i risultati di business) che Redis (per la telemetria tecnica), fornisce dashboard interattive che permettono di correlare le performance del sistema con gli insight analitici estratti.
+Configurato per interrogare sia CockroachDB (per i risultati di business) che Redis (per la telemetria tecnica tramite il plugin RediSearch), il sistema fornisce dashboard interattive progettate per presentare:
+\begin{itemize}
+    \item Benchmark prestazionali comparativi basati sulla telemetria distribuita.
+    \item Trend temporali dei ritardi suddivisi per vettore.
+    \item Heatmap della distribuzione oraria calcolata sui percentili approssimati.
+    \item La disposizione geometrica dei cluster ML nello spazio delle feature principali.
+\end{itemize}
+Tale integrazione permette di correlare in un unico ambiente le performance infrastrutturali con gli insight analitici estratti dalla pipeline.
 
 % ------------------------------
 
@@ -360,30 +371,6 @@ L'implementazione in \texttt{AirlineClustering.java} costruisce una complessa pi
     Il punteggio di Silhouette misura la coesione intra-cluster rispetto alla separazione inter-cluster.
     SAE seleziona dinamicamente il $K$ che massimizza questo punteggio, garantendo un clustering statisticamente fondato.
 \end{enumerate}
-
-% ------------------------------
-
-\section{Telemetria Distribuita}\label{sec:telemetry_monitoring}
-Per garantire l'osservabilità di un sistema distribuito asincrono, SAE implementa un modulo di telemetria altamente personalizzato.
-
-\subsection{JobTimerListener Custom}
-Affidarsi unicamente alla UI nativa di Spark non è sufficiente per analisi storiche automatizzate.
-SAE implementa la classe \texttt{JobTimerListener}, che estende le interfacce native dello \texttt{SparkListener}.
-Questo componente viene agganciato al bus degli eventi di Spark durante l'inizializzazione della sessione.
-
-Il Listener intercetta eventi cruciali come \texttt{onJobStart}, \texttt{onStageCompleted} e \texttt{onTaskEnd}.
-Registra timestamp millisecondi e metriche relative al volume di dati letti e scritti.
-Alla fine del ciclo di vita dell'applicazione, aggrega questi dati e, sfruttando la connettività asincrona verso Redis, persiste i record di telemetria.
-Questo permette di scorporare il "vero" tempo di calcolo sui dati dal tempo fisiologico speso da Spark per negoziare le risorse con YARN o allocare i container.
-
-\subsection{Visualizzazione in Grafana}
-L'ecosistema si chiude con Grafana, configurato per leggere direttamente da Redis (tramite plugin RediSearch) e PostgreSQL. Le dashboard sono state progettate per presentare:
-\begin{itemize}
-    \item Benchmark prestazionali comparativi.
-    \item Trend temporali dei ritardi suddivisi per vettore.
-    \item Heatmap della distribuzione oraria calcolata sui percentili approssimati.
-    \item La disposizione geometrica dei cluster ML nello spazio delle feature principali.
-\end{itemize}
 
 % ------------------------------
 
