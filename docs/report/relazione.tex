@@ -169,24 +169,29 @@ Airflow avvia il flusso NiFi tramite una chiamata HTTP POST, fornendo un JWT gen
 Successivamente, Airflow entra in uno stato di \textit{Sensor Polling}, consumando risorse minime.
 Quando NiFi completa l'ingestion, utilizza il JWT per autenticarsi contro le API REST di Airflow e aggiornare la variabile di stato, sbloccando il DAG e permettendo l'avvio della fase di processing\@.
 
-\subsubsection{Il DAG di Orchestrazione}
-Rappresenta il workflow principale di produzione.
-Questo DAG coordina l'interazione tra NiFi e Spark attraverso un pattern di callback asincrono.Implementa tre modalità operative selezionabili via parametri di trigger:
+\subsubsection{DAG di Orchestrazione e Benchmarking}
+L'orchestrazione dei flussi di lavoro in Sky Analytics Engine non si affida a un singolo processo lineare, ma è demandata a una suite di tre DAG specializzati su Apache Airflow.
+Ciascun workflow è ingegnerizzato per isolare specifiche fasi del ciclo di vita del dato o per automatizzare le sessioni di validazione sperimentale:
+
 \begin{itemize}
-    \item \textbf{Both:} Triggera NiFi per l'ingestion, attende il completamento tramite un sensore su variabili Airflow, e avvia il processing Spark.
-    \item \textbf{Ingest Only:} Si ferma dopo la conversione in Parquet da parte di NiFi, ideale per popolare il data lake.
-    \item \textbf{Execution Only:} Salta NiFi e avvia direttamente Spark sui dati già pre-processati, accelerando le iterazioni analitiche.
+    \item[\textbf{1)}] \textbf{Workflow Principale:} Coordina l'interazione end-to-end tra il livello di ingestion e quello di calcolo sfruttando il meccanismo di callback asincrono descritto in precedenza.
+    Al fine di massimizzare la flessibilità operativa, il DAG supporta la parametrizzazione a runtime, abilitando tre diverse modalità di esecuzione:
+    \begin{itemize}
+        \item \textit{Both:} Esegue la pipeline completa, dall'ingestion iniziale al processamento distribuito.
+        \item \textit{Ingest Only:} Arresta il flusso subito dopo la conversione dei record in Parquet e il caricamento nel Data Lake, utile per operazioni di puro popolamento.
+        \item \textit{Execution Only:} Salta la fase di ingestion, avviando direttamente le classi analitiche di Spark sui dati Parquet preesistenti, ottimizzando i tempi di sviluppo e debug.
+    \end{itemize}
+    \vspace{0.1cm}
+
+    \item[\textbf{2)}] \textbf{Benchmark Standalone:} Progettato specificamente per la raccolta sistematica dei dati di telemetria in ambienti locali o su istanze AWS EC2 standard.
+    Al fine di garantire l'assoluta affidabilità dei benchmark analitici, questo DAG genera dinamicamente le task dependency tramite un costrutto ciclico in Python, forzando un'esecuzione puramente sequenziale di tutte le combinazioni possibili tra le 4 query target e i 3 backend.
+    Tale isolamento temporale impedisce la sovrapposizione computazionale e l'interferenza sull'I/O di rete o sul disco, restituendo metriche pulite.
+    \vspace{0.1cm}
+
+    \item[\textbf{3)}] \textbf{Benchmark Cloud-Native:} Sviluppato per automatizzare la valutazione sperimentale sull'infrastruttura fully-managed AWS EMR.
+    Questo workflow bypassa il middleware Apache Livy e si interfaccia direttamente con i servizi infrastrutturali di Amazon Web Services sfruttando l'operatore \textit{EmrAddStepsOperator} per iniettare i job Java sotto forma di step sequenziali nel Resource Manager YARN del cluster e delegando il tracciamento allo stato di \textit{EmrStepSensor}.
+    Questo design permette di sfruttare nativamente i meccanismi cloud di aggregazione dei log e la resilienza elastica dell'infrastruttura AWS\@.
 \end{itemize}
-
-\subsubsection{Benchmark Sequenziale Locale/EC2}
-Questo DAG è stato progettato per la fase di valutazione sperimentale sistematica.
-A differenza del DAG principale, \texttt{ec2\_benchmark} itera automaticamente su tutte le combinazioni possibili di query e backend.
-Utilizzando un approccio puramente sequenziale, implementato tramite dipendenze dinamiche generate in un loop Python, garantisce che ogni job Spark non subisca interferenze da esecuzioni parallele, fornendo dati di telemetria puliti e affidabili per il confronto delle performance su infrastrutture standalone o EC2\@.
-
-\subsubsection{Benchmark Cloud-Native EMR}
-Sviluppato specificamente per l'ambiente AWS EMR, questo DAG adatta la logica di benchmarking alle peculiarità del cloud.
-Non utilizza Livy, ma sfrutta gli operatori nativi Amazon: \textit{EmrAddStepsOperator} per sottomettere i job come "step" del cluster EMR e \textit{EmrStepSensor} per monitorarne il completamento.
-Questa scelta permette di sfruttare le capacità di log-aggregation di AWS EMR e di gestire job che richiedono risorse massicce, mantenendo una visibilità completa sulla console AWS oltre che su Airflow\@.
 
 \subsection{Livello di Ingestion}\label{subsec:ingestion_layer}
 Apache NiFi è la spina dorsale del livello di acquisizione dati.
