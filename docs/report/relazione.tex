@@ -336,10 +336,18 @@ Tale integrazione permette di correlare in un unico ambiente le performance infr
 Le quattro query richieste dal progetto sono state implementate in modo da testare diverse astrazioni di Spark e valutare i trade-off tra controllo a basso livello ed engine ottimizzati.
 
 \subsection{Query 1: Statistiche Mensili}
-La \textit{Query 1} richiede il calcolo di statistiche mensili (media, min, max, tasso di cancellazione) per specifiche compagnie.
-Nell'implementazione RDD, si è evitato l'uso dell'operatore \texttt{groupByKey}, un'operazione che può causare colli di bottiglia prestazionali a causa del trasferimento di dati sulla rete durante la fase di \textit{shuffle}.
-Al suo posto è stato utilizzato \texttt{aggregateByKey}.
-Questo operatore combina i valori parzialmente all'interno di ogni singola partizione del nodo worker prima di trasferirli sulla rete, riducendo drasticamente il volume di dati movimentato nello shuffle e abbattendo i tempi di comunicazione tra i nodi.
+La \textit{Query 1} richiede il calcolo di statistiche mensili (media, min, max, tasso di cancellazione) per specifiche compagnie. La struttura logica dell'esecuzione è visualizzabile nel DAG di Spark riportato in Appendice~\ref{sec:appendix_spark_dags} (Fig.~\ref{fig:dag_q1}).
+
+L'implementazione basata su RDD si articola nelle seguenti fasi:
+\begin{itemize}
+    \item \textbf{Map-Side Aggregation con \texttt{aggregateByKey}:} Si è evitato l'uso dell'operatore \texttt{groupByKey}, un'operazione che può causare colli di bottiglia prestazionali a causa del trasferimento di dati sulla rete durante la fase di \textit{shuffle}. Al suo posto è stato utilizzato \texttt{aggregateByKey}, il quale combina i valori parzialmente all'interno di ogni singola partizione del nodo worker prima di trasferirli sulla rete, riducendo drasticamente il volume di dati movimentato nello shuffle.
+    \item \textbf{Struttura dell'Accumulatore:} Viene impiegato un array di \texttt{double} come accumulatore compatto per ogni chiave \texttt{(Carrier, Month)}:
+    \[
+    \mathcal{A}_{Q1} = \langle \textstyle \sum D_{dep}, \max(D_{dep}), \min(D_{dep}), N_{vld}, N_{tot} \rangle
+    \]
+    dove $D_{dep}$ è il ritardo, $N_{vld}$ i voli validi e $N_{tot}$ i totali.
+    \item \textbf{Trasformazione Finale:} Un'operazione di \texttt{map} elabora i valori dell'accumulatore per calcolare le medie definitive ($ \sum D_{dep} / N_{valid} $) e i tassi di cancellazione ($ (N_{tot} - N_{valid}) / N_{tot} $), restituendo il formato finale richiesto per la persistenza.
+\end{itemize}
 
 \subsection{Query 2: Decomposizione dei Ritardi}\label{subsec:query2_details}
 La \textit{Query 2} analizza la composizione dei ritardi e richiede logiche di \textit{feature engineering} per gestire correttamente i dati sparsi.
@@ -355,22 +363,54 @@ Questa scelta metodologica è fondamentale per distinguere tra due possibili app
     In questo modo, il risultato esprime quanto mediamente ogni causa pesi sull'intera flotta del vettore.
 \end{itemize}
 
-Tale approccio fornisce una visione realistica della resilienza del business, permettendo di identificare quali compagnie riescano effettivamente a mitigare l'impatto di specifiche cause su scala globale, anziché focalizzarsi esclusivamente sui casi limite.
+Tale approccio fornisce una visione realistica della resilienza del business, permettendo di identificare quali compagnie riescano effettivamente a mitigare l'impatto di specifiche cause su scala globale, anziché focalizzarsi esclusivamente sui casi limite. Il piano di esecuzione distribuito è composto da tre job sequenziali (Fig.~\ref{fig:dag_q2} in Appendice~\ref{sec:appendix_spark_dags}).
+
+L'implementazione basata su RDD si sviluppa come segue:
+\begin{itemize}
+    \item \textbf{Filtraggio Iniziale:} Un'operazione di \texttt{filter} scarta a priori i voli deviati o cancellati per garantire l'integrità del calcolo delle medie.
+    \item \textbf{Map-Side Aggregation con \texttt{aggregateByKey}:} Similmente alla Query 1, viene utilizzato un accumulatore compatto associato alla chiave \texttt{Carrier}:
+    \[
+    \begin{aligned}
+    \mathcal{A}_{Q2} = \langle N, \textstyle \sum D_{arr}, \textstyle \sum D_{carr}, \textstyle \sum D_{weat}, \\ 
+    \textstyle \sum D_{nas}, \textstyle \sum D_{sec}, \textstyle \sum D_{late} \rangle
+    \end{aligned}
+    \]
+    dove $N$ è il numero totale dei voli validi per il vettore e le successive componenti rappresentano le somme dei ritardi.
+    \item \textbf{Filtro di Confidenza e Medie:} Una successiva operazione di \texttt{filter} mantiene solo le chiavi con $N \ge 500$. L'operazione di \texttt{map} calcola i contributi medi dividendo le somme parziali per $N$.
+    \item \textbf{Ranking Globale:} Un \texttt{sortBy} distribuito sulle medie, seguito da \texttt{zipWithIndex} e \texttt{filter}, permette di estrarre la top 10 dei vettori. L'ordinamento globale in questa fase non costituisce un bottleneck poiché i dati in shuffle sono ormai collassati a un singolo record per compagnia aerea validata.
+\end{itemize}
 
 \subsection{Query 3: Percentili per Fasce Orarie}
 Il calcolo dei percentili su finestre orarie nella \textit{Query 3} rappresenta la sfida computazionale più ardua.
 Un calcolo esatto richiederebbe l'ordinamento globale di milioni di record, un'operazione che su un cluster distribuito causa enormi colli di bottiglia dovuti allo scambio di dati.
 
 SAE risolve questo problema implementando tecniche di "Quantile Sketching".
-Attraverso l'integrazione della libreria Apache DataSketches, è stato implementato lo stimatore Karnin-Lang-Liberty.
-L'algoritmo KLL mantiene in memoria un set compresso e rappresentativo dei dati osservati.
-La potenza matematica del KLL risiede nella sua proprietà di unione: due sketch generati su nodi worker differenti possono essere sommati nel driver node mantenendo rigorose garanzie matematiche sull'errore di rango massimo (configurato di default a $\sim 1.6\%$).
-Questo permette di calcolare i percentili orari in un singolo passaggio sui dati, con una complessità spaziale fissa indipendente dalla dimensione del dataset.
+Attraverso l'integrazione della libreria Apache DataSketches, è stato implementato lo stimatore Karnin-Lang-Liberty (KLL). Parallelamente, per offrire una maggiore flessibilità analitica, il sistema integra anche l'algoritmo T-Digest. Entrambi gli stimatori sono configurabili a runtime tramite la proprietà \texttt{percentileAlgorithm} in \texttt{ApplicationConfig.java}.
+
+L'algoritmo KLL, in particolare, mantiene in memoria un set compresso e rappresentativo dei dati osservati.
+La potenza matematica di questi algoritmi di sketching risiede nella loro proprietà di unione: due sketch generati su nodi worker differenti possono essere sommati nel driver node mantenendo rigorose garanzie matematiche sull'errore di rango massimo (configurato di default a $\sim 1.6\%$ per KLL).
+Questo permette di calcolare i percentili orari in un singolo passaggio sui dati, con una complessità spaziale fissa indipendente dalla dimensione del dataset. La complessità del piano fisico è riflessa nei due job Spark visibili in Fig.~\ref{fig:dag_q3} (Appendice~\ref{sec:appendix_spark_dags}).
+
+Nell'implementazione specifica RDD, la query si divide in due pipeline parallele:
+\begin{itemize}
+    \item \textbf{Pipeline dei Percentili (Sketching):} Sfrutta l'operatore \texttt{combineByKey} per gestire l'istanziazione, l'aggiornamento e l'unione dei buffer binari che rappresentano lo stato interno dello sketch scelto (KLL o T-Digest). La struttura dati scambiata durante la \textit{combine} è:
+    \[
+    \mathcal{S}_{Q3} = \langle byte[] \text{ (Sketch State Buffer)} \rangle
+    \]
+    Questo buffer compatto riduce l'I/O ed è associato alla chiave composita \texttt{(Carrier, Hour)}.
+    \item \textbf{Pipeline Globale (Min/Max):} Opera parallelamente per calcolare i valori estremi per ogni \texttt{Carrier}. Utilizza \texttt{aggregateByKey} con un accumulatore di dimensione fissa:
+    \[
+    \mathcal{A}_{Q3} = \langle \min(D_{dep}),\; \max(D_{dep}) \rangle
+    \]
+\end{itemize}
+Entrambe le pipeline agiscono su un RDD preventivamente filtrato e cachato in memoria (\texttt{cache()}) per evitare la rilettura ripetuta dei medesimi record dal livello di storage.
 
 Nell'implementazione DataFrame, SAE delega questa approssimazione alla funzione nativa \texttt{percentile\_approx}, la quale utilizza un approccio simile derivato dall'algoritmo Greenwald-Khanna.
 
 \subsection{Query 4: Clustering delle Compagnie}
 L'obiettivo della \textit{Query 4} è raggruppare le compagnie aeree in base alle loro feature prestazionali.
+
+A differenza delle analisi precedenti, questa query è implementata unicamente tramite le API DataFrame/SQL. Il framework di machine learning di Spark (\texttt{MLlib}), e in particolare le sue funzionalità di \textit{feature extraction} (come \texttt{StandardScaler} e \texttt{PCA}) e le implementazioni ottimizzate del K-Means, dipendono strutturalmente dall'astrazione \texttt{Dataset<Row>} e dai tipi \texttt{Vector} dell'API \texttt{ml.linalg}. Riscrivere il processo utilizzando le API RDD sottostanti annullerebbe i benefici di tali ottimizzazioni ed esporrebbe ad operazioni scalari inefficienti.
 
 L'implementazione in \texttt{AirlineClustering.java} costruisce una complessa pipeline:
 \begin{enumerate}
@@ -621,6 +661,38 @@ In questa appendice viene riportato un diagramma dettagliato dell'architettura d
 
 \clearpage
 
+
+\section{Rappresentazione grafica dei DAG di Spark}\label{sec:appendix_spark_dags}
+In questa appendice vengono riportati i Directed Acyclic Graphs (DAG) generati da Spark per le implementazioni RDD delle prime tre query. Questi grafici illustrano le fasi di trasformazione, gli shuffle e la suddivisione in stage del piano di esecuzione distribuito.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../charts/spark_dag/monthly_performance_rdd}
+    \caption{DAG di Spark per la Query 1 (RDD): evidenzia la fase di \textit{aggregateByKey} e la successiva trasformazione finale.}
+    \label{fig:dag_q1}
+\end{figure}
+
+\begin{figure*}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/spark_dag/Query2_job0_rdd}
+    \vspace{0.5cm}
+    \includegraphics[width=1\textwidth]{../charts/spark_dag/Query2_job1_rdd}
+    \vspace{0.5cm}
+    \includegraphics[width=1\textwidth]{../charts/spark_dag/Query2_job2_rdd}
+    \caption{DAG di Spark per la Query 2 (RDD): i tre job mostrano rispettivamente il filtraggio/aggregazione, il calcolo delle medie e l'ordinamento per il ranking top-10.}
+    \label{fig:dag_q2}
+\end{figure*}
+
+\begin{figure*}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/spark_dag/Query3_job0_rdd}
+    \vspace{0.5cm}
+    \includegraphics[width=1\textwidth]{../charts/spark_dag/Query3_job1_rdd}
+    \caption{DAG di Spark per la Query 3 (RDD): i due job paralleli gestiscono rispettivamente la pipeline degli sketch per i percentili e la pipeline per il calcolo dei minimi e massimi globali.}
+    \label{fig:dag_q3}
+\end{figure*}
+
+\clearpage
 
 \section{Dettaglio dei Tempi di Esecuzione}\label{sec:appendix_telemetry}
 In questa appendice vengono riportati in dettaglio i pannelli di telemetria estratti dalle dashboard di Grafana, relativi ai tempi di esecuzione delle quattro query di processamento Spark. 
