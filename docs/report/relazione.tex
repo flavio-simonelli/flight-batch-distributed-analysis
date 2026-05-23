@@ -284,6 +284,9 @@ L'adozione di un'architettura Data Lake consente un disaccoppiamento totale tra 
 
 \subsection{Livello di Processing}\label{subsec:processing_layer}
 Il cuore computazionale di SAE è l'applicazione Spark, sviluppata in Java 11.
+L'architettura garantisce l'integrità del calcolo attraverso una suite di test di coerenza locale (\texttt{QueryConsistencyTest.java}).
+Questi test caricano il dataset Parquet reale fornito e verificano che i risultati ottenuti tramite le tre diverse astrazioni di Spark (RDD, DataFrame e SQL) siano matematicamente equivalenti entro tolleranze definite (necessarie per gli algoritmi di sketching), assicurando che la logica di business sia preservata indipendentemente dal backend scelto\@.
+
 La modularità del codice sorgente è stata ottenuta applicando rigorosamente i design pattern della programmazione orientata agli oggetti\@.
 
 \subsubsection{Pattern Factory e Repository}
@@ -340,16 +343,17 @@ Questo operatore combina i valori parzialmente all'interno di ogni singola parti
 \subsection{Query 2: Decomposizione dei Ritardi}\label{subsec:query2_details}
 La \textit{Query 2} analizza la composizione dei ritardi e richiede logiche di \textit{feature engineering} per gestire correttamente i dati sparsi.
 Una peculiarità del dominio applicativo riguarda la dichiarazione delle cause di ritardo: per legge federale, le compagnie aeree non sono tenute a specificare i motivi dettagliati se il ritardo complessivo all'arrivo è inferiore ai 15 minuti.
-Pertanto, per garantire l'integrità dei calcoli, è stata implementata una precisa logica di imputazione condizionale: se un volo presenta almeno una causa di ritardo dichiarata e non nulla, le restanti cause nulle vengono imputate a $0.0$, poiché è certo che non abbiano contribuito al disservizio complessivo.
-Tuttavia, se tutte le cause di un volo risultano simultaneamente nulle (caso tipico dei ritardi lievi non classificabili), esse vengono volutamente mantenute tali.
+Questa condizione genera una significativa presenza di valori mancanti (\textit{null}) nel dataset.
 
-La scelta di preservare l'assenza di dato per i voli con cause interamente omesse, anziché azzerarle massivamente, risponde a una precisa necessità di rigore statistico nel calcolo del contributo medio di ogni componente.
-Se si imputassero a zero i campi di tutti i voli con ritardi inferiori ai 15 minuti, questi record verrebbero inclusi nel denominatore durante il calcolo delle medie.
-Di conseguenza, l'elevato volume di questi voli con ritardi leggeri andrebbe a diluire artificialmente i risultati, distorcendo al ribasso l'impatto reale delle singole inefficienze operative.
+Al fine di rispondere correttamente al requisito di calcolare il \textbf{contributo medio} delle diverse cause di ritardo, SAE implementa una strategia di imputazione a zero per i valori mancanti (utilizzando l'operatore \texttt{coalesce(col, 0)} in Spark e pre-elaborando i record parziali in NiFi).
+Questa scelta metodologica è fondamentale per distinguere tra due possibili approcci analitici:
+\begin{itemize}
+    \item \textbf{Analisi dell'Intensità:} Ignorando i valori nulli, il calcolo della media includerebbe solo i voli con ritardo conclamato. Sebbene utile per misurare la severità di un problema quando si verifica, questo approccio distorcerebbe la visione d'insieme, sovrastimando l'impatto delle singole cause sull'operatività totale del vettore.
+    \item \textbf{Analisi del Contributo Medio (Scelta SAE):} Trattando i valori mancanti come zero, SAE assicura che il denominatore della media sia costituito dalla totalità dei voli non cancellati e non deviati della compagnia. In questo modo, il risultato esprime quanto mediamente ogni causa (es. condizioni meteo o problemi tecnici) pesi sull'intera flotta del vettore.
+\end{itemize}
 
-Mantenendo il valore nullo, il motore di calcolo distribuito esclude nativamente tali record dalle operazioni di riduzione e aggregazione.
-In questo modo, la determinazione del contributo medio si concentra esclusivamente sul sottoinsieme di dati in cui il ritardo è stato conclamato e categorizzato.
-L'imputazione a zero viene quindi limitata alla normalizzazione interna dei voli parzialmente descritti, mentre la conservazione del nullo agisce come un filtro statistico implicito che protegge le medie dall'effetto di diluizione e permette di isolare i reali profili di criticità dei carrier.
+Tale approccio fornisce una visione realistica della resilienza del business, permettendo di identificare quali compagnie riescano effettivamente a mitigare l'impatto di specifiche cause su scala globale, anziché focalizzarsi esclusivamente sui casi limite.
+L'integrità di questa logica è verificata in fase di esecuzione distribuita assicurando che tutti i record che superano il filtro dei 500 voli contribuiscano in modo uniforme al calcolo della classifica.
 
 \subsection{Query 3: Percentili per Fasce Orarie}
 Il calcolo dei percentili su finestre orarie nella \textit{Query 3} rappresenta la sfida computazionale più ardua.

@@ -78,7 +78,7 @@ public class AirlineClustering extends BaseQuery {
     @Override
     protected List<Dataset<Row>> runQueryDataFrame(Dataset<Row> dataset, ApplicationConfig config) {
         
-        // --- Method-Level Constants (Algorithmically uninfluential) ---
+        // --- Method-Level Constants ---
         final String CARRIER_COL = "OP_UNIQUE_CARRIER";
         final String CANCELLED_COL = "CANCELLED";
         final String DIVERTED_COL = "DIVERTED";
@@ -117,12 +117,13 @@ public class AirlineClustering extends BaseQuery {
                         (sum(col(DIVERTED_COL)).divide(count("*"))).as("diverted_rate"),
 
                         (sum(col(CANCELLED_COL)).divide(count("*"))).as("cancellation_rate"),
-                        avg("CARRIER_DELAY").as("avg_carrier_delay"),
-                        avg("WEATHER_DELAY").as("avg_weather_delay"),
-                        avg("NAS_DELAY").as("avg_nas_delay"),
-                        avg("SECURITY_DELAY").as("avg_security_delay"),
-                        avg("LATE_AIRCRAFT_DELAY").as("avg_late_aircraft_delay")
+                        avg(coalesce(col("CARRIER_DELAY"), lit(0))).as("avg_carrier_delay"),
+                        avg(coalesce(col("WEATHER_DELAY"), lit(0))).as("avg_weather_delay"),
+                        avg(coalesce(col("NAS_DELAY"), lit(0))).as("avg_nas_delay"),
+                        avg(coalesce(col("SECURITY_DELAY"), lit(0))).as("avg_security_delay"),
+                        avg(coalesce(col("LATE_AIRCRAFT_DELAY"), lit(0))).as("avg_late_aircraft_delay")
                 )
+                .withColumnRenamed(CARRIER_COL, "carrier")
                 .na().fill(0.0);
 
         final String[] featureCols = {

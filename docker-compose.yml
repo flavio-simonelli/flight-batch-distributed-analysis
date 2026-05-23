@@ -548,6 +548,7 @@ services:
             - GF_RENDERING_SERVER_URL=http://grafana-renderer.flight-analysis.local:8081/render
             - GF_RENDERING_CALLBACK_URL=http://grafana.flight-analysis.local:3000/
             - GF_RENDERING_RENDERER_TOKEN=ilhbuhg234uygs87fjkhbnlbujyhgbjhsfliuh9834787t234hja
+            - GF_USERS_DEFAULT_THEME=light
         volumes:
             - ./grafana/datasources:/etc/grafana/provisioning/datasources
             - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
