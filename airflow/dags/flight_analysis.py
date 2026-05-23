@@ -57,7 +57,8 @@ STORAGE_MAPPINGS = {
         "config_file": Param("ec2-config.yml", enum=AVAILABLE_CONFIGS),
         "input_type": Param("hdfs", enum=AVAILABLE_INPUTS),
         "output_type": Param("postgres", enum=AVAILABLE_OUTPUTS),
-        "metrics_type": Param("redis", enum=AVAILABLE_METRICS)
+        "metrics_type": Param("redis", enum=AVAILABLE_METRICS),
+        "output_partitions": Param(0, type="integer", minimum=0, description="Number of output partitions. 0 means no coalescing.")
     },
 )
 def flight_analysis():
@@ -202,7 +203,7 @@ def flight_analysis():
         if params["run_mode"] == "Ingest Only":
             return []
             
-        return [
+        args = [
             "--query", params["selected_query"],
             "--backend", params["spark_backend"],
             "--config", params["config_file"],
@@ -210,6 +211,11 @@ def flight_analysis():
             "--output-type", params["output_type"],
             "--metrics-type", params["metrics_type"]
         ]
+
+        if params.get("output_partitions", 0) > 0:
+            args.extend(["--partitions", str(params["output_partitions"])])
+
+        return args
 
     spark_args = prepare_spark_args()
 
