@@ -24,7 +24,7 @@ AVAILABLE_QUERIES = ["monthly_performance", "arrival_delay_ranking", "hourly_del
 AVAILABLE_BACKENDS = ["rdd", "dataframe", "sql"]
 AVAILABLE_CONFIGS = ["local-config.yml", "ec2-config.yml", "emr-config.yml"]
 AVAILABLE_INPUTS = ["hdfs", "s3", "local"]
-AVAILABLE_OUTPUTS = ["hdfs", "postgres", "redis", "hbase", "s3", "local", "cockroach"]
+AVAILABLE_OUTPUTS = ["hdfs", "cockroach", "postgres", "redis", "hbase", "s3", "local"]
 AVAILABLE_METRICS = ["redis"]
 
 @dag(
@@ -36,7 +36,7 @@ AVAILABLE_METRICS = ["redis"]
     params={
         "config_file": Param("ec2-config.yml", enum=AVAILABLE_CONFIGS),
         "input_type": Param("hdfs", enum=AVAILABLE_INPUTS),
-        "output_type": Param("postgres", enum=AVAILABLE_OUTPUTS),
+        "output_type": Param("cockroach", enum=AVAILABLE_OUTPUTS),
         "metrics_type": Param("redis", enum=AVAILABLE_METRICS),
     },
     description="Runs all query/backend combinations sequentially for benchmarking."
