@@ -62,7 +62,7 @@ public class FlightAnalysisApp {
             MDC.put("query", queryToRun.toString());
             MDC.put("backend", config.getAppBackend().toString());
 
-            logger.info("Initializing flight analysis job | query={} | backend={}", queryToRun, config.getAppBackend());
+            logger.info("Initializing flight analysis job | query={} | backend={} | input={} | output={} | metrics={} | partitions={}", queryToRun, config.getAppBackend(), config.getInput().getStringType(), config.getOutput().getStringType(), config.getMetrics().getStringType(), config.getOutputPartitions());
 
             BaseQuery queryJob;
 

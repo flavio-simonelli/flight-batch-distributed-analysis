@@ -46,9 +46,9 @@ public abstract class BaseQuery {
         String queryName = query.name().toLowerCase();
 
         try {
-            logger.info("Setting up Spark session | appName={}", config.getAppName());
+            logger.info("Setting up Spark session | appName={}", config.getFullAppName());
             SparkSession.Builder builder = SparkSession.builder()
-                    .appName(config.getAppName());
+                    .appName(config.getFullAppName());
 
             // If master is provided in config, use it (typically for local/docker).
             if (config.getSparkCluster() != null && config.getSparkCluster().getMaster() != null) {

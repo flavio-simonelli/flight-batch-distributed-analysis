@@ -75,11 +75,13 @@ public class ApplicationConfig {
         }
     }
 
+    public String getAppName() { return appName; }
+    public void setAppName(String appName) { this.appName = appName; }
+
     @JsonIgnore
-    public String getAppName() {
+    public String getFullAppName() {
         return appName + " - " + queryToRun + " (" + appBackend + ")";
     }
-    public void setAppName(String appName) { this.appName = appName; }
 
     public QueryType getQueryToRun() { return queryToRun; }
     public void setQueryToRun(QueryType queryToRun) { this.queryToRun = queryToRun; }
