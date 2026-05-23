@@ -92,7 +92,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
         });
 
         StructType hourlySchema = DataTypes.createStructType(new StructField[]{
-                DataTypes.createStructField("opUniqueCarrier", DataTypes.StringType, false),
+                DataTypes.createStructField("airline",         DataTypes.StringType, false),
                 DataTypes.createStructField("hour",            DataTypes.IntegerType, false),
                 DataTypes.createStructField("p25",             DataTypes.DoubleType, false),
                 DataTypes.createStructField("p50",             DataTypes.DoubleType, false),
@@ -121,9 +121,9 @@ public class HourlyDelayPercentiles extends BaseQuery {
                 .map(t -> RowFactory.create(t._1, t._2[0], t._2[1]));
 
         StructType globalSchema = DataTypes.createStructType(new StructField[]{
-                DataTypes.createStructField("opUniqueCarrier",  DataTypes.StringType, false),
-                DataTypes.createStructField("min_delay_global", DataTypes.DoubleType, false),
-                DataTypes.createStructField("max_delay_global", DataTypes.DoubleType, false)
+                DataTypes.createStructField("airline",          DataTypes.StringType, false),
+                DataTypes.createStructField("min_delay",        DataTypes.DoubleType, false),
+                DataTypes.createStructField("max_delay",        DataTypes.DoubleType, false)
         });
 
         return Arrays.asList(
@@ -175,15 +175,15 @@ public class HourlyDelayPercentiles extends BaseQuery {
                         round(expr("percentile_approx(DEP_DELAY, 0.75)"), 2).as("p75"),
                         round(expr("percentile_approx(DEP_DELAY, 0.90)"), 2).as("p90")
                 )
-                .withColumnRenamed("OP_UNIQUE_CARRIER", "opUniqueCarrier");
+                .withColumnRenamed("OP_UNIQUE_CARRIER", "airline");
 
         Dataset<Row> globalMinMax = flights
                 .groupBy("OP_UNIQUE_CARRIER")
                 .agg(
-                    min("DEP_DELAY").as("min_delay_global"),
-                    max("DEP_DELAY").as("max_delay_global")
+                    min("DEP_DELAY").as("min_delay"),
+                    max("DEP_DELAY").as("max_delay")
                 )
-                .withColumnRenamed("OP_UNIQUE_CARRIER", "opUniqueCarrier");
+                .withColumnRenamed("OP_UNIQUE_CARRIER", "airline");
 
         return Arrays.asList(hourlyStats, globalMinMax);
     }
@@ -203,7 +203,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
         
         flights.createOrReplaceTempView("flights");
 
-        String hourlyStatsSql = "SELECT OP_UNIQUE_CARRIER as opUniqueCarrier, CAST(CRS_DEP_TIME / 100 AS INT) AS hour, " +
+        String hourlyStatsSql = "SELECT OP_UNIQUE_CARRIER as airline, CAST(CRS_DEP_TIME / 100 AS INT) AS hour, " +
                 "ROUND(percentile_approx(DEP_DELAY, 0.25), 2) AS p25, " +
                 "ROUND(percentile_approx(DEP_DELAY, 0.50), 2) AS p50, " +
                 "ROUND(percentile_approx(DEP_DELAY, 0.75), 2) AS p75, " +
@@ -214,7 +214,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
         
         Dataset<Row> hourlyStats = spark.sql(hourlyStatsSql);
 
-        String globalMinMaxSql = "SELECT OP_UNIQUE_CARRIER as opUniqueCarrier, MIN(DEP_DELAY) AS min_delay_global, MAX(DEP_DELAY) AS max_delay_global " +
+        String globalMinMaxSql = "SELECT OP_UNIQUE_CARRIER as airline, MIN(DEP_DELAY) AS min_delay, MAX(DEP_DELAY) AS max_delay " +
                 "FROM flights " +
                 "GROUP BY OP_UNIQUE_CARRIER";
         

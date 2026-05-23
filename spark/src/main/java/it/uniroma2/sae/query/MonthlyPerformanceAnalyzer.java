@@ -115,11 +115,11 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         // Define the schema for the RDD
         StructType schema = DataTypes.createStructType(new StructField[]{
                 DataTypes.createStructField("month", DataTypes.IntegerType, false),
-                DataTypes.createStructField("carrier", DataTypes.StringType, false),
-                DataTypes.createStructField("avg_delay", DataTypes.DoubleType, false),
-                DataTypes.createStructField("min_delay", DataTypes.DoubleType, false),
-                DataTypes.createStructField("max_delay", DataTypes.DoubleType, false),
-                DataTypes.createStructField("cancellation_rate", DataTypes.DoubleType, false)
+                DataTypes.createStructField("airline", DataTypes.StringType, false),
+                DataTypes.createStructField("dep-delay-mean", DataTypes.DoubleType, false),
+                DataTypes.createStructField("dep-delay-min", DataTypes.DoubleType, false),
+                DataTypes.createStructField("dep-delay-max", DataTypes.DoubleType, false),
+                DataTypes.createStructField("cancellation-rate", DataTypes.DoubleType, false)
         });
 
         return Collections.singletonList(new Tuple2<>(rowRDD, schema));
@@ -146,7 +146,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
                         round(sum(col("CANCELLED")).divide(count("*")).multiply(100), 2).as("cancellation-rate")
                 )
                 .withColumnRenamed("MONTH", "month")
-                .withColumnRenamed("OP_UNIQUE_CARRIER", "carrier");
+                .withColumnRenamed("OP_UNIQUE_CARRIER", "airline");
 
         return Collections.singletonList(result);
     }
@@ -165,7 +165,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         // Create a temporary view to run SQL queries against it
         flights.createOrReplaceTempView("flights");
 
-        String sqlQuery = "SELECT MONTH as month, OP_UNIQUE_CARRIER as carrier, " +
+        String sqlQuery = "SELECT MONTH as month, OP_UNIQUE_CARRIER as airline, " +
                 "ROUND(AVG(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-mean`, " +
                 "ROUND(MIN(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-min`, " +
                 "ROUND(MAX(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-max`, " +

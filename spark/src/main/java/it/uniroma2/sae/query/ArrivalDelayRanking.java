@@ -144,12 +144,12 @@ public class ArrivalDelayRanking extends BaseQuery {
         StructType schema = DataTypes.createStructType(new StructField[]{
                 DataTypes.createStructField("carrier", DataTypes.StringType, false),
                 DataTypes.createStructField("num_flights", DataTypes.LongType, false),
-                DataTypes.createStructField("avg_arr_delay", DataTypes.DoubleType, false),
-                DataTypes.createStructField("avg_carrier_delay", DataTypes.DoubleType, false),
-                DataTypes.createStructField("avg_weather_delay", DataTypes.DoubleType, false),
-                DataTypes.createStructField("avg_nas_delay", DataTypes.DoubleType, false),
-                DataTypes.createStructField("avg_security_delay", DataTypes.DoubleType, false),
-                DataTypes.createStructField("avg_late_aircraft_delay", DataTypes.DoubleType, false)
+                DataTypes.createStructField("arrdelay_mean", DataTypes.DoubleType, false),
+                DataTypes.createStructField("carrier_delay_mean", DataTypes.DoubleType, false),
+                DataTypes.createStructField("weather_delay_mean", DataTypes.DoubleType, false),
+                DataTypes.createStructField("nas_delay_mean", DataTypes.DoubleType, false),
+                DataTypes.createStructField("security_delay_mean", DataTypes.DoubleType, false),
+                DataTypes.createStructField("late_aircraft_delay_mean", DataTypes.DoubleType, false)
         });
 
         return Collections.singletonList(new Tuple2<>(top10RDD, schema));
@@ -178,6 +178,7 @@ public class ArrivalDelayRanking extends BaseQuery {
                         round(avg(coalesce(col("SECURITY_DELAY"), lit(0))), 2).as("security_delay_mean"),
                         round(avg(coalesce(col("LATE_AIRCRAFT_DELAY"), lit(0))), 2).as("late_aircraft_delay_mean")
                 )
+                .withColumnRenamed("OP_UNIQUE_CARRIER", "carrier")
                 .filter(col("num_flights").geq(500))
                 .orderBy(col("arrdelay_mean").desc())
                 .limit(10);
@@ -199,7 +200,7 @@ public class ArrivalDelayRanking extends BaseQuery {
 
         flights.createOrReplaceTempView("flights");
 
-        String sqlQuery = "SELECT OP_UNIQUE_CARRIER as opUniqueCarrier, " +
+        String sqlQuery = "SELECT OP_UNIQUE_CARRIER as carrier, " +
                 "COUNT(*) AS num_flights, " +
                 "ROUND(AVG(COALESCE(ARR_DELAY, 0)), 2) AS arrdelay_mean, " +
                 "ROUND(AVG(COALESCE(CARRIER_DELAY, 0)), 2) AS carrier_delay_mean, " +
