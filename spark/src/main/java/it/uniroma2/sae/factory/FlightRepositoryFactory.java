@@ -38,7 +38,9 @@ public class FlightRepositoryFactory {
     public static FlightRepository createOutputRepository(ApplicationConfig config, SparkSession spark) {
         StorageConfig outputConfig = config.getOutput();
         logger.info("Output repository config | type={} | path={} | directory={}", outputConfig.getType(), outputConfig.getPath(), outputConfig.getResultDirectory());
-        return createRepository(outputConfig, spark);
+        FlightRepository repository = createRepository(outputConfig, spark);
+        repository.setOutputPartitions(config.getOutputPartitions());
+        return repository;
     }
 
     /**

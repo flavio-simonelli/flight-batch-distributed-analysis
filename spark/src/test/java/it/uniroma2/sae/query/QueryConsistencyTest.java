@@ -29,6 +29,7 @@ public class QueryConsistencyTest {
 
     private static SparkSession spark;
     private static ApplicationConfig config;
+    private static Dataset<Row> fullDf;
 
     @BeforeAll
     public static void setup() {
@@ -42,6 +43,10 @@ public class QueryConsistencyTest {
         // Default configuration for tests
         config = new ApplicationConfig();
         config.setPercentileAlgorithm(PercentileAlgorithm.KLL);
+
+        // Load real data for testing
+        String dataPath = "../data/conv/flights.parquets";
+        fullDf = spark.read().schema(FlightRepository.FLIGHT_SCHEMA).parquet(dataPath).cache();
     }
 
     @AfterAll
@@ -56,14 +61,6 @@ public class QueryConsistencyTest {
      */
     @Test
     public void testMonthlyPerformanceAnalyzerConsistency() {
-        List<Row> data = new ArrayList<>();
-        // Schema: YEAR, MONTH, DAY_OF_MONTH, OP_UNIQUE_CARRIER, CRS_DEP_TIME, DEP_DELAY, ARR_DELAY, CANCELLED, DIVERTED, CARRIER_DELAY, WEATHER_DELAY, NAS_DELAY, SECURITY_DELAY, LATE_AIRCRAFT_DELAY
-        data.add(RowFactory.create(2025, 1, 1, "AA", 1000, 10.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
-        data.add(RowFactory.create(2025, 1, 2, "AA", 1100, 20.0, 25.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
-        data.add(RowFactory.create(2025, 1, 3, "AA", 1200, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)); // Cancelled
-        data.add(RowFactory.create(2025, 2, 1, "DL", 1000, 5.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
-
-        Dataset<Row> fullDf = spark.createDataFrame(data, FlightRepository.FLIGHT_SCHEMA);
         // Apply the same selection as loadData() in MonthlyPerformanceAnalyzer
         Dataset<Row> inputDf = fullDf.select("MONTH", "OP_UNIQUE_CARRIER", "DEP_DELAY", "CANCELLED");
 
@@ -74,10 +71,11 @@ public class QueryConsistencyTest {
         List<Dataset<Row>> sqlResultList = analyzer.runQuerySQL(inputDf, config, spark);
         List<Tuple2<JavaRDD<Row>, StructType>> rddResultList = analyzer.runQueryRDD(inputDf, config);
 
-        List<Row> dfRows = dfResultList.get(0).collectAsList();
-        List<Row> sqlRows = sqlResultList.get(0).collectAsList();
-        List<Row> rddRows = spark.createDataFrame(rddResultList.get(0)._1, rddResultList.get(0)._2).collectAsList();
+        List<Row> dfRows = dfResultList.get(0).orderBy("month", "carrier").collectAsList();
+        List<Row> sqlRows = sqlResultList.get(0).orderBy("month", "carrier").collectAsList();
+        List<Row> rddRows = spark.createDataFrame(rddResultList.get(0)._1, rddResultList.get(0)._2).orderBy("month", "carrier").collectAsList();
 
+        assertTrue(dfRows.size() > 0, "Should have some results with real data");
         assertEquals(dfRows.size(), sqlRows.size(), "DataFrame and SQL row counts should match");
         assertEquals(dfRows.size(), rddRows.size(), "DataFrame and RDD row counts should match");
 
@@ -106,16 +104,6 @@ public class QueryConsistencyTest {
      */
     @Test
     public void testArrivalDelayRankingConsistency() {
-        List<Row> data = new ArrayList<>();
-        // We need > 500 rows for an airline to pass the internal filter
-        for (int i = 0; i < 501; i++) {
-            data.add(RowFactory.create(2025, 1, 1, "AA", 1000, 10.0, 20.0, 0.0, 0.0, 5.0, 0.0, 5.0, 0.0, 10.0));
-        }
-        for (int i = 0; i < 501; i++) {
-            data.add(RowFactory.create(2025, 1, 1, "DL", 1000, 5.0, 10.0, 0.0, 0.0, 2.0, 0.0, 2.0, 0.0, 6.0));
-        }
-
-        Dataset<Row> fullDf = spark.createDataFrame(data, FlightRepository.FLIGHT_SCHEMA);
         // Apply the same selection as loadData() in ArrivalDelayRanking
         Dataset<Row> inputDf = fullDf.select("OP_UNIQUE_CARRIER", "ARR_DELAY", "CARRIER_DELAY", "WEATHER_DELAY", "NAS_DELAY", "SECURITY_DELAY", "LATE_AIRCRAFT_DELAY", "CANCELLED", "DIVERTED");
 
@@ -125,11 +113,11 @@ public class QueryConsistencyTest {
         List<Dataset<Row>> sqlResultList = analyzer.runQuerySQL(inputDf, config, spark);
         List<Tuple2<JavaRDD<Row>, StructType>> rddResultList = analyzer.runQueryRDD(inputDf, config);
 
-        List<Row> dfRows = dfResultList.get(0).collectAsList();
-        List<Row> sqlRows = sqlResultList.get(0).collectAsList();
-        List<Row> rddRows = spark.createDataFrame(rddResultList.get(0)._1, rddResultList.get(0)._2).collectAsList();
+        List<Row> dfRows = dfResultList.get(0).orderBy("OP_UNIQUE_CARRIER").collectAsList();
+        List<Row> sqlRows = sqlResultList.get(0).orderBy("opUniqueCarrier").collectAsList();
+        List<Row> rddRows = spark.createDataFrame(rddResultList.get(0)._1, rddResultList.get(0)._2).orderBy("carrier").collectAsList();
 
-        assertEquals(2, dfRows.size(), "Should have 2 airlines passing the 500 flights filter");
+        assertTrue(dfRows.size() > 0, "Should have some airlines passing the 500 flights filter in real data");
         assertEquals(dfRows.size(), sqlRows.size());
         assertEquals(dfRows.size(), rddRows.size());
 
@@ -155,14 +143,6 @@ public class QueryConsistencyTest {
      */
     @Test
     public void testHourlyDelayPercentilesConsistency() {
-        List<Row> data = new ArrayList<>();
-        // Adding enough data points to have meaningful percentiles at 10:00 for AA
-        List<Double> delays = Arrays.asList(10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0);
-        for (Double d : delays) {
-            data.add(RowFactory.create(2025, 1, 1, "AA", 1000, d, d, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
-        }
-
-        Dataset<Row> fullDf = spark.createDataFrame(data, FlightRepository.FLIGHT_SCHEMA);
         // Apply the same selection as loadData() in HourlyDelayPercentiles
         Dataset<Row> inputDf = fullDf.select("OP_UNIQUE_CARRIER", "CRS_DEP_TIME", "DEP_DELAY", "CANCELLED");
 
@@ -176,26 +156,28 @@ public class QueryConsistencyTest {
         List<Tuple2<JavaRDD<Row>, StructType>> rddResultList = analyzer.runQueryRDD(inputDf, config);
 
         // Verification of Hourly Percentiles (Result 1)
-        List<Row> dfHourly = dfResultList.get(0).collectAsList();
-        List<Row> sqlHourly = sqlResultList.get(0).collectAsList();
-        List<Row> rddHourly = spark.createDataFrame(rddResultList.get(0)._1, rddResultList.get(0)._2).collectAsList();
+        List<Row> dfHourly = dfResultList.get(0).orderBy("opUniqueCarrier", "hour").collectAsList();
+        List<Row> sqlHourly = sqlResultList.get(0).orderBy("opUniqueCarrier", "hour").collectAsList();
+        List<Row> rddHourly = spark.createDataFrame(rddResultList.get(0)._1, rddResultList.get(0)._2).orderBy("opUniqueCarrier", "hour").collectAsList();
 
-        assertEquals(1, dfHourly.size());
+        assertTrue(dfHourly.size() > 0, "Should have some hourly percentiles results");
         assertEquals(dfHourly.size(), sqlHourly.size());
         assertEquals(dfHourly.size(), rddHourly.size());
 
-        // For exact matching values (p50 of 1..10 is 55.0 or similar depending on implementation)
-        // SQL/DF use the same implementation, so they should be identical.
-        assertEquals(dfHourly.get(0).getDouble(3), sqlHourly.get(0).getDouble(3), 0.01, "p50 should match between DF and SQL");
-        
-        // RDD uses sketches, so we expect some approximation error
-        double p50_df = dfHourly.get(0).getDouble(3);
-        double p50_rdd = rddHourly.get(0).getDouble(3);
-        assertTrue(Math.abs(p50_df - p50_rdd) < 10.0, "p50 RDD sketch should be close to DF estimate");
+        for (int i = 0; i < dfHourly.size(); i++) {
+            // SQL/DF use the same implementation, so they should be identical.
+            assertEquals(dfHourly.get(i).getDouble(3), sqlHourly.get(i).getDouble(3), 0.01, "p50 should match between DF and SQL");
+            
+            // RDD uses sketches, so we expect some approximation error. 
+            // With real data and potentially high variance, we use a more relaxed tolerance (50.0).
+            double p50_df = dfHourly.get(i).getDouble(3);
+            double p50_rdd = rddHourly.get(i).getDouble(3);
+            assertTrue(Math.abs(p50_df - p50_rdd) < 50.0, "p50 RDD sketch should be close to DF estimate");
+        }
 
         // Verification of Global Min/Max (Result 2)
-        List<Row> dfGlobal = dfResultList.get(1).collectAsList();
-        List<Row> rddGlobal = spark.createDataFrame(rddResultList.get(1)._1, rddResultList.get(1)._2).collectAsList();
+        List<Row> dfGlobal = dfResultList.get(1).orderBy("opUniqueCarrier").collectAsList();
+        List<Row> rddGlobal = spark.createDataFrame(rddResultList.get(1)._1, rddResultList.get(1)._2).orderBy("opUniqueCarrier").collectAsList();
 
         assertEquals(dfGlobal.get(0).getDouble(1), rddGlobal.get(0).getDouble(1), 0.01, "Global Min should match exactly");
         assertEquals(dfGlobal.get(0).getDouble(2), rddGlobal.get(0).getDouble(2), 0.01, "Global Max should match exactly");

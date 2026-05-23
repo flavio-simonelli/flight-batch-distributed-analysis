@@ -51,7 +51,29 @@ public class ApplicationConfig {
     private String selectedOutput = "cockroach";
     private String selectedMetrics = "redis";
 
+    // --- Partition Configuration ---
+    private Integer outputPartitions = null;
+
     // --- Getters and Setters (Standard) ---
+
+    public Integer getOutputPartitions() { return outputPartitions; }
+    public void setOutputPartitions(Integer outputPartitions) {
+        if (outputPartitions != null && outputPartitions <= 0) {
+            throw new IllegalArgumentException("outputPartitions must be strictly greater than 0");
+        }
+        this.outputPartitions = outputPartitions;
+    }
+
+    @JsonIgnore
+    public void setStringOutputPartitions(String outputPartitions) {
+        if (outputPartitions != null) {
+            try {
+                setOutputPartitions(Integer.parseInt(outputPartitions));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("outputPartitions must be an integer", e);
+            }
+        }
+    }
 
     @JsonIgnore
     public String getAppName() {

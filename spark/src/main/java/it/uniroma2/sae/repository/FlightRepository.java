@@ -20,6 +20,7 @@ import static org.apache.spark.sql.functions.col;
 public abstract class FlightRepository {
 
     protected final SparkSession spark;
+    private Integer outputPartitions = null;
 
     /**
      * Explicit schema for flight data to avoid Spark's schema inference overhead.
@@ -49,6 +50,17 @@ public abstract class FlightRepository {
      */
     public FlightRepository(SparkSession spark) {
         this.spark = spark;
+    }
+
+    public void setOutputPartitions(Integer outputPartitions) {
+        if (outputPartitions != null && outputPartitions <= 0) {
+            throw new IllegalArgumentException("Output partitions must be greater than 0");
+        }
+        this.outputPartitions = outputPartitions;
+    }
+
+    public Integer getOutputPartitions() {
+        return outputPartitions;
     }
 
     /**
@@ -122,8 +134,11 @@ public abstract class FlightRepository {
         resultDirectory = checkOutputDirectory(resultDirectory);
         String fullPath = getFullPath(resultDirectory);
 
-        results.coalesce(1) // Consolidate into a single partition
-                .write()
+        if (outputPartitions != null) {
+            results = results.coalesce(outputPartitions);
+        }
+
+        results.write()
                 .mode(SaveMode.Overwrite)
                 .option("header", "true")
                 .csv(fullPath);
@@ -179,9 +194,14 @@ public abstract class FlightRepository {
 
         JavaRDD<String> headerRDD = jsc.parallelize(Collections.singletonList(header));
 
-        headerRDD.union(dataLines)
-                .coalesce(1)
-                .saveAsTextFile(getFullPath(resultDirectory));
+        if (outputPartitions != null) {
+            headerRDD.union(dataLines)
+                    .coalesce(outputPartitions)
+                    .saveAsTextFile(getFullPath(resultDirectory));
+        } else {
+            headerRDD.union(dataLines)
+                    .saveAsTextFile(getFullPath(resultDirectory));
+        }
     }
 
     /**

@@ -29,7 +29,7 @@ public class FlightAnalysisApp {
             // Load the configuration from the chosen YAML file
             ApplicationConfig config = ApplicationConfig.load(configFilePath);
 
-            // Simple argument parsing: supports --query/-q, --backend/-b, --input-type/-i, --output-type/-o, --metrics-type/-m
+            // Simple argument parsing: supports --query/-q, --backend/-b, --input-type/-i, --output-type/-o, --metrics-type/-m, --partitions/-p
             // If provided, these override the values loaded from the YAML file.
             for (int i = 0; i < args.length; i++) {
                 if (("--query".equalsIgnoreCase(args[i]) || "-q".equalsIgnoreCase(args[i])) && i + 1 < args.length) {
@@ -42,6 +42,8 @@ public class FlightAnalysisApp {
                     config.setSelectedOutput(args[++i]);
                 } else if (("--metrics-type".equalsIgnoreCase(args[i]) || "-m".equalsIgnoreCase(args[i])) && i + 1 < args.length) {
                     config.setSelectedMetrics(args[++i]);
+                } else if (("--partitions".equalsIgnoreCase(args[i]) || "-p".equalsIgnoreCase(args[i])) && i + 1 < args.length) {
+                    config.setStringOutputPartitions(args[++i]);
                 }
             }
 
