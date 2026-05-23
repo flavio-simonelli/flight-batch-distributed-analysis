@@ -132,7 +132,7 @@ L'obiettivo primario di SAE è fornire una piattaforma che non si limiti ad esse
 Il caso d'uso affrontato in questo progetto si focalizza sull'analisi dei dati storici relativi ai ritardi dei voli commerciali negli Stati Uniti nel periodo Gennaio-Aprile 2025, forniti dal Bureau of Transportation Statistics.
 Questo dominio applicativo offre una notevole complessità strutturale (come presenza di valori nulli, anomalie statistiche, dipendenze temporali) e rappresenta un banco di prova ideale per l'implementazione di una pipeline di batch processing in ambito Big Data.
 
-Nelle sezioni successive, esploreremo in dettaglio come la modularità implementata a livello di codice sorgente, attraverso l'utilizzo estensivo del pattern GoF Factory e interfacce astratte in Java, si rifletta coerentemente nella modularità dell'infrastruttura di deployment.
+Nelle sezioni successive, esploreremo in dettaglio come la modularità implementata a livello di codice sorgente, attraverso l'utilizzo di variabili nei vari framework e l'uso estensivo del pattern GoF Factory e interfacce astratte in Java per Spark, si rifletta coerentemente nella modularità dell'infrastruttura di deployment.
 Questo design permette a SAE di operare con la medesima efficacia e senza alterazioni alla logica di business sia su un ambiente di sviluppo locale containerizzato tramite Docker Compose, sia su un cluster cloud di produzione basato su Amazon Web Services tramite i servizi di AWS EMR e/o EC2.
 
 % ------------------------------
@@ -147,10 +147,10 @@ L'architettura di Sky Analytics Engine è stata concepita seguendo i rigidi prin
     \label{fig:big_data_stack}
 \end{figure}
 
-Il sistema rifugge l'approccio monolitico, configurandosi come un'aggregazione di servizi distribuiti coordinati che comunicano esclusivamente attraverso interfacce standardizzate.
+Il sistema evita l'approccio monolitico, configurandosi come un'aggregazione di servizi distribuiti coordinati che comunicano esclusivamente attraverso interfacce standardizzate.
 
 L'infrastruttura è organizzata in macro-livelli gerarchici indipendenti, come illustrato nel Big Data Stack di riferimento (Fig.~\ref{fig:big_data_stack}).
-Questa netta separazione assicura che il sistema sia "future-proof": è possibile scalare o sostituire il motore di processing o qualsiasi componente in generale senza impattare il sistema di orchestrazione o le logiche di visualizzazione\@.
+Questa netta separazione assicura che il sistema sia "future-proof": è possibile scalare o sostituire il motore di processing o qualsiasi componente in generale senza impattare gli altri livelli\@.
 
 % I livelli principali sono:
 % \begin{enumerate}
@@ -181,7 +181,7 @@ Successivamente, Airflow entra in uno stato di \textit{Sensor Polling}, consuman
 Quando NiFi completa l'ingestion, utilizza il JWT per autenticarsi contro le API REST di Airflow e aggiornare la variabile di stato, sbloccando il DAG e permettendo l'avvio della fase di processing\@.
 
 \subsubsection{DAG di Orchestrazione e Benchmarking}
-L'orchestrazione dei flussi di lavoro in Sky Analytics Engine non si affida a un singolo processo lineare, ma è demandata a una suite di tre DAG specializzati su Apache Airflow.
+L'orchestrazione dei flussi di lavoro in Sky Analytics Engine è demandata a una suite di tre DAG.
 Ciascun workflow è ingegnerizzato per isolare specifiche fasi del ciclo di vita del dato o per automatizzare le sessioni di validazione sperimentale:
 
 \begin{itemize}
@@ -228,7 +228,7 @@ I dati grezzi, infatti, presentano potenzialmente diverse inconsistenze, come va
 
 La pipeline implementa due logiche fondamentali per garantire l'integrità analitica a valle:
 \begin{itemize}
-    \item \textbf{Normalizzazione e Gestione dei Ritardi:} Tramite script dedicati nel processore \texttt{UpdateRecord}, la pipeline neutralizza eventuali valori di ritardo negativi errati e gestisce l'imputazione dei valori nulli, secondo la logica architetturale e di business.
+    \item \item \textbf{Normalizzazione e Gestione dei Ritardi:} Tramite script dedicati nel processore \texttt{UpdateRecord}, la pipeline neutralizza i ritardi negativi errati e gestisce i valori mancanti delle singole cause. Nello specifico, i valori vengono mantenuti a \texttt{null} se il ritardo all'arrivo (\texttt{arr\_delay}) è inferiore a 15 minuti (come imposto per legge); in caso contrario, se è presente almeno una causa di ritardo diversa da zero, i restanti valori nulli vengono sovrascritti a 0.
     \item \textbf{Filtraggio delle Inconsistenze Logiche:} Attraverso l'uso di query SQL sul processore \texttt{QueryRecord}, vengono scartati i record anomali (instradati su una coda di \textit{dead-letter}) che presentano discrepanze non recuperabili, quali: assenza di campi temporali o identificativi della compagnia, voli contrassegnati come cancellati ma recanti un orario di partenza effettivo, voli non cancellati ma privi di orario di arrivo/partenza, oppure evidenti errori matematici (es. ritardo totale negativo a fronte di una somma delle cause di ritardo positiva).
 \end{itemize}
 
@@ -278,9 +278,10 @@ La pipeline implementa due logiche fondamentali per garantire l'integrità anali
 %         OR ( (COALESCE(CARRIER_DELAY, 0.0) + COALESCE(WEATHER_DELAY, 0.0) + COALESCE(NAS_DELAY, 0.0) + COALESCE(SECURITY_DELAY, 0.0) + COALESCE(LATE_AIRCRAFT_DELAY, 0.0)) > 0.0 AND ARR_DELAY < 0.0 )
 
 \subsection{Livello di Storage}\label{subsec:storage_layer_datalake}
-Il cuore della persistenza intermedia di Sky Analytics Engine è rappresentato dal Data Lake, implementato tramite Hadoop HDFS in ambienti on-premise e Amazon S3 in configurazioni cloud.
-Questo strato funge da \textit{Single Source of Truth}, ospitando sia i dataset grezzi acquisiti da NiFi che i dati raffinati in formato Parquet.
-L'adozione di un'architettura Data Lake consente un disaccoppiamento totale tra le risorse di storage e quelle di calcolo, garantendo una scalabilità indipendente e abilitando ottimizzazioni avanzate come il \textit{predicate pushdown} e la \textit{column projection} durante la fase di analisi Spark.
+Il cuore della persistenza intermedia di Sky Analytics Engine è rappresentato dal Data Lake, implementato tramite Hadoop HDFS o MinIO in ambienti on-premise e Amazon S3 in configurazioni cloud.
+Questo strato funge da \textit{Single Source of Truth}, sfruttando la capacità intrinseca del Data Lake di accogliere e centralizzare dati eterogenei (strutturati, semi-strutturati e grezzi) senza la necessità di un pre-processing o di uno schema rigido preventivo (\textit{schema-on-read}).
+
+L'infrastruttura ospita sia i dataset grezzi originari acquisiti da NiFi, sia i dati successivamente raffinati e convertiti in formato Parquet. Nelle distribuzioni cloud basate su Amazon S3, questa architettura abilita un disaccoppiamento totale tra le risorse di storage e quelle di calcolo, garantendo una scalabilità indipendente. Inoltre, la strutturazione dei dati raffinati in formato colonnare (Parquet) permette a Spark di eseguire ottimizzazioni avanzate, come il \textit{predicate pushdown} e la \textit{column projection}, riducendo drasticamente l'I/O complessivo durante le fasi di analisi.
 
 \subsection{Livello di Processing}\label{subsec:processing_layer}
 Il cuore computazionale di SAE è l'applicazione Spark, sviluppata in Java 11.
@@ -336,7 +337,7 @@ Le quattro query richieste dal progetto sono state implementate in modo da testa
 
 \subsection{Query 1: Statistiche Mensili}
 La \textit{Query 1} richiede il calcolo di statistiche mensili (media, min, max, tasso di cancellazione) per specifiche compagnie.
-Nell'implementazione RDD, si è evitato l'uso dell'operatore \texttt{groupByKey}, un'operazione che può causare gravi colli di bottiglia prestazionali a causa del trasferimento di dati sulla rete durante la fase di \textit{shuffle}.
+Nell'implementazione RDD, si è evitato l'uso dell'operatore \texttt{groupByKey}, un'operazione che può causare colli di bottiglia prestazionali a causa del trasferimento di dati sulla rete durante la fase di \textit{shuffle}.
 Al suo posto è stato utilizzato \texttt{aggregateByKey}.
 Questo operatore combina i valori parzialmente all'interno di ogni singola partizione del nodo worker prima di trasferirli sulla rete, riducendo drasticamente il volume di dati movimentato nello shuffle e abbattendo i tempi di comunicazione tra i nodi.
 
