@@ -167,15 +167,16 @@ public class ArrivalDelayRanking extends BaseQuery {
     protected List<Dataset<Row>> runQueryDataFrame(Dataset<Row> flights, ApplicationConfig config) {
 
         Dataset<Row> result = flights
+                .filter(col("CANCELLED").equalTo(0).and(col("DIVERTED").equalTo(0)))
                 .groupBy("OP_UNIQUE_CARRIER")
                 .agg(
-                        count(when(col("CANCELLED").equalTo(0).and(col("DIVERTED").equalTo(0)), 1)).as("num_flights"),
-                        round(avg(col("ARR_DELAY")), 2).as("arrdelay_mean"),
-                        round(avg(col("CARRIER_DELAY")), 2).as("carrier_delay_mean"),
-                        round(avg(col("WEATHER_DELAY")), 2).as("weather_delay_mean"),
-                        round(avg(col("NAS_DELAY")), 2).as("nas_delay_mean"),
-                        round(avg(col("SECURITY_DELAY")), 2).as("security_delay_mean"),
-                        round(avg(col("LATE_AIRCRAFT_DELAY")), 2).as("late_aircraft_delay_mean")
+                        count("*").as("num_flights"),
+                        round(avg(coalesce(col("ARR_DELAY"), lit(0))), 2).as("arrdelay_mean"),
+                        round(avg(coalesce(col("CARRIER_DELAY"), lit(0))), 2).as("carrier_delay_mean"),
+                        round(avg(coalesce(col("WEATHER_DELAY"), lit(0))), 2).as("weather_delay_mean"),
+                        round(avg(coalesce(col("NAS_DELAY"), lit(0))), 2).as("nas_delay_mean"),
+                        round(avg(coalesce(col("SECURITY_DELAY"), lit(0))), 2).as("security_delay_mean"),
+                        round(avg(coalesce(col("LATE_AIRCRAFT_DELAY"), lit(0))), 2).as("late_aircraft_delay_mean")
                 )
                 .filter(col("num_flights").geq(500))
                 .orderBy(col("arrdelay_mean").desc())
@@ -199,14 +200,15 @@ public class ArrivalDelayRanking extends BaseQuery {
         flights.createOrReplaceTempView("flights");
 
         String sqlQuery = "SELECT OP_UNIQUE_CARRIER as opUniqueCarrier, " +
-                "COUNT(CASE WHEN CANCELLED = 0 AND DIVERTED = 0 THEN 1 END) AS num_flights, " +
-                "ROUND(AVG(ARR_DELAY), 2) AS arrdelay_mean, " +
-                "ROUND(AVG(CARRIER_DELAY), 2) AS carrier_delay_mean, " +
-                "ROUND(AVG(WEATHER_DELAY), 2) AS weather_delay_mean, " +
-                "ROUND(AVG(NAS_DELAY), 2) AS nas_delay_mean, " +
-                "ROUND(AVG(SECURITY_DELAY), 2) AS security_delay_mean, " +
-                "ROUND(AVG(LATE_AIRCRAFT_DELAY), 2) AS late_aircraft_delay_mean " +
+                "COUNT(*) AS num_flights, " +
+                "ROUND(AVG(COALESCE(ARR_DELAY, 0)), 2) AS arrdelay_mean, " +
+                "ROUND(AVG(COALESCE(CARRIER_DELAY, 0)), 2) AS carrier_delay_mean, " +
+                "ROUND(AVG(COALESCE(WEATHER_DELAY, 0)), 2) AS weather_delay_mean, " +
+                "ROUND(AVG(COALESCE(NAS_DELAY, 0)), 2) AS nas_delay_mean, " +
+                "ROUND(AVG(COALESCE(SECURITY_DELAY, 0)), 2) AS security_delay_mean, " +
+                "ROUND(AVG(COALESCE(LATE_AIRCRAFT_DELAY, 0)), 2) AS late_aircraft_delay_mean " +
                 "FROM flights " +
+                "WHERE CANCELLED = 0 AND DIVERTED = 0 " +
                 "GROUP BY OP_UNIQUE_CARRIER " +
                 "HAVING num_flights >= 500 " +
                 "ORDER BY arrdelay_mean DESC " +
