@@ -126,13 +126,11 @@ public class HourlyDelayPercentiles extends BaseQuery {
                 DataTypes.createStructField("max_delay_global", DataTypes.DoubleType, false)
         });
 
-        validFlights.unpersist();
-
         return Arrays.asList(
                 new Tuple2<>(hourlyRows, hourlySchema),
-                new Tuple2<>(globalRows, globalSchema)
+                new Tuple2<>(globalRows,   globalSchema)
         );
-    }
+        }
 
     private static double round2(double v) {
         return Math.round(v * 100.0) / 100.0;
@@ -187,8 +185,6 @@ public class HourlyDelayPercentiles extends BaseQuery {
                 )
                 .withColumnRenamed("OP_UNIQUE_CARRIER", "opUniqueCarrier");
 
-        flights.unpersist();
-
         return Arrays.asList(hourlyStats, globalMinMax);
     }
 
@@ -223,8 +219,6 @@ public class HourlyDelayPercentiles extends BaseQuery {
                 "GROUP BY OP_UNIQUE_CARRIER";
         
         Dataset<Row> globalMinMax = spark.sql(globalMinMaxSql);
-
-        flights.unpersist();
 
         return Arrays.asList(hourlyStats, globalMinMax);
     }
