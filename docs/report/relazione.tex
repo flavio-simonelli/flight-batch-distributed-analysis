@@ -348,12 +348,13 @@ Questa condizione genera una significativa presenza di valori mancanti (\textit{
 Al fine di rispondere correttamente al requisito di calcolare il \textbf{contributo medio} delle diverse cause di ritardo, SAE implementa una strategia di imputazione a zero per i valori mancanti (utilizzando l'operatore \texttt{coalesce(col, 0)} in Spark e pre-elaborando i record parziali in NiFi).
 Questa scelta metodologica è fondamentale per distinguere tra due possibili approcci analitici:
 \begin{itemize}
-    \item \textbf{Analisi dell'Intensità:} Ignorando i valori nulli, il calcolo della media includerebbe solo i voli con ritardo conclamato. Sebbene utile per misurare la severità di un problema quando si verifica, questo approccio distorcerebbe la visione d'insieme, sovrastimando l'impatto delle singole cause sull'operatività totale del vettore.
-    \item \textbf{Analisi del Contributo Medio (Scelta SAE):} Trattando i valori mancanti come zero, SAE assicura che il denominatore della media sia costituito dalla totalità dei voli non cancellati e non deviati della compagnia. In questo modo, il risultato esprime quanto mediamente ogni causa (es. condizioni meteo o problemi tecnici) pesi sull'intera flotta del vettore.
+    \item \textbf{Analisi dell'Intensità:} Ignorando i valori nulli, il calcolo della media includerebbe solo i voli con ritardo conclamato.
+    Sebbene utile per misurare la severità di un problema quando si verifica, questo approccio distorcerebbe la visione d'insieme, sovrastimando l'impatto delle singole cause sull'operatività totale del vettore.
+    \item \textbf{Analisi del Contributo Medio :} Trattando i valori mancanti come zero, SAE assicura che il denominatore della media sia costituito dalla totalità dei voli non cancellati e non deviati della compagnia.
+    In questo modo, il risultato esprime quanto mediamente ogni causa pesi sull'intera flotta del vettore.
 \end{itemize}
 
 Tale approccio fornisce una visione realistica della resilienza del business, permettendo di identificare quali compagnie riescano effettivamente a mitigare l'impatto di specifiche cause su scala globale, anziché focalizzarsi esclusivamente sui casi limite.
-L'integrità di questa logica è verificata in fase di esecuzione distribuita assicurando che tutti i record che superano il filtro dei 500 voli contribuiscano in modo uniforme al calcolo della classifica.
 
 \subsection{Query 3: Percentili per Fasce Orarie}
 Il calcolo dei percentili su finestre orarie nella \textit{Query 3} rappresenta la sfida computazionale più ardua.
@@ -481,15 +482,6 @@ L'infrastruttura gioca un ruolo determinante nel mitigare questo overhead\@.
 
 \subsection{Discussione dei Risultati Analitici}\label{subsec:analytical_results_discussion}
 
-% Placed here to avoid breaking the flow of the text, as the figure is quite large and would disrupt the reading if placed in the middle of the discussion.
-\begin{figure*}[!t]
-
-    \centering
-    \includegraphics[width=1\textwidth]{../charts/result/Q4_cluster_center}
-    \caption{Valori medi delle feature per ciascun cluster identificato nella Query 4. Le barre rappresentano le medie normalizzate delle singole features per permettere un confronto relativo tra i cluster.}
-    \label{fig:results_q4_cluster_center}
-\end{figure*}
-
 \subsubsection{Query 1: Performance Mensili delle Compagnie}
 I risultati analitici estratti per American Airlines e Delta Air Lines rivelano comportamenti operativi divergenti durante il quadrimestre Gennaio-Aprile 2025 (Fig.~\ref{fig:results_q1_average_delay_trend}). In particolare, a Gennaio si riscontra il picco massimo nel tasso di cancellazione per entrambe le compagnie (AA: $3,65\%$, DL: $2,67\%$).
 
@@ -524,21 +516,27 @@ In questa finestra emerge la discrepanza fondamentale:
     \item \textbf{Delta Air Lines:} Evidenzia invece un controllo notevole dell'effetto accumulazione: pur registrando una crescita serale, i percentili di DL rimangono significativamente più bassi e mostrano una pendenza di crescita assai più dolce, segno di una pianificazione con margini di recupero più robusti ed efficienti routine di turnaround negli hub.
 \end{itemize}
 
+% Placed here to avoid breaking the flow of the text, as the figure is quite large and would disrupt the reading if placed in the middle of the discussion.
+\begin{figure*}[!t]
+
+    \centering
+    \includegraphics[width=1\textwidth]{../charts/result/Q4_cluster_center}
+    \caption{Valori medi delle feature per ciascun cluster identificato nella Query 4. Le barre rappresentano le medie normalizzate delle singole features per permettere un confronto relativo tra i cluster.}
+    \label{fig:results_q4_cluster_center}
+\end{figure*}
+
 \subsubsection{Query 4: Clustering delle Compagnie Aeree}
-L'applicazione dell'algoritmo K-Means con selezione automatica del modello tramite Silhouette Score ha identificato $K=4$ come il numero ottimale di raggruppamenti statistici per descrivere i vettori (Fig.~\ref{fig:results_q4_cluster_distribution}).
-La proiezione spaziale tramite \textbf{Principal Component Analysis} (Fig.~\ref{fig:results_q4_cluster_distribution}) e la matrice di classificazione delineano quattro cluster operativi ben definiti (i valori medi delle feature per ciascun cluster sono riportati in Fig.~\ref{fig:results_q4_cluster_center} e sono stati normalizzati per evidenziare le differenze relative tra i cluster, mentre la Tabella \ref{tab:results_q4_metrics} riporta i corrispondenti valori operativi reali per ogni vettore):
+L'applicazione dell'algoritmo K-Means con selezione automatica del modello tramite Silhouette Score ha identificato $K=3$ come il numero ottimale di raggruppamenti statistici per descrivere i vettori (Fig.~\ref{fig:results_q4_cluster_distribution}).
+La proiezione spaziale tramite \textbf{Principal Component Analysis} (Fig.~\ref{fig:results_q4_cluster_distribution}) e la matrice di classificazione delineano tre cluster operativi ben definiti (i valori medi delle feature per ciascun cluster sono riportati in Fig.~\ref{fig:results_q4_cluster_center} e sono stati normalizzati per evidenziare le differenze relative tra i cluster, mentre la Tabella \ref{tab:results_q4_metrics} riporta i corrispondenti valori operativi reali per ogni vettore):
 
 
 \begin{itemize}
-    \item \textbf{Cluster 0 - Alta Efficienza e Operazioni Scalabili:} Include \texttt{UA}, \texttt{NK}, \texttt{B6}, \texttt{DL}, \texttt{MQ}, \texttt{YX}, \texttt{AS}, \texttt{WN}.
-    Questo è il cluster più numeroso ed è caratterizzato da ritardi medi molto contenuti.
-    \item \textbf{Cluster 1 - Alta Inefficienza e Volatilità Operativa:} Comprende \texttt{AA}, \texttt{F9}, \texttt{OH}.
-    Questi vettori mostrano ritardi medi elevati, ma soprattutto un'altissima variabilità (deviazione standard superiore a $70$ minuti, con OH che raggiunge $82,75$ minuti) e tassi di cancellazione elevati (OH detiene il record negativo del $6,09\%$). Questo cluster raggruppa vettori afflitti da gravi colli di bottiglia operativi, in cui l'instabilità delle connessioni e la propagazione dei ritardi rendono i tempi di volo altamente imprevedibili per l'utente finale.
-    \item \textbf{Cluster 2 - Sensibilità Meteorologica ed Operativa:} Formato da \texttt{OO} e \texttt{G4}.
-    Come discusso nella Query 2, questi vettori presentano una forte dipendenza da fattori esterni: registrano ritardi meteorologici estremi ($12,11$ minuti per OO, $8,92$ minuti per G4) uniti ad alti carrier delay, collocandosi in una posizione intermedia dello spazio PCA, caratterizzata da un profilo di rischio meteorologico non trascurabile.
-    \item \textbf{Cluster 3 - Isolamento Geografico:} Costituito esclusivamente da \textbf{HA}.
-    HA si mappa come un \textit{outlier} spaziale netto nella proiezione PCA.
-    Presenta una combinazione unica al mondo: NAS delay quasi a zero ($0,58$ minuti) e un tasso di deviazione minimo, dovuto al fatto che il suo network inter-insulare opera al di fuori dei corridoi congestionati del continente, rendendo le sue dinamiche del tutto non confrontabili con qualsiasi altra compagnia statunitense.
+    \item \textbf{Cluster 0 - Inefficienza Operativa e Colli di Bottiglia:} Comprende \texttt{AA}, \texttt{B6}, \texttt{OO}, \texttt{F9}, \texttt{OH}.
+    Questi vettori mostrano ritardi medi elevati e una marcata instabilità operativa. PSA Airlines (\texttt{OH}) e Frontier (\texttt{F9}) guidano questo gruppo con ritardi all'arrivo rispettivamente di $17,16$ e $11,32$ minuti. Il cluster è caratterizzato da un forte effetto di propagazione (\textit{late aircraft delay} elevato) e, nel caso di \texttt{OH}, da un tasso di cancellazione critico del $6,09\%$.
+    \item \textbf{Cluster 1 - Sensibilità a Fattori Esterni ed Eccezionalità:} Formato esclusivamente da \textbf{Allegiant Air (\texttt{G4})}.
+    Questo vettore si distingue per un profilo unico caratterizzato da un'altissima sensibilità a fattori non direttamente controllabili: registra il valore più elevato di \textit{security delay} ($0,15$ minuti, un ordine di grandezza superiore alla media) e un significativo impatto meteorologico ($2,02$ minuti). Nonostante un ritardo di partenza elevato ($13,87$ minuti), mantiene un tasso di cancellazione tra i più bassi ($0,66\%$), indicando una politica di "volo a tutti i costi" nonostante le avversità esterne.
+    \item \textbf{Cluster 2 - Alta Efficienza e Stabilità di Rete:} Include \texttt{UA}, \texttt{NK}, \texttt{DL}, \texttt{MQ}, \texttt{HA}, \texttt{YX}, \texttt{AS}, \texttt{WN}.
+    È il cluster più numeroso e performante. I vettori in questo gruppo, tra cui i colossi \texttt{UA} e \texttt{DL}, mostrano ritardi all'arrivo estremamente contenuti (minimo di $0,69$ minuti per \texttt{YX}) e una grande capacità di recupero in volo (\textit{makeup} superiore ai $6$ minuti per molti membri). \texttt{HA}, precedentemente isolata per la sua natura geografica, si unisce ora a questo gruppo grazie alla sua stabilità operativa d'eccellenza.
 \end{itemize}
 
 % ------------------------------
@@ -629,7 +627,7 @@ Ogni pannello all'interno della plancia di monitoraggio è posizionato in modo d
     \item \textbf{Spark vs Wall Clock Execution Time (In alto a sinistra):} Un grafico che confronta l'overhead misurato tramite \texttt{System.currentTimeMillis()} sul driver Java con il tempo di esecuzione effettivo dei job intercettato dai listener di Spark.
     Il divario evidenzia il tempo speso per lo scheduling e la negoziazione delle risorse.
     \item \textbf{Distribuzione Statistica dello Spark Time (In alto al centro):} Mostra la dispersione statistica dei tempi di calcolo di Spark attraverso le diverse run, permettendo di identificare la stabilità delle performance per il backend selezionato.
-    \item \textbf{Active Executors (In alto a destra):} Indica il numero medio di nodi executor che hanno partecipato attivamente alla computazione durante le varie esecuzioni del benchmark.
+    \item \textbf{Active Executors (In alto a di destra):} Indica il numero medio di nodi executor che hanno partecipato attivamente alla computazione durante le varie esecuzioni del benchmark.
     \item \textbf{Stage Breakdown (Al centro a sinistra):} Uno spaccato temporale dettagliato che scompone l'esecuzione nei singoli stage di computazione di Spark, utile per isolare la fase logica della query che presenta la latenza maggiore.
     \item \textbf{Execution Stages (Al centro a destra):} Rappresenta il numero medio di stage generati dall'ottimizzatore di Spark durante le esecuzioni, fornendo un'indicazione della complessità del piano fisico.
     \item \textbf{I/O Throughput (In basso a sinistra):} Monitoraggio del volume di dati letti e scritti su disco/HDFS/S3, che permette di valutare l'impatto delle operazioni di input/output persistente.
@@ -774,28 +772,28 @@ Per la Query 3, vengono presentati, per le quattro compagnie aeree in esame, la 
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{../charts/result/Q3_median_distribution_detail_AA}
+    \includegraphics[width=0.85\textwidth]{../charts/result/Q3_median_distribution_detail_AA}
     \caption{Risultati Query 3 (AA): Distribuzione oraria del ritardo mediano.}
     \label{fig:results_Q3_median_distribution_detail_AA}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{../charts/result/Q3_median_distribution_detail_DL}
+    \includegraphics[width=0.85\textwidth]{../charts/result/Q3_median_distribution_detail_DL}
     \caption{Risultati Query 3 (DL): Distribuzione oraria del ritardo mediano.}
     \label{fig:results_Q3_median_distribution_detail_DL}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{../charts/result/Q3_median_distribution_detail_UA}
+    \includegraphics[width=0.85\textwidth]{../charts/result/Q3_median_distribution_detail_UA}
     \caption{Risultati Query 3 (UA): Distribuzione oraria del ritardo mediano.}
     \label{fig:results_Q3_median_distribution_detail_UA}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{../charts/result/Q3_median_distribution_detail_WN}
+    \includegraphics[width=0.85\textwidth]{../charts/result/Q3_median_distribution_detail_WN}
     \caption{Risultati Query 3 (WN): Distribuzione oraria del ritardo mediano.}
     \label{fig:results_Q3_median_distribution_detail_WN}
 \end{figure}
@@ -830,23 +828,22 @@ Per la Query 4, vengono presentati i risultati relativi alla distribuzione geome
         \toprule
         \textbf{ID} & \textbf{Dep.} & \textbf{Arr.} & \textbf{Makeup} & \textbf{StdDev} & \textbf{Div.\%} & \textbf{Can.\%} & \textbf{Clus.} & \textbf{Carr.} & \textbf{Weat.} & \textbf{NAS} & \textbf{Secu.} & \textbf{Late Air.} \\
         \midrule
-        \texttt{UA} & 9.03 & 2.46 & -6.52 & 47.56 & 0.21 & 0.69 & 0 & 18.85 & 3.40 & 21.33 & 0.00 & 24.93 \\
-        \texttt{NK} & 9.17 & 2.39 & -6.77 & 48.28 & 0.13 & 1.41 & 0 & 17.50 & 1.59 & 34.29 & 0.19 & 16.98 \\
-        \texttt{B6} & 12.51 & 6.14 & -6.33 & 56.11 & 0.25 & 1.23 & 0 & 19.44 & 1.88 & 18.64 & 0.11 & 30.64 \\
-        \texttt{DL} & 10.71 & 4.19 & -6.40 & 55.11 & 0.19 & 0.94 & 0 & 31.19 & 4.75 & 14.85 & 0.04 & 21.56 \\
-        \texttt{MQ} & 8.44 & 5.32 & -3.12 & 50.71 & 0.20 & 2.82 & 0 & 15.52 & 7.75 & 15.35 & 0.09 & 25.84 \\
-        \texttt{YX} & 4.78 & 0.69 & -4.04 & 42.22 & 0.16 & 2.26 & 0 & 16.85 & 3.15 & 21.93 & 0.04 & 20.26 \\
-        \texttt{AS} & 5.52 & 1.30 & -4.22 & 36.08 & 0.16 & 1.00 & 0 & 14.58 & 2.35 & 14.53 & 0.22 & 19.04 \\
-        \texttt{WN} & 9.35 & 1.76 & -7.58 & 35.25 & 0.16 & 1.14 & 0 & 15.26 & 1.61 & 11.46 & 0.14 & 28.27 \\
+        \texttt{UA} & 9.03 & 2.46 & -6.52 & 47.56 & 0.21 & 0.69 & 2 & 3.36 & 0.61 & 3.80 & 0.00 & 4.44 \\
+        \texttt{NK} & 9.17 & 2.39 & -6.77 & 48.28 & 0.13 & 1.41 & 2 & 3.13 & 0.28 & 6.13 & 0.03 & 3.04 \\
+        \texttt{DL} & 10.71 & 4.19 & -6.40 & 55.11 & 0.19 & 0.94 & 2 & 5.80 & 0.88 & 2.76 & 0.01 & 4.01 \\
+        \texttt{MQ} & 8.44 & 5.32 & -3.12 & 50.71 & 0.20 & 2.82 & 2 & 3.00 & 1.50 & 2.97 & 0.02 & 4.99 \\
+        \texttt{HA} & 6.35 & 5.81 & -0.52 & 37.42 & 0.10 & 1.21 & 2 & 4.41 & 0.53 & 0.09 & 0.02 & 3.24 \\
+        \texttt{YX} & 4.78 & 0.69 & -4.04 & 42.22 & 0.16 & 2.26 & 2 & 2.82 & 0.53 & 3.67 & 0.01 & 3.39 \\
+        \texttt{AS} & 5.52 & 1.30 & -4.22 & 36.08 & 0.16 & 1.00 & 2 & 2.75 & 0.44 & 2.74 & 0.04 & 3.59 \\
+        \texttt{WN} & 9.35 & 1.76 & -7.58 & 35.25 & 0.16 & 1.14 & 2 & 2.58 & 0.27 & 1.94 & 0.02 & 4.78 \\
         \midrule
-        \texttt{AA} & 14.59 & 8.98 & -5.59 & 74.97 & 0.25 & 1.94 & 1 & 27.11 & 4.61 & 13.51 & 0.11 & 33.72 \\
-        \texttt{F9} & 16.00 & 11.32 & -4.62 & 71.65 & 0.16 & 1.67 & 1 & 23.05 & 1.91 & 15.36 & 0.00 & 40.53 \\
-        \texttt{OH} & 19.78 & 17.16 & -2.60 & 82.75 & 0.21 & 6.09 & 1 & 25.98 & 5.96 & 11.86 & 0.12 & 43.51 \\
+        \texttt{AA} & 14.59 & 8.98 & -5.59 & 74.97 & 0.25 & 1.94 & 0 & 5.82 & 0.99 & 2.90 & 0.02 & 7.24 \\
+        \texttt{B6} & 12.51 & 6.14 & -6.33 & 56.11 & 0.25 & 1.23 & 0 & 4.43 & 0.43 & 4.24 & 0.03 & 6.98 \\
+        \texttt{OO} & 11.68 & 7.59 & -4.04 & 62.92 & 0.24 & 1.47 & 0 & 7.80 & 2.43 & 2.63 & 0.02 & 3.32 \\
+        \texttt{F9} & 16.00 & 11.32 & -4.62 & 71.65 & 0.16 & 1.67 & 0 & 5.82 & 0.48 & 3.87 & 0.00 & 10.22 \\
+        \texttt{OH} & 19.78 & 17.16 & -2.60 & 82.75 & 0.21 & 6.09 & 0 & 6.79 & 1.56 & 3.10 & 0.03 & 11.37 \\
         \midrule
-        \texttt{OO} & 11.68 & 7.59 & -4.04 & 62.92 & 0.24 & 1.47 & 2 & 38.93 & 12.11 & 13.15 & 0.10 & 16.58 \\
-        \texttt{G4} & 13.87 & 9.54 & -4.31 & 78.39 & 0.23 & 0.66 & 2 & 24.89 & 8.93 & 18.70 & 0.68 & 33.02 \\
-        \midrule
-        \texttt{HA} & 6.35 & 5.81 & -0.52 & 37.42 & 0.10 & 1.21 & 3 & 27.16 & 3.28 & 0.58 & 0.15 & 19.99 \\
+        \texttt{G4} & 13.87 & 9.54 & -4.31 & 78.39 & 0.23 & 0.66 & 1 & 5.63 & 2.02 & 4.23 & 0.15 & 7.47 \\
         \bottomrule
     \end{tabular*}
     \label{tab:results_q4_metrics}
