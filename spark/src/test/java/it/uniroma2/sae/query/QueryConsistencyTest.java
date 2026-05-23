@@ -102,9 +102,13 @@ public class QueryConsistencyTest {
 
             // Compare Metrics (Avg Delay and Cancellation Rate)
             assertEquals(df.getDouble(2), sql.getDouble(2), 0.01, "Avg delay should match between DF and SQL");
+            assertEquals(df.getDouble(3), sql.getDouble(3), 0.01, "Min delay should match between DF and SQL");
+            assertEquals(df.getDouble(4), sql.getDouble(4), 0.01, "Max delay should match between DF and SQL");
             assertEquals(df.getDouble(5), sql.getDouble(5), 0.01, "Cancellation rate should match between DF and SQL");
             
             assertEquals(df.getDouble(2), rdd.getDouble(2), 0.01, "Avg delay should match between DF and RDD");
+            assertEquals(df.getDouble(3), rdd.getDouble(3), 0.01, "Min delay should match between DF and RDD");
+            assertEquals(df.getDouble(4), rdd.getDouble(4), 0.01, "Max delay should match between DF and RDD");
             assertEquals(df.getDouble(5), rdd.getDouble(5), 0.01, "Cancellation rate should match between DF and RDD");
         }
     }
@@ -146,6 +150,21 @@ public class QueryConsistencyTest {
 
             assertEquals(df.getDouble(2), sql.getDouble(2), 0.01, "Avg arrival delay should match between DF and SQL");
             assertEquals(df.getDouble(2), rdd.getDouble(2), 0.01, "Avg arrival delay should match between DF and RDD");
+
+            assertEquals(df.getDouble(3), sql.getDouble(3), 0.01, "Avg carrier delay should match between DF and SQL");
+            assertEquals(df.getDouble(3), rdd.getDouble(3), 0.01, "Avg carrier delay should match between DF and SQL");
+
+            assertEquals(df.getDouble(4), sql.getDouble(4), 0.01, "Avg weather delay should match between DF and SQL");
+            assertEquals(df.getDouble(4), rdd.getDouble(4), 0.01, "Avg weather delay should match between DF and SQL");
+
+            assertEquals(df.getDouble(5), sql.getDouble(5), 0.01, "Avg NAS delay should match between DF and SQL");
+            assertEquals(df.getDouble(5), rdd.getDouble(5), 0.01, "Avg NAS delay should match between DF and SQL");
+
+            assertEquals(df.getDouble(6), sql.getDouble(6), 0.01, "Avg security delay should match between DF and SQL");
+            assertEquals(df.getDouble(6), rdd.getDouble(6), 0.01, "Avg security delay should match between DF and SQL");
+
+            assertEquals(df.getDouble(7), sql.getDouble(7), 0.01, "Avg late aircraft delay should match between DF and SQL");
+            assertEquals(df.getDouble(7), rdd.getDouble(7), 0.01, "Avg late aircraft delay should match between DF and SQL");
         }
     }
 
