@@ -2,17 +2,17 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "adnpq8m",
+    "name": "adp82qd",
     "namespace": "default",
-    "uid": "e82152ad-d2c8-49d5-98c3-3332bc26771b",
-    "resourceVersion": "1779501176861009",
+    "uid": "9496e6fe-97bd-4e8e-a8d8-a458d73723f7",
+    "resourceVersion": "1779505628007012",
     "generation": 1,
-    "creationTimestamp": "2026-05-23T01:52:56Z",
+    "creationTimestamp": "2026-05-23T03:07:08Z",
     "labels": {
-      "grafana.app/deprecatedInternalID": "4361784486694912"
+      "grafana.app/deprecatedInternalID": "4380454619496448"
     },
     "annotations": {
-      "grafana.app/createdBy": "user:bfmvx65tve134a",
+      "grafana.app/createdBy": "user:cfmvy5e8e9udcd",
       "grafana.app/folder": "",
       "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f)"
     }
@@ -1086,7 +1086,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\n  airline,\n  hour,\n  p50\nFROM hourly_delay_percentiles_rdd_kll_1\nWHERE airline = '$TargetCarrier'\nORDER BY hour",
+                        "rawSql": "SELECT\n  kll.hour,\n  kll.p50 AS p50_kll,\n  td.p50 AS p50_tdigest,\n  gk.p50 AS p50_approx_gk\nFROM hourly_delay_percentiles_rdd_kll_1 kll\nLEFT JOIN hourly_delay_percentiles_rdd_tdigest_1 td \n  ON kll.airline = td.airline AND kll.hour = td.hour\nLEFT JOIN hourly_delay_percentiles_dataframe_1 gk \n  ON kll.airline = gk.airline AND kll.hour = gk.hour\nWHERE kll.airline = '$TargetCarrier'\nORDER BY kll.hour;",
                         "sql": {
                           "columns": [
                             {
@@ -1183,7 +1183,7 @@
                       "type": "linear"
                     },
                     "showPoints": "always",
-                    "showValues": true,
+                    "showValues": false,
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",

@@ -59,7 +59,7 @@
 
 \begin{document}
 
-\title{Sky Analytics Engine: Architettura Distribuita per l'Analisi Big Data del Traffico Aereo \\ \large Sviluppo di una Pipeline di batch processing con Spark, NiFi e Airflow}
+\title{Sky Analytics Engine \\ \vspace{0.15cm} \large Architettura Distribuita per l'Analisi batch del Traffico Aereo}
 
 % IEEE Configuration
 \author{
@@ -142,7 +142,7 @@ L'architettura di Sky Analytics Engine è stata concepita seguendo i rigidi prin
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.38\textwidth]{../graphs/BigDataStack}
+    \includegraphics[width=0.47\textwidth]{../graphs/BigDataStack}
     \caption{Big Data Stack di Sky Analytics Engine: rappresentazione dei livelli logici e delle tecnologie integrate.}
     \label{fig:big_data_stack}
 \end{figure}
@@ -515,6 +515,10 @@ In questa finestra emerge la discrepanza fondamentale:
     Questo denota una propagazione non controllata dovuta a tempi di sosta troppo ristretti e congestione sistematica nei propri hub.
     \item \textbf{Delta Air Lines:} Evidenzia invece un controllo notevole dell'effetto accumulazione: pur registrando una crescita serale, i percentili di DL rimangono significativamente più bassi e mostrano una pendenza di crescita assai più dolce, segno di una pianificazione con margini di recupero più robusti ed efficienti routine di turnaround negli hub.
 \end{itemize}
+
+Un aspetto metodologico di rilievo è offerto dal confronto tra i tre approcci di calcolo  osservabile proprio sulla distribuzione del 50° percentile.
+I grafici (riportati in Appendice~\ref{sec:appendix_results}) mostrano che i risultati ottenuti tramite l'approssimazione KLL coincidono quasi sistematicamente con quelli derivanti dall'algoritmo GK integrato nelle API strutturate.
+Questa convergenza dei risultati valida sperimentalmente l'accuratezza degli algoritmi di sketching scelti, confermando che SAE è in grado di fornire insight affidabili anche attraverso tecniche di calcolo probabilistico che abbattono l'overhead computazionale rispetto al calcolo esatto.
 
 % Placed here to avoid breaking the flow of the text, as the figure is quite large and would disrupt the reading if placed in the middle of the discussion.
 \begin{figure*}[!t]
