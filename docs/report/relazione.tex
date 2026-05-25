@@ -513,7 +513,7 @@ Questo overhead della telemetria è causato da fattori estranei al processamento
 \end{itemize}
 
 L'infrastruttura gioca un ruolo determinante nel mitigare questo overhead.
-Il confronto tra i due ambienti evidenzia come la natura cloud-native ed elastica di AWS EMR riesca a contrarre sensibilmente la quota di Wall Clock Overhead rispetto al deployment standalone su AWS EC2. L'adozione d S3 e la gestione nativa delle chiamate riducono i tempi morti di negoziazione dei task e di bootstrap dell'applicazione, massimizzando il tempo in cui il cluster è effettivamente attivo nella computazione dei dati.
+Il confronto tra i due ambienti evidenzia come la natura cloud-native ed elastica di AWS EMR riesca a contrarre sensibilmente la quota di Wall Clock Overhead rispetto al deployment standalone su AWS EC2. L'adozione di Amazon S3 e la gestione nativa delle chiamate riducono i tempi morti di negoziazione dei task e di bootstrap dell'applicazione, massimizzando il tempo in cui il cluster è effettivamente attivo nella computazione dei dati.
 
 \subsubsection{Confronto Tecniche di Ottimizzazione}
 Un'analisi fondamentale condotta in questa fase riguarda il confronto tra le due principali strategie di ottimizzazione dell'I/O: \textbf{Partition Pruning} e \textbf{Predicate Pushdown}.
@@ -584,14 +584,28 @@ L'analisi congiunta di questa proiezione e della matrice di classificazione (i c
 % ------------------------------
 
 \section{Conclusioni e Sviluppi Futuri}\label{sec:conclusions_future_work}
-Il progetto Sky Analytics Engine dimostra che l'implementazione rigorosa di pattern architetturali distribuiti e l'adozione di formati dati ottimizzati sono requisiti imprescindibili per gestire la complessità inerente ai Big Data.
-L'orchestrazione asincrona tra Airflow e NiFi, combinata con la modularità polyglot dell'engine Spark, fornisce un ambiente robusto ed enterprise-ready.
-L'introduzione di tecniche algoritmiche avanzate, quali i Quantile Sketches e il Model Selection automatizzato tramite Silhouette Score, dota SAE di capacità analitiche di altissimo livello pur mantenendo confinati i costi computazionali.
+Il progetto Sky Analytics Engine dimostra che l'implementazione rigorosa di pattern architetturali distribuiti e l'adozione strategica di formati dati ottimizzati rappresentano requisiti imprescindibili per dominare la complessità inerente ai Big Data.
+L'orchestrazione asincrona tra Apache Airflow e NiFi, combinata con la modularità dell'engine Spark, ha permesso di costruire un ecosistema robusto, scalabile ed enterprise-ready.
+
+I risultati sperimentali hanno confermato in modo inequivocabile la validità delle scelte ingegneristiche effettuate.
+L'utilizzo combinato del formato colonnare Parquet e delle tecniche di Partition Pruning ha consentito di abbattere drasticamente l'I/O overhead sul file system distribuito, garantendo performance ottimali.
+Inoltre, l'integrazione di tecniche algoritmiche avanzate, quali gli stimatori probabilistici Quantile Sketches e il Model Selection automatizzato tramite Silhouette Score, ha dotato SAE di capacità analitiche di altissimo livello, mantenendo al contempo rigidamente confinati i costi computazionali e infrastrutturali.
+
+Sotto il profilo del dominio applicativo, la piattaforma ha dimostrato sul campo la capacità di trasformare moli di dati grezzi in insight operativi di grande valore strategico.
+Il sistema è riuscito a decodificare dinamiche complesse, come la propagazione a catena dei ritardi aeronautici, arrivando a profilare con estrema precisione l'efficienza delle singole compagnie aeree attraverso l'applicazione di modelli di machine learning non supervisionato.
 
 I potenziali sviluppi futuri della piattaforma includono la transizione da un paradigma puramente batch a un'architettura ibrida Lambda.
-L'integrazione di Apache Kafka e Spark Structured Streaming permetterebbe a SAE di acquisire eventi di volo in real-time, applicando i modelli ML di clustering precedentemente addestrati per prevedere ritardi anomali "on-the-fly"\@.
+L'integrazione di un message broker come Apache Kafka e dell'engine Spark Structured Streaming permetterebbe a SAE di acquisire e processare la telemetria di volo in tempo reale, sfruttando i centroidi dei modelli ML precedentemente addestrati per classificare la stabilità della rete e prevedere ritardi anomali "on-the-fly"\@.
 
 \begin{thebibliography}{10}
+
+
+    % Academic & Project References
+    \bibitem{sabd_course}
+    Università di Roma "Tor Vergata", "Corso di Sistemi e Architetture per Big Data (A.A. 2025/2026)," \url{https://www.ce.uniroma2.it/courses/sabd2526/}, Consultato: Maggio 2026.
+
+    \bibitem{sae_repo}
+    F. Simonelli, F. Masci, "Sky Analytics Engine - Repository GitHub Ufficiale," \url{https://github.com/flavio-simonelli/flight-batch-distributed-analysis}.
 
     % Core Frameworks & Data Processing
     \bibitem{spark}
@@ -652,7 +666,7 @@ In questa appendice viene riportato un diagramma dettagliato dell'architettura d
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=1\textwidth]{../graphs/sequence_diagram}
-    \caption{Diagramma di Sequenza di Sky Analytics Engine. Il diagramma illustra i componenti principali e i flussi di dati e controllo tra di essi durante l'esecuzione.}
+    \caption{Il diagramma di sequenza illustra la coreografia temporale delle chiamate API, l'ingestion asincrona e il ciclo di vita del job Spark all'interno della piattaforma.}
     \label{fig:architecture_diagram}
 \end{figure}
 
@@ -983,7 +997,7 @@ Per la Query 4, vengono presentati i risultati relativi alla distribuzione geome
 \centering
 \textbf{Legenda:}\\
 Dep./Arr.: ritardo medio partenza/arrivo;
-\\Makeup:capacità di recupero ritardo in volo;
+\\Makeup: capacità di recupero ritardo in volo;
 \\StdDev: deviazione standard ritardo arrivo;
 \\Div.\%/Can.\%: tasso deviazioni e cancellazioni;
 \\Clus.: ID Cluster;
