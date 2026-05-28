@@ -50,6 +50,17 @@ docs/report/relazione.*
 !docs/report/relazione.tex
 !docs/report/relazione.pdf
 
+# Presentation LaTeX build artifacts
+Presentation/*.aux
+Presentation/*.fls
+Presentation/*.fdb_latexmk
+Presentation/*.log
+Presentation/*.nav
+Presentation/*.snm
+Presentation/*.toc
+Presentation/*.out
+Presentation/*.synctex.gz
+
 # ========================
 # Debug
 # ========================
