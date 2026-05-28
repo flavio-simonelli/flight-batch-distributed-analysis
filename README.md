@@ -157,13 +157,7 @@ Copia il file di configurazione d'esempio ed eventualmente personalizza le crede
 cp .env.example .env
 ```
 
-#### 2. Inizializza Airflow e le Cartelle
-Esegui il container di inizializzazione per creare le cartelle locali con permessi adeguati, migrare il database dei metadati di Airflow e configurare l'utente amministratore predefinito:
-```bash
-docker compose up airflow-init
-```
-
-#### 3. Avvia lo Stack Multi-Container
+#### 2. Avvia lo Stack Multi-Container
 Lancia tutti i servizi in background tramite docker-compose:
 ```bash
 docker compose up -d
