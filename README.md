@@ -257,7 +257,7 @@ aws cloudformation delete-stack --stack-name flight-analysis-vpc-stack
 | Servizio | Porta (Locale) | Descrizione |
 | :--- | :--- | :--- |
 | **Airflow** | `8088` | Orchestrazione e monitoraggio DAG |
-| **NiFi** | `8081` | Interfaccia visuale dei flussi di Ingestion |
+| **NiFi** | `8443` | Interfaccia visuale dei flussi di Ingestion |
 | **Grafana** | `3000` | Dashboard Risultati e Telemetria |
 | **Spark Master** | `8080` | Stato del cluster e degli Executor |
 | **HDFS UI** | `9870` | Esplorazione del Distributed File System |
