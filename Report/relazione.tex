@@ -345,7 +345,8 @@ Tale integrazione permette di correlare in un unico ambiente le performance infr
 Le quattro query richieste dal progetto sono state implementate in modo da testare diverse astrazioni di Spark e valutare i trade-off tra controllo a basso livello ed engine ottimizzati.
 
 \subsection{Query 1: Statistiche Mensili}
-La \textit{Query 1} richiede il calcolo di statistiche mensili (media, min, max, tasso di cancellazione) per specifiche compagnie. La struttura logica dell'esecuzione è visualizzabile nel DAG di Spark riportato in Appendice~\ref{sec:appendix_spark_dags} (Fig.~\ref{fig:dag_q1}).
+La \textit{Query 1} richiede il calcolo di statistiche mensili (media, min, max, tasso di cancellazione) per specifiche compagnie.
+La struttura logica dell'esecuzione è visualizzabile nel DAG di Spark riportato in Appendice~\ref{sec:appendix_spark_dags} (Fig.~\ref{fig:dag_q1}).
 
 L'implementazione basata su RDD si articola nelle seguenti fasi:
 \begin{itemize}
@@ -396,11 +397,13 @@ Un calcolo esatto richiederebbe l'ordinamento globale di milioni di record, un'o
 
 SAE risolve questo problema implementando tecniche di "Quantile Sketching".
 Attraverso l'integrazione della libreria Apache DataSketches, è stato implementato lo stimatore Karnin-Lang-Liberty.
-Parallelamente, per offrire una maggiore flessibilità analitica, il sistema integra anche l'algoritmo T-Digest. Entrambi gli stimatori sono configurabili a runtime tramite la proprietà \texttt{percentileAlgorithm} in \texttt{ApplicationConfig}.
+Parallelamente, per offrire una maggiore flessibilità analitica, il sistema integra anche l'algoritmo T-Digest.
+Entrambi gli stimatori sono configurabili a runtime tramite la proprietà \texttt{percentileAlgorithm} in \texttt{ApplicationConfig}.
 
 L'algoritmo KLL, in particolare, mantiene in memoria un set compresso e rappresentativo dei dati osservati.
 La potenza matematica di questi algoritmi di sketching risiede nella loro proprietà di unione: due sketch generati su nodi worker differenti possono essere sommati nel driver node mantenendo rigorose garanzie matematiche sull'errore di rango massimo (configurato di default a $\sim 1.6\%$ per KLL).
-Questo permette di calcolare i percentili orari in un singolo passaggio sui dati, con una complessità spaziale fissa indipendente dalla dimensione del dataset. La complessità del piano fisico è riflessa nei due job Spark visibili in Fig.~\ref{fig:dag_q3} (Appendice~\ref{sec:appendix_spark_dags}).
+Questo permette di calcolare i percentili orari in un singolo passaggio sui dati, con una complessità spaziale fissa indipendente dalla dimensione del dataset.
+La complessità del piano fisico è riflessa nei due job Spark visibili in Fig.~\ref{fig:dag_q3} (Appendice~\ref{sec:appendix_spark_dags}).
 
 Nell'implementazione specifica RDD, la query si divide in due pipeline parallele:
 \begin{itemize}
@@ -442,15 +445,14 @@ L'implementazione in \texttt{AirlineClustering} costruisce una complessa pipelin
 
 \section{Infrastruttura di Deployment}\label{sec:deployment_infrastructure}
 L'agilità di SAE è esaltata dalle sue procedure di deployment, strutturate in due macro-scenari.
-Tutta la configurazione è esternalizzata in file YAML e \texttt{.env}.
-L'assenza di stringhe di connessione o path assoluti hardcoded nel codice Java permette di compilare il JAR una sola volta (tramite Maven) e di eseguirlo in contesti completamente diversi.
+L'esternalizzazione della configurazione in file YAML e \texttt{.env} evita l'uso di stringhe di connessione o path assoluti hardcoded, grazie a cui è possibile compilare il JAR una sola volta tramite Maven ed eseguirlo in contesti completamente diversi.
 
 \subsection{Ambiente Standalone AWS EC2}
 Il primo macro-scenario simula un'infrastruttura di tipo locale o on-premise virtualizzata in cloud.
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.50\textwidth]{../graphs/DeploymentView}
+    \includegraphics[width=0.43\textwidth]{../graphs/DeploymentView}
     \caption{Diagramma di deployment di Sky Analytics Engine su AWS EC2: rappresentazione dei componenti distribuiti.}
     \label{fig:deployment_bigdata_diagrams}
 \end{figure}
@@ -527,7 +529,7 @@ Questo si traduce in un sensibile abbattimento dei byte complessivamente letti e
 L'analisi della \textit{Executor Workload Skewness} dimostra infatti che, con l'utilizzo del pruning, il volume medio di dati assegnato ai nodi si allinea in modo omogeneo al picco massimo effettivamente elaborato dal singolo esecutore.
 Questo parallelismo ben bilanciato garantisce l'assenza di nodi sovraccarichi.
 
-Al contrario, il \textbf{Predicate Pushdown} richiede comunque che Spark acceda ai file Parquet per ispezionarne i metadati nei singoli footer.
+Al contrario, il \textbf{Predicate Pushdown} richiede comunque che Spark acceda ai metadati del file Parquet per valutarne le statistiche.
 Sebbene questa tecnica si confermi efficace nel ridurre i record effettivamente passati alle fasi successive della pipeline, essa genera un volume di lettura fisicamente molto più elevato sull'infrastruttura di storage e introduce un forte sbilanciamento del carico.
 Come evidenziato dalla telemetria, il divario tra la media teorica e il picco massimo di byte letti risulta marcato: le dinamiche di partizionamento dei task portano tendenzialmente un singolo nodo a farsi carico della quasi totalità della scansione iniziale, trasformandolo in un temporaneo collo di bottiglia.
 
@@ -557,8 +559,9 @@ L'analisi oraria (riportata in Appendice~\ref{sec:appendix_results}) conferma un
 Il 90° percentile di American Airlines, ad esempio, schizza oltre i $70$ minuti nella fascia serale, evidenziando una severa incapacità di smaltire la congestione diurna.
 Delta Air Lines, di contro, mantiene una curva di crescita molto più dolce e controllata.
 
-Un aspetto metodologico cruciale per SAE emerge dal confronto degli algoritmi: i grafici dimostrano che i risultati ottenuti tramite l'approssimazione KLL per il calcolo della mediana coincidono quasi perfettamente con l'algoritmo esatto GK integrato nelle API strutturate.
-Questa convergenza valida l'efficacia del sistema, che riesce a garantire insight altamente precisi pur sfruttando tecniche di calcolo probabilistico per abbattere l'overhead computazionale.
+Un aspetto metodologico cruciale per SAE emerge dal confronto diretto degli algoritmi nei grafici risultanti: l'applicazione dei differenti metodi di approssimazione ha portato a risultati pressoché molto simili sull'intero asse temporale.
+Sebbene il T-Digest mostri un comportamento leggermente meno lineare sulla mediana rispetto alla maggiore precisione teorica del KLL, il divario numerico reale è del tutto trascurabile.
+Considerando il dominio specifico del problema, in cui l'obiettivo è intercettare i trend macroscopici e la magnitudo dei ritardi orari, questa forte convergenza dei dati fa preferire l'utilizzo di un algoritmo più snello e performante come il T-Digest.
 
 \subsubsection{Query 4: Clustering delle Compagnie Aeree}
 L'applicazione dell'algoritmo K-Means con selezione automatica del modello tramite Silhouette Score ha identificato $K=3$ come il numero ottimale di raggruppamenti statistici per descrivere i vettori (Fig.~\ref{fig:results_q4_cluster_distribution} in Appendice~\ref{sec:appendix_results}).
@@ -572,7 +575,7 @@ L'analisi congiunta di questa proiezione e della matrice di classificazione (i c
     È il raggruppamento che presenta le criticità maggiori.
     Vettori come \texttt{OH} e \texttt{F9} guidano il cluster con ritardi all'arrivo elevatissimi, causati da un forte effetto di propagazione a catena.
     Nel caso estremo di \texttt{OH}, l'instabilità si traduce anche in un tasso di cancellazione critico, superiore al $6\%$.
-    \item \textbf{Cluster 1 - Sensibilità Esterna e "Volo a tutti i costi":} Formato unicamente da \textbf{Allegiant Air (\texttt{G4})}.
+    \item \textbf{Cluster 1 - Sensibilità Esterna:} Formato unicamente da \textbf{Allegiant Air (\texttt{G4})}.
     Questo vettore delinea un profilo anomalo: subisce forti ritardi in partenza a causa di fattori esterni incontrollabili (ritardi meteorologici e di sicurezza, quest'ultimo con valori un ordine di grandezza sopra la media).
     Tuttavia, registra un tasso di cancellazioni bassissimo ($0,6\%$), denotando una politica aziendale orientata a completare i voli programmati indipendentemente dalle avversità e dai ritardi accumulati.
     \item \textbf{Cluster 2 - Alta Efficienza e Stabilità:} Include \texttt{UA}, \texttt{NK}, \texttt{DL}, \texttt{MQ}, \texttt{HA}, \texttt{YX}, \texttt{AS}, \texttt{WN}.
