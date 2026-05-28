@@ -5,7 +5,6 @@
 # including subnets, security groups, and private DNS zones.
 
 # --- ENVIRONMENT INITIALIZATION ---
-# Utilizziamo 'source' per caricare le variabili d'ambiente nella sessione corrente
 source load_env.sh
 if [ $? -ne 0 ]; then
     echo "[ERROR] Environment initialization failed. Ensure load_env.sh and .env are present."
@@ -25,7 +24,6 @@ VPC_STACK_NAME="${VPC_NAME}-stack"
 # Check for the existence of the subnet before attempting deployment to avoid redundant stack updates.
 echo "[INFO] Validating existing network infrastructure..."
 
-# In Bash, usiamo 'grep -v' al posto di 'findstr /v' per escludere "None"
 aws ec2 describe-subnets --filters "Name=tag:Name,Values=${SUBNET_NAME}" --query "Subnets[0].SubnetId" --output text 2>/dev/null | grep -v "None" >/dev/null
 
 if [ $? -eq 0 ]; then
@@ -34,7 +32,6 @@ else
     echo "[INFO] Infrastructure not found. Initiating CloudFormation deployment..."
 
     # Deploy the core VPC Infrastructure stack using the cluster-vpc template.
-    # Il carattere per mandare a capo i comandi in Bash è '\' invece di '^'
     aws cloudformation deploy \
       --stack-name "${VPC_STACK_NAME}" \
       --template-file "template/cluster-vpc.yaml" \
@@ -55,10 +52,8 @@ fi
 # Verify and display the deployed network state for operational awareness.
 echo "[INFO] Finalizing network status check..."
 
-# Usiamo la command substitution $(...) per salvare l'output direttamente nella variabile
 FOUND_SUBNET_ID=$(aws ec2 describe-subnets --filters "Name=tag:Name,Values=${SUBNET_NAME}" --query "Subnets[0].SubnetId" --output text 2>/dev/null)
 
-# Verifichiamo se la variabile è vuota o contiene "None"
 if [ -z "$FOUND_SUBNET_ID" ] || [ "$FOUND_SUBNET_ID" == "None" ]; then
     echo "[ERROR] Subnet provisioning could not be verified."
     EXIT_CODE=1

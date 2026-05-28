@@ -6,9 +6,7 @@
 # or full cluster deployment (all).
 
 # --- PARAMETER CHECK ---
-# Assegna 'all' se il parametro è vuoto
 TARGET="${1:-all}"
-# Converte tutto in minuscolo per evitare problemi di case sensitivity
 TARGET=$(echo "$TARGET" | tr '[:upper:]' '[:lower:]')
 
 # Validate the provided target against supported node types.
@@ -26,7 +24,6 @@ if [ $? -ne 0 ]; then
 fi
 
 # --- SSH KEY PROVISIONING ---
-# Supponendo che setup-ssh-key.bat sia stato tradotto in .sh
 source setup-ssh-key.sh
 if [ $? -ne 0 ]; then
     echo "[ERROR] SSH key setup failed. Deployment aborted."
@@ -40,7 +37,6 @@ SUBNET_ID=$(aws ec2 describe-subnets --filters "Name=tag:Name,Values=${SUBNET_NA
 SG_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=${SG_NAME}" --query "SecurityGroups[0].GroupId" --output text 2>/dev/null)
 
 RAW_ZONE_ID=$(aws route53 list-hosted-zones-by-name --dns-name "${PRIVATE_DOMAIN_NAME}" --query "HostedZones[0].Id" --output text 2>/dev/null)
-# Rimuove il prefisso '/hostedzone/' dalla stringa restituita
 ZONE_ID=${RAW_ZONE_ID#/hostedzone/}
 
 echo "[INFO] Infrastructure Discovery Results:"
@@ -55,7 +51,6 @@ if [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "None" ]; then
 fi
 
 # --- SUBROUTINES ---
-# In Bash, le funzioni devono essere dichiarate prima di essere invocate
 deploy_worker() {
     local N=$1
     # Contains HDFS DataNode and Spark Worker.
