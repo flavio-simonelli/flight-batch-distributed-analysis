@@ -48,26 +48,6 @@
     \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../Report/graphs/sequence_diagram.png}
 \end{frame}
 
-% Deployment
-\section{Deployment}
-\begin{frame}{Deployment}
-    \begin{columns}[T]
-        \column{0.48\textwidth}
-        \centering
-        \textbf{EC2 Deployment}
-        \vfill
-        \includegraphics[width=\linewidth,height=0.6\textheight,keepaspectratio]{../Report/graphs/DeploymentView.png}
-        
-        \column{0.48\textwidth}
-        \centering
-        \textbf{EMR Deployment}
-        \vfill
-        \begin{center}
-            \Large [Immagine in arrivo]
-        \end{center}
-    \end{columns}
-\end{frame}
-
 % Data Extraction & Ingestion
 \section{Data Extraction \& Ingestion}
 
@@ -116,4 +96,48 @@
     \end{itemize}
 \end{frame}
 
+% Deployment
+\section{Deployment}
+\begin{frame}{Deployment}
+    \begin{columns}[T]
+        \column{0.48\textwidth}
+        \centering
+        \textbf{EC2 Deployment}
+        \vfill
+        \includegraphics[width=\linewidth,height=0.6\textheight,keepaspectratio]{../Report/graphs/DeploymentView.png}
+        
+        \column{0.48\textwidth}
+        \centering
+        \textbf{EMR Deployment}
+        \vfill
+        \begin{center}
+            \Large [Immagine in arrivo]
+        \end{center}
+    \end{columns}
+\end{frame}
+
 \end{document}
+
+%Ingestion Layer
+%    Overview del flusso NiFi: data-driven e elenco parametri del json di configurazione
+%   Estrazione, validazione (SHA-1) e smistamento iniziale dei file e biforcazione del flusso: salvataggio raw e inoltro al preprocessing 
+%    trasformazione e ottimizzazione in Parquet in cui mettiamo pure Partition Pruning e Predicate Pushdown
+%    Storage finale e chiusura del ciclo con chiamata HTTP a Airflow
+%Computation Layer
+%    Query 1 confronto codice RDD vs DataFrame vs SQL
+%    Query 2 confronto codice RDD vs DataFrame vs SQL
+%    Query 3 confronto codice RDD vs DataFrame vs SQL
+%    Slide jobListener e intercettazione degli eventi
+%Airflow
+%    Una slide per ogni DAG
+%Deployment
+%    EC2, EMR architettura
+%Metriche
+%    Come sono state svolte le misurazioni
+%    Partition Pruning vs Predicate Pushdown (migliore partition pruning)
+%    RDD vs DataFrame vs SQL: 4 Boxplot con tempi di esecuzione per ogni query
+%    EC2 vs EMR
+%La scelta dell'euristica per la query 3
+%Clustering
+%    Slide con risultati del clustering
+%Slide finale con risultati query 1 e 2
