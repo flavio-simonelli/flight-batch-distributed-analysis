@@ -139,94 +139,132 @@ flowchart TD
 
 ## Modalità di Deployment e Requisiti
 
-### Requisiti di Sistema
+### 1. Prerequisiti di Sistema
+Prima di iniziare, assicurati di avere installato e configurato i seguenti strumenti:
 * **Docker & Docker Compose** (versione 2.20+)
 * **Java Development Kit (JDK) 11**
 * **Apache Maven 3.8+**
-* **AWS CLI** (per configurazioni cloud)
-* *Raccomandazione hardware:* Almeno **16 GB RAM** per supportare l'avvio locale dello stack multi-container.
+* **AWS CLI v2** configurato con le credenziali (`aws configure`)
+* *Raccomandazione hardware:* Almeno **16 GB RAM** per l'esecuzione dello stack completo in locale.
 
----
-
-### Modalità 1: Sviluppo Locale Containerizzato (Docker Compose)
-Questa modalità avvia l'intero stack distribuito all'interno di una rete virtuale bridge locale (`sae-net`), replicando un ambiente multi-nodo reale su una singola macchina per scopi di sviluppo e test.
-
-#### 1. Configura l'Ambiente
-Copia il file di configurazione d'esempio ed eventualmente personalizza le credenziali:
-```bash
-cp .env.example .env
-```
-
-#### 2. Avvia lo Stack Multi-Container
-Lancia tutti i servizi in background tramite docker-compose:
-```bash
-docker compose up -d
-```
-Questo comando avvia i seguenti servizi pronti all'uso:
-* **Ingestion:** Apache NiFi (porte `8081` http, `8443` https, `8085` Site-to-Site)
-* **Storage:** HDFS NameNode (`9870`), 2x HDFS DataNodes, MinIO S3 Emulator (`9000`, `9001`)
-* **Processing:** Spark Master (`8080`, `7077`, `4040`), 3x Spark Workers, Apache Livy REST API (`8998`)
-* **Persistenza:** PostgreSQL (`5432`), CockroachDB (`26257`, `8082`), HBase (`16010` UI, `2181` ZK), Redis Output (`6380`)
-* **Orchestration:** Airflow Webserver/Scheduler (`8088`)
-* **Metrics & Monitoring:** Redis Stack Telemetry (`6379`, `8001`), Grafana Dashboard (`3000`)
-
-#### 4. Compila l'Applicazione Spark
-Naviga nella cartella `spark` e compila il codice Java tramite Maven per generare il fat-JAR dell'applicazione:
+### 2. Preparazione dell'Applicazione
+Indipendentemente dalla modalità scelta, è necessario compilare il core analitico in Java:
 ```bash
 cd spark
 mvn clean package
 cd ..
 ```
-Il JAR compilato sarà salvato in `spark/target/flight-analysis.jar`.
+Il file generato `spark/target/flight-analysis.jar` verrà utilizzato da tutti i motori di calcolo (Spark Standalone, EMR).
 
-#### 5. Carica il file JAR su HDFS
-L'operatore Airflow si aspetta che il JAR di Spark risieda nel file system distribuito. Copia il JAR sul NameNode e caricalo nella cartella `/bin` di HDFS:
+---
+
+### Modalità A: Sviluppo Locale (Docker Compose)
+Questa modalità avvia l'intero stack distribuito all'interno di una rete virtuale bridge locale (`sae-net`), replicando un ambiente reale su una singola macchina.
+
+#### 1. Configura l'Ambiente
+Copia il file di configurazione d'esempio:
 ```bash
-# Copia il JAR nel container HDFS NameNode
-docker cp spark/target/flight-analysis.jar hdfs-master:/tmp/
-
-# Esegui il caricamento in HDFS
-docker exec -it hdfs-master /usr/local/hadoop/bin/hdfs dfs -put -f /tmp/flight-analysis.jar /bin/flight-analysis.jar
+cp .env.example .env
 ```
 
-#### 6. Esecuzione della Pipeline
-* **Interfaccia Web di Airflow:** Apri `http://localhost:8088` (credenziali: `admin`/`admin_password`), attiva il DAG `flight_analysis` ed esegui un trigger manuale per lanciare la pipeline completa (NiFi Ingest + Spark Processing via Livy).
-* **CLI Spark Submit locale:** Esegui direttamente il job all'interno del container Spark Master tramite lo script helper locale:
-  ```bash
-  ./deploy/scripts/spark-submit.sh monthly_performance dataframe
-  ```
+#### 2. Avvia lo Stack Multi-Container
+Lancia tutti i servizi in background:
+```bash
+docker compose up -d
+```
+
+#### 3. Carica il JAR su HDFS
+L'operatore Airflow richiede che il binario Spark risieda nel file system distribuito:
+```bash
+# Carica il JAR nel NameNode
+docker cp spark/target/flight-analysis.jar hdfs-master:/tmp/
+# Sposta il JAR nel path previsto (/bin)
+docker exec -it hdfs-master hdfs dfs -mkdir -p /bin
+docker exec -it hdfs-master hdfs dfs -put -f /tmp/flight-analysis.jar /bin/flight-analysis.jar
+```
+
+#### 4. Esecuzione
+* **Airflow UI:** Accedi a `http://localhost:8088` (admin/admin_password).
+* **Workflow:** Attiva ed esegui il DAG `flight_analysis`.
 
 ---
 
-### Modalità 2: Cluster Multi-Nodo su AWS EC2 (VM Standalone)
-Distribuisce le singole componenti logiche dell'architettura su istanze Amazon EC2 dedicate all'interno di una Virtual Private Cloud (VPC) privata, tramite AWS CloudFormation ed automazione Bash.
+### Modalità B: Cluster Standalone su AWS EC2
+Distribuisce le componenti su istanze EC2 dedicate all'interno di una VPC privata tramite CloudFormation.
 
-1. **Inizializzazione della Rete:** Crea VPC, subnet pubbliche/private, internet gateways, tabelle di routing e security group specifici tramite CloudFormation:
-   ```bash
-   cd deploy
-   ./deploy-network.sh
-   ```
-2. **Provisioning dei Nodi del Cluster:** Crea le singole istanze EC2 (1x Master `t3.small` per HDFS/Spark, Nx Workers `t3.small`, Airflow Node `t3.medium`, NiFi Node `t3.small`, Metrics Node `t3.small`, Database Node `t3.small`) ed effettua l'associazione DNS Route53 privata e lo scambio delle chiavi crittografiche SSH per la comunicazione interna:
-   ```bash
-   ./deploy-node.sh all
-   ```
-3. **Sincronizzazione degli Asset su S3:** Crea il bucket S3 e sincronizza i DAG di Airflow, i flussi NiFi, i file di configurazione e il JAR compilato per renderli disponibili al cluster:
-   ```bash
-   ./init-bucket.sh
-   ```
+#### 1. Inizializzazione S3
+Prepara il bucket per ospitare script, JAR e dataset:
+```bash
+cd deploy
+chmod +x *.sh scripts/*.sh
+./init-bucket.sh
+```
+
+#### 2. Provisioning Infrastruttura
+Crea la rete (VPC, Subnet, Security Groups) e i nodi del cluster:
+```bash
+./deploy-network.sh
+./deploy-node.sh
+```
+> [!NOTE]
+> Lo script `deploy-node.sh` gestisce automaticamente la creazione della coppia di chiavi SSH (`.pem`) e la configurazione DNS privata via Route53.
+
+#### 3. Accesso ai Servizi
+Identifica l'IP pubblico dell'istanza Airflow tramite la console AWS o CLI:
+```bash
+aws ec2 describe-instances --filters "Name=tag:Name,Values=Airflow-Node" --query "Reservations[*].Instances[*].PublicIpAddress" --output text
+```
+Accedi a `http://<PUBLIC_IP>:8088` per gestire i workflow.
 
 ---
 
-### Modalità 3: Deployment Cloud-Native su AWS EMR (Cluster Gestito)
-Configura un cluster elastico gestito Amazon Elastic MapReduce per l'elaborazione dei dati a livello enterprise, sfruttando il gestore di risorse Hadoop YARN e lo storage S3.
+### Modalità C: Cluster Gestito AWS EMR (Enterprise)
+Utilizza Amazon EMR per il calcolo pesante, mantenendo Airflow e NiFi su EC2 per l'orchestrazione.
 
-1. **Distribuzione dello Stack EMR:** Lancia il cluster gestito EMR composto da 1x master node e 3x core worker nodes di tipo `m6g.xlarge` tramite CloudFormation:
-   ```bash
-   cd deploy
-   ./deploy-spark.sh
-   ```
-2. **Esecuzione tramite Airflow:** Il DAG `emr_benchmark.py` interagisce direttamente con i servizi AWS tramite gli operatori nativi `EmrAddStepsOperator` e `EmrStepSensor` per iniettare i job Spark come step sequenziali nel cluster EMR.
-3. **Paradigma Shared-Nothing:** Lo storage è completamente disaccoppiato tramite il protocollo `s3a://`. Le risorse di calcolo vengono allocate e spente on-demand al completamento dei job, azzerando i costi di idle.
+#### 1. Setup Base (Rete e Ingestion)
+Segui i passi della Modalità B per inizializzare il bucket, la rete e i nodi di servizio:
+```bash
+./init-bucket.sh
+./deploy-network.sh
+./deploy-node.sh nifi 
+./deploy-node.sh airflow
+./deploy-node.sh metrics
+```
+
+#### 2. Provisioning Cluster EMR
+Lancia il cluster Spark gestito:
+```bash
+./deploy-spark.sh
+```
+
+#### 3. Esecuzione Benchmark
+In Airflow, esegui il DAG `emr_benchmark.py`. Questo DAG utilizza gli operatori nativi AWS per inviare i job come "Steps" al cluster EMR appena creato.
+
+---
+
+### 5. Cleanup delle Risorse
+Per evitare costi imprevisti su AWS, elimina gli stack CloudFormation creati al termine dell'utilizzo:
+```bash
+# Esempio per eliminare il cluster EMR
+aws cloudformation delete-stack --stack-name flight-analysis-cluster-stack-<ID>
+
+# Esempio per eliminare i nodi e la rete
+aws cloudformation delete-stack --stack-name flight-analysis-cluster-master-node
+aws cloudformation delete-stack --stack-name flight-analysis-vpc-stack
+```
+
+## Endpoint e Dashboard
+| Servizio | Porta (Locale) | Descrizione |
+| :--- | :--- | :--- |
+| **Airflow** | `8088` | Orchestrazione e monitoraggio DAG |
+| **NiFi** | `8081` | Interfaccia visuale dei flussi di Ingestion |
+| **Grafana** | `3000` | Dashboard Risultati e Telemetria |
+| **Spark Master** | `8080` | Stato del cluster e degli Executor |
+| **HDFS UI** | `9870` | Esplorazione del Distributed File System |
+| **CockroachDB UI** | `8082` | Monitoraggio del Database Distribuito |
+| **MinIO UI** | `9001` | Browser per l'Object Storage (S3 local) |
+| **Redis Insight** | `8001` | Analisi in tempo reale della telemetria |
+
 
 ---
 
