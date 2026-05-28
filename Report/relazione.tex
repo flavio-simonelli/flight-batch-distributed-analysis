@@ -682,24 +682,24 @@ Questi grafici illustrano le fasi di trasformazione, gli shuffle e la suddivisio
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.6\textwidth]{../charts/spark_dag/monthly_performance_rdd}
+    \includegraphics[width=0.6\textwidth]{../Results/charts/spark_dag/monthly_performance_rdd}
     \caption{DAG di Spark per la Query 1: evidenzia la fase di \textit{aggregateByKey} e la successiva trasformazione finale.}
     \label{fig:dag_q1}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.255\textwidth]{../charts/spark_dag/Query2_job0_rdd}
-    \includegraphics[width=0.34\textwidth]{../charts/spark_dag/Query2_job1_rdd}
-    \includegraphics[width=0.35\textwidth]{../charts/spark_dag/Query2_job2_rdd}
+    \includegraphics[width=0.255\textwidth]{../Results/charts/spark_dag/Query2_job0_rdd}
+    \includegraphics[width=0.34\textwidth]{../Results/charts/spark_dag/Query2_job1_rdd}
+    \includegraphics[width=0.35\textwidth]{../Results/charts/spark_dag/Query2_job2_rdd}
     \caption{DAG di Spark per la Query 2: i tre job mostrano rispettivamente il filtraggio/aggregazione, il calcolo delle medie e l'ordinamento per il ranking top-10.}
     \label{fig:dag_q2}
 \end{figure}
 
 \begin{figure*}[!htbp]
     \centering
-    \includegraphics[width=0.41\textwidth]{../charts/spark_dag/Query3_job0_rdd}
-    \includegraphics[width=0.44\textwidth]{../charts/spark_dag/Query3_job1_rdd}
+    \includegraphics[width=0.41\textwidth]{../Results/charts/spark_dag/Query3_job0_rdd}
+    \includegraphics[width=0.44\textwidth]{../Results/charts/spark_dag/Query3_job1_rdd}
     \caption{DAG di Spark per la Query 3: i due job paralleli gestiscono rispettivamente la pipeline degli sketch per i percentili e la pipeline per il calcolo dei minimi e massimi globali.}
     \label{fig:dag_q3}
 \end{figure*}
@@ -729,11 +729,11 @@ Ogni pannello all'interno della plancia di monitoraggio è posizionato in modo d
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../charts/telemetry/ec2/part_prun/metrics_ec2_monthly_performance_part_prun_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/part_prun/metrics_ec2_monthly_performance_part_prun_cropped}
 
     \vspace{1cm}
 
-    \includegraphics[width=1\textwidth]{../charts/telemetry/ec2/pred_push/metrics_ec2_monthly_performance_pred_push_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/pred_push/metrics_ec2_monthly_performance_pred_push_cropped}
     \caption{Telemetria Query 1 su AWS EC2: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
     \label{fig:telemetry_q1_ec2}
 \end{figure}
@@ -742,11 +742,11 @@ Ogni pannello all'interno della plancia di monitoraggio è posizionato in modo d
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../charts/telemetry/emr/part_prun/metrics_emr_monthly_performance_part_prun_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/part_prun/metrics_emr_monthly_performance_part_prun_cropped}
 
     \vspace{1cm}
 
-    \includegraphics[width=1\textwidth]{../charts/telemetry/emr/pred_push/metrics_emr_monthly_performance_pred_push_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/pred_push/metrics_emr_monthly_performance_pred_push_cropped}
     \caption{Telemetria Query 1 su AWS EMR: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
     \label{fig:telemetry_q1_emr}
 \end{figure}
@@ -757,11 +757,11 @@ Ogni pannello all'interno della plancia di monitoraggio è posizionato in modo d
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../charts/telemetry/ec2/part_prun/metrics_ec2_arrival_delay_ranking_part_prun_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/part_prun/metrics_ec2_arrival_delay_ranking_part_prun_cropped}
 
     \vspace{1cm}
 
-    \includegraphics[width=1\textwidth]{../charts/telemetry/ec2/pred_push/metrics_ec2_arrival_delay_ranking_pred_push_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/pred_push/metrics_ec2_arrival_delay_ranking_pred_push_cropped}
     \caption{Telemetria Query 2 su AWS EC2: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
     \label{fig:telemetry_q2_ec2}
 \end{figure}
@@ -770,11 +770,11 @@ Ogni pannello all'interno della plancia di monitoraggio è posizionato in modo d
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../charts/telemetry/emr/part_prun/metrics_emr_arrival_delay_ranking_part_prun_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/part_prun/metrics_emr_arrival_delay_ranking_part_prun_cropped}
 
     \vspace{1cm}
 
-    \includegraphics[width=1\textwidth]{../charts/telemetry/emr/pred_push/metrics_emr_arrival_delay_ranking_pred_push_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/pred_push/metrics_emr_arrival_delay_ranking_pred_push_cropped}
     \caption{Telemetria Query 2 su AWS EMR: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
     \label{fig:telemetry_q2_emr}
 \end{figure}
@@ -785,11 +785,11 @@ Ogni pannello all'interno della plancia di monitoraggio è posizionato in modo d
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../charts/telemetry/ec2/part_prun/metrics_ec2_hourly_delay_percentiles_part_prun_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/part_prun/metrics_ec2_hourly_delay_percentiles_part_prun_cropped}
 
     \vspace{1cm}
 
-    \includegraphics[width=1\textwidth]{../charts/telemetry/ec2/pred_push/metrics_ec2_hourly_delay_percentiles_pred_push_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/pred_push/metrics_ec2_hourly_delay_percentiles_pred_push_cropped}
     \caption{Telemetria Query 3 su AWS EC2: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
     \label{fig:telemetry_q3_ec2}
 \end{figure}
@@ -798,11 +798,11 @@ Ogni pannello all'interno della plancia di monitoraggio è posizionato in modo d
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../charts/telemetry/emr/part_prun/metrics_emr_hourly_delay_percentiles_part_prun_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/part_prun/metrics_emr_hourly_delay_percentiles_part_prun_cropped}
 
     \vspace{1cm}
 
-    \includegraphics[width=1\textwidth]{../charts/telemetry/emr/pred_push/metrics_emr_hourly_delay_percentiles_pred_push_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/pred_push/metrics_emr_hourly_delay_percentiles_pred_push_cropped}
     \caption{Telemetria Query 3 su AWS EMR: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
     \label{fig:telemetry_q3_emr}
 \end{figure}
@@ -813,11 +813,11 @@ Ogni pannello all'interno della plancia di monitoraggio è posizionato in modo d
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../charts/telemetry/ec2/part_prun/metrics_ec2_airline_clustering_part_prun_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/part_prun/metrics_ec2_airline_clustering_part_prun_cropped}
 
     \vspace{1cm}
 
-    \includegraphics[width=1\textwidth]{../charts/telemetry/ec2/pred_push/metrics_ec2_airline_clustering_pred_push_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/pred_push/metrics_ec2_airline_clustering_pred_push_cropped}
     \caption{Telemetria Query 4 su AWS EC2: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
     \label{fig:telemetry_q4_ec2}
 \end{figure}
@@ -826,11 +826,11 @@ Ogni pannello all'interno della plancia di monitoraggio è posizionato in modo d
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../charts/telemetry/emr/part_prun/metrics_emr_airline_clustering_part_prun_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/part_prun/metrics_emr_airline_clustering_part_prun_cropped}
 
     \vspace{1cm}
 
-    \includegraphics[width=1\textwidth]{../charts/telemetry/emr/pred_push/metrics_emr_airline_clustering_pred_push_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/pred_push/metrics_emr_airline_clustering_pred_push_cropped}
     \caption{Telemetria Query 4 su AWS EMR: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
     \label{fig:telemetry_q4_emr}
 \end{figure}
@@ -845,14 +845,14 @@ Per la Query 1, vengono presentati i risultati relativi al trend dei ritardi med
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../charts/result/Q1_average_delay_trend}
+    \includegraphics[width=1\textwidth]{../Results/charts/result/Q1_average_delay_trend}
     \caption{Risultati Query 1: Trend dei ritardi medi mensili.}
     \label{fig:results_q1_average_delay_trend}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../charts/result/Q1_cancellation_rate_probabilty}
+    \includegraphics[width=1\textwidth]{../Results/charts/result/Q1_cancellation_rate_probabilty}
     \caption{Risultati Query 1: Tasso e probabilità di cancellazione.}
     \label{fig:results_q1_cancellation_rate_probability}
 \end{figure}
@@ -864,14 +864,14 @@ Nella Query 2, vengono presentati i risultati relativi alla classifica delle tra
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../charts/result/Q2_top10_arrival_delay}
+    \includegraphics[width=1\textwidth]{../Results/charts/result/Q2_top10_arrival_delay}
     \caption{Risultati Query 2: Classifica delle 10 tratte con i ritardi medi più elevati.}
     \label{fig:results_q2_top10_arrival_delay}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../charts/result/Q2_delay_composition}
+    \includegraphics[width=1\textwidth]{../Results/charts/result/Q2_delay_composition}
     \caption{Risultati Query 2: Decomposizione percentuale delle cause di ritardo.}
     \label{fig:results_q2_delay_composition}
 \end{figure}
@@ -883,28 +883,28 @@ Per la Query 3, vengono presentati, per le quattro compagnie aeree in esame, la 
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.93\textwidth]{../charts/result/Q3_percentiles_trend_AA}
+    \includegraphics[width=0.93\textwidth]{../Results/charts/result/Q3_percentiles_trend_AA}
     \caption{Risultati Query 3 (AA): Trend orario dei percentili di ritardo critici.}
     \label{fig:results_q3_percentiles_trend_AA}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.93\textwidth]{../charts/result/Q3_percentiles_trend_DL}
+    \includegraphics[width=0.93\textwidth]{../Results/charts/result/Q3_percentiles_trend_DL}
     \caption{Risultati Query 3 (DL): Trend orario dei percentili di ritardo critici.}
     \label{fig:results_q3_percentiles_trend_DL}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.93\textwidth]{../charts/result/Q3_percentiles_trend_UA}
+    \includegraphics[width=0.93\textwidth]{../Results/charts/result/Q3_percentiles_trend_UA}
     \caption{Risultati Query 3 (UA): Trend orario dei percentili di ritardo critici.}
     \label{fig:results_q3_percentiles_trend_UA}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.93\textwidth]{../charts/result/Q3_percentiles_trend_WN}
+    \includegraphics[width=0.93\textwidth]{../Results/charts/result/Q3_percentiles_trend_WN}
     \caption{Risultati Query 3 (WN): Trend orario dei percentili di ritardo critici.}
     \label{fig:results_q3_percentiles_trend_WN}
 \end{figure}
@@ -913,38 +913,38 @@ Per la Query 3, vengono presentati, per le quattro compagnie aeree in esame, la 
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{../charts/result/Q3_median_distribution_detail_AA}
+    \includegraphics[width=0.85\textwidth]{../Results/charts/result/Q3_median_distribution_detail_AA}
     \caption{Risultati Query 3 (AA): Distribuzione oraria del ritardo mediano.}
     \label{fig:results_Q3_median_distribution_detail_AA}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{../charts/result/Q3_median_distribution_detail_DL}
+    \includegraphics[width=0.85\textwidth]{../Results/charts/result/Q3_median_distribution_detail_DL}
     \caption{Risultati Query 3 (DL): Distribuzione oraria del ritardo mediano.}
     \label{fig:results_Q3_median_distribution_detail_DL}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{../charts/result/Q3_median_distribution_detail_UA}
+    \includegraphics[width=0.85\textwidth]{../Results/charts/result/Q3_median_distribution_detail_UA}
     \caption{Risultati Query 3 (UA): Distribuzione oraria del ritardo mediano.}
     \label{fig:results_Q3_median_distribution_detail_UA}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{../charts/result/Q3_median_distribution_detail_WN}
+    \includegraphics[width=0.85\textwidth]{../Results/charts/result/Q3_median_distribution_detail_WN}
     \caption{Risultati Query 3 (WN): Distribuzione oraria del ritardo mediano.}
     \label{fig:results_Q3_median_distribution_detail_WN}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.22\textwidth]{../charts/result/Q3_median_distribution_min_max_AA}
-    \includegraphics[width=0.22\textwidth]{../charts/result/Q3_median_distribution_min_max_DL}
-    \includegraphics[width=0.22\textwidth]{../charts/result/Q3_median_distribution_min_max_UA}
-    \includegraphics[width=0.22\textwidth]{../charts/result/Q3_median_distribution_min_max_WN}
+    \includegraphics[width=0.22\textwidth]{../Results/charts/result/Q3_median_distribution_min_max_AA}
+    \includegraphics[width=0.22\textwidth]{../Results/charts/result/Q3_median_distribution_min_max_DL}
+    \includegraphics[width=0.22\textwidth]{../Results/charts/result/Q3_median_distribution_min_max_UA}
+    \includegraphics[width=0.22\textwidth]{../Results/charts/result/Q3_median_distribution_min_max_WN}
     \caption{Risultati Query 3: Valori estremi dei ritardi per American Airlines (AA), Delta Air Lines (DL), United Airlines (UA) e Southwest Airlines (WN) (da sinistra a destra).}
     \label{fig:results_q3_min_max}
 \end{figure}
@@ -956,14 +956,14 @@ Per la Query 4, vengono presentati i risultati relativi alla distribuzione geome
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.70\textwidth]{../charts/result/Q4_cluster_center}
+    \includegraphics[width=0.70\textwidth]{../Results/charts/result/Q4_cluster_center}
     \caption{Valori medi delle feature per ciascun cluster identificato nella Query 4. Le barre rappresentano le medie normalizzate delle singole features per permettere un confronto relativo tra i cluster.}
     \label{fig:results_q4_cluster_center}
 \end{figure}
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.45\textwidth]{../charts/result/Q4_cluster_distribution}
+    \includegraphics[width=0.45\textwidth]{../Results/charts/result/Q4_cluster_distribution}
     \caption{Risultati Query 4: Distribuzione geometrica dei cluster estratti tramite PCA.}
     \label{fig:results_q4_cluster_distribution}
 \end{figure}
