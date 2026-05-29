@@ -186,7 +186,7 @@
 \begin{frame}{NiFi Ingestion Pipeline: Preprocessing, Ottimizzazione e Handover}
 
     % Primo blocco: Allineato in alto [T] per mantenere il testo ordinato
-    \begin{columns}[T, onlytextwidth]
+    \begin{columns}[T]
         \begin{column}{0.79\textwidth}
             \begin{itemize}
                 \item \textbf{Imputazione e Sanitizzazione} - \texttt{ScriptedTransformRecord}:
@@ -213,13 +213,13 @@
 
 
     % Secondo blocco: Allineato al centro [c] per centrare l'immagine rispetto al testo
-    \begin{columns}[c, onlytextwidth]
+    \begin{columns}[c]
         \begin{column}{0.60\textwidth}
             \begin{itemize}
                 \item \textbf{Strategie di Conversione e Ottimizzazione}:
                 \begin{itemize}
                     \item \textbf{Partition Pruning}: Il processore \texttt{PartitionRecord} converte in Parquet partizionando per chiavi temporali e carrier, permettendo a Spark l'esclusione di intere directory in lettura.
-                    \item \textbf{Predicate Pushdown}: Il modulo \texttt{ConvertRecord} serializza in Parquet iniettando i metadati statistici nel file per consentire a Spark il filtraggio diretto a livello di storage.
+                    \item \textbf{Predicate Pushdown}: Il modulo \texttt{MergeRecord} compatta e converte in un singolo file Parquet per consentire a Spark il filtraggio diretto a livello di storage.
                 \end{itemize}
             \end{itemize}
         \end{column}
@@ -233,7 +233,7 @@
 \end{frame}
 
 \begin{frame}[fragile]{NiFi Ingestion Pipeline: Storage Finale e Handover ad Airflow}
-    \begin{columns}[c, onlytextwidth]
+    \begin{columns}[T]
         \begin{column}{0.71\textwidth}
             \begin{itemize}
                 \item \textbf{Storage Distribuito}: Scrittura dei file Parquet ottimizzati in HDFS o S3 a seconda della configurazione.
