@@ -343,22 +343,6 @@
     \includegraphics[width=0.9\textwidth,height=0.55\textheight,keepaspectratio]{../Results/charts/telemetry/emr/part_prun/metrics_emr_monthly_performance_part_prun_cropped.png}
 \end{frame}
 
-\end{document}
-
-%Ingestion Layer
-%    Overview del flusso NiFi: data-driven e elenco parametri del json di configurazione
-%   Estrazione, validazione (SHA-1) e smistamento iniziale dei file e biforcazione del flusso: salvataggio raw e inoltro al preprocessing 
-%    trasformazione e ottimizzazione in Parquet in cui mettiamo pure Partition Pruning e Predicate Pushdown
-%    Storage finale e chiusura del ciclo con chiamata HTTP a Airflow
-%Computation Layer
-%    Query 1 confronto codice RDD vs DataFrame vs SQL
-%    Query 2 confronto codice RDD vs DataFrame vs SQL
-%    Query 3 confronto codice RDD vs DataFrame vs SQL
-%    Slide jobListener e intercettazione degli eventi
-%Airflow
-%    EC2, EMR architettura
-%Metriche
-% Risultati Analitici
 \section{Risultati Analitici}
 
 \begin{frame}{Query 3: Scelta dell'Euristica e Approssimazione}
@@ -378,6 +362,51 @@
     \includegraphics[width=0.9\textwidth,height=0.45\textheight,keepaspectratio]{../Results/charts/result/Q3_percentiles_trend_AA.png}
 \end{frame}
 
-%Clustering
-%    Slide con risultati del clustering
-%Slide finale con risultati query 1 e 2
+\begin{frame}{Risultati Analitici: Airline Clustering (Q4)}
+    \begin{itemize}
+        \item \textbf{Model Selection}: Identificazione di \textbf{$K=3$} come numero ottimale di cluster tramite \textit{Silhouette Score}.
+        \item \textbf{Profilazione dei Cluster}:
+        \begin{itemize}
+            \item \textbf{Cluster 0 (Inefficienza)}: \texttt{AA, OH, F9}. Elevata propagazione dei ritardi e instabilità operativa.
+            \item \textbf{Cluster 1 (Sensibilità Esterna)}: \texttt{G4}. Forti ritardi meteorologici ma bassissimo tasso di cancellazione.
+            \item \textbf{Cluster 2 (Virtuosi)}: \texttt{DL, UA, WN}. Alta capacità di recupero in volo (\textit{Delay Makeup}) e stabilità.
+        \end{itemize}
+        \item \textbf{Visualizzazione}: Proiezione PCA bidimensionale (perdita di varianza fisiologica rispetto al modello ad alta dimensionalità).
+    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=0.48\textwidth,height=0.4\textheight,keepaspectratio]{../Results/charts/result/Q4_cluster_center.png}
+    \hfill
+    \includegraphics[width=0.48\textwidth,height=0.4\textheight,keepaspectratio]{../Results/charts/result/Q4_cluster_distribution.png}
+\end{frame}
+
+\begin{frame}{Risultati Analitici: Query 1 e Query 2}
+    \begin{itemize}
+        \item \textbf{Query 1 (Trend)}: Divergenza tra \textbf{Delta} (miglioramento costante, ritardi $<10$ min) e \textbf{American Airlines} (degrado progressivo e maggiori cancellazioni).
+        \item \textbf{Query 2 (Ranking)}:
+        \begin{itemize}
+            \item \textbf{PSA Airlines (OH)}: Peggior vettore per ritardo all'arrivo ($17.16$ min), causato da forte propagazione (\textit{late aircraft delay}).
+            \item \textbf{United (UA)}: Più efficiente tra i grandi vettori, ma penalizzato da fattori esterni (\textit{NAS delay}).
+        \end{itemize}
+        \item \textbf{Insight}: SAE decodifica con precisione le inefficienze strutturali vs eventi esterni.
+    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=0.49\textwidth,height=0.45\textheight,keepaspectratio]{../Results/charts/result/Q1_average_delay_trend.png}
+    \hfill
+    \includegraphics[width=0.49\textwidth,height=0.45\textheight,keepaspectratio]{../Results/charts/result/Q2_top10_arrival_delay.png}
+\end{frame}
+
+\begin{frame}{Conclusioni}
+    \begin{itemize}
+        \item \textbf{Modularità}: L'architettura disaccoppiata (NiFi-Airflow-Spark) garantisce scalabilità ed estensibilità.
+        \item \textbf{Efficienza}: Il formato Parquet e il Partition Pruning sono fondamentali per abbattere l'I/O overhead.
+        \item \textbf{Insight}: La piattaforma trasforma dataset massivi in profili operativi chiari per il business.
+        \item \textbf{Sviluppi Futuri}: Transizione verso un'architettura Lambda per il processamento in streaming real-time.
+    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=0.3\textwidth]{logos/logo_tor_vergata.png}
+\end{frame}
+
+\end{document}
