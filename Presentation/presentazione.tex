@@ -58,18 +58,48 @@
 % Extraction & Ingestion Layer
 \section{Extraction \& Ingestion Layer}
 
-\begin{frame}{NiFi Ingestion Pipeline: Approccio Data-Driven}
-    \begin{itemize}
-        \item \textbf{Design Data-Driven}: Pipeline stateless configurata dinamicamente tramite payload JSON iniettato all'avvio (\texttt{EvaluateJsonPath}).
-        \item \textbf{Parametri chiave del JSON}:
-        \begin{itemize}
-            \item \texttt{experiment.id}: Identificativo univoco del job.
-            \item \texttt{ingestion}: Parametri sorgente (URL HTTP, SHA-1 atteso).
-            \item \texttt{storage}: Percorsi dinamici per dati Raw e Preprocessed (HDFS/S3).
-            \item \texttt{processing.strategy}: Scelta della strategia di ottimizzazione (\texttt{PARTITION PRUNING} o \texttt{PREDICATE PUSHDOWN}).
-            \item \texttt{callback}: Configurazione per la notifica finale ad Airflow.
-        \end{itemize}
-    \end{itemize}
+\begin{frame}[fragile]{NiFi Ingestion Pipeline: Approccio Data-Driven}
+    \begin{columns}[T]
+        \begin{column}{0.52\textwidth}
+            \begin{itemize}
+                \item \textbf{Design Data-Driven}: Pipeline stateless configurata dinamicamente tramite payload JSON iniettato all'avvio.
+
+                \item \textbf{Ingestion \& Validazione}: \texttt{HandleHttpRequest} espone l'endpoint REST per l'avvio da Airflow, mentre \texttt{ValidateJson} esegue un controllo strutturale con schema rigoroso.
+
+                \item \textbf{Propagazione del Dato}: \texttt{EvaluateJsonPath} mappa le chiavi JSON in Attributi del FlowFile, guidando in modo stateless il routing e le decisioni future tramite metadati nativi.
+
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.45\textwidth}
+            \begin{block}{Payload JSON}
+                \begin{semiverbatim}\tiny
+\{
+    "job_id": "FLIGHT_INGEST_run_123",
+    "storage_raw": \{
+        "type": "HDFS",
+        "path": "/data/raw"
+    \},
+    "storage_preprocessed": \{
+        "type": "S3",
+        "bucket": "spark-flight-analysis",
+        "path": "data/conv"
+    \},
+    "processing": \{
+        "optimization_strategy": "PARTITION_..."
+    \},
+    "callback": \{
+        "url": "http://airflow.../variables/v",
+        "method": "PATCH",
+        "headers": \{
+            "Authorization": "Bearer eyJhbG..."
+        \}
+    \}
+\}
+                \end{semiverbatim}
+            \end{block}
+        \end{column}
+    \end{columns}
 \end{frame}
 
 \begin{frame}{Ingestion, Sicurezza e Gateway}
