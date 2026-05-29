@@ -860,16 +860,30 @@ protected List<Tuple2> runQueryRDD(...) \{
 
 \end{frame}
 
-\begin{frame}{Telemetria Netta: Custom Spark Listener}
+\begin{frame}{Monitoraggio e Raccolta Metriche di Performance}
+
     \begin{itemize}
-        \item \textbf{Obiettivo}: Misurazione rigorosa dei tempi di esecuzione per il benchmarking.
-        \item \textbf{JobTimerListener}:
+        \item \textbf{Architettura Centralizzata (\texttt{PerformanceMetrics})}:
         \begin{itemize}
-            \item Estensione di \texttt{SparkListener} per intercettare gli eventi del DAG Scheduler.
-            \item Monitoraggio di \texttt{onJobStart} e \texttt{onJobEnd}.
+            \item \textbf{Design Pattern Singleton}: Istanza unica globalmente sincronizzata (\texttt{getInstance()}) per raccogliere metriche in modo thread-safe durante il ciclo di vita dell'app.
+            \item \textbf{Struttura a Fasi}: Organizzazione temporale ordinata tramite \texttt{LinkedHashMap} per isolare i tempi dei macro-blocchi (\textit{LOADING, PROCESSING, SAVING}).
+            \item \textbf{Dual-Clock Tracking}: Separazione netta tra il tempo reale percepito (\textit{Wall-Clock Time}) e il tempo computazionale effettivo speso sui nodi cluster (\textit{Spark Execution Time}).
         \end{itemize}
-        \item \textbf{Precisione}: Eliminazione degli overhead di sistema, I/O Driver e task "lazy", garantendo metriche focalizzate puramente sul tempo di calcolo distribuito.
+
+        \vspace{0.4cm}
+
+        \item \textbf{Disaccoppiamento via Event-Driven Listening (\texttt{JobTimerListener})}:
+        \begin{itemize}
+            \item \textbf{Estensione del \texttt{SparkListener}}: Intercettazione nativa e asincrona del ciclo di esecuzione di Spark senza sporcare la logica algoritmica delle query.
+            \item \textbf{Metriche Granulari}:
+            \begin{itemize}
+                \item \textbf{Job \& Stage Level}: Tracciamento di ID, durate pure e tempi morti spesi nel garbage collector JVM (\textit{GC Time}).
+                \item \textbf{I/O \& Network Balance}: Misurazione al byte dei dati letti/scritti su file system e del carico di rete generato durante le fasi di \textit{Shuffle Read/Write}.
+                \item \textbf{Worker Profiling (\texttt{onTaskEnd})}: Profilazione distribuita per singolo Executor (CPU time, task count, deserializzazione) per individuare colli di bottiglia o fenomeni di \textit{Data Skew}.
+            \end{itemize}
+        \end{itemize}
     \end{itemize}
+
 \end{frame}
 
 \section{Airflow Orchestration}
