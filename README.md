@@ -5,7 +5,7 @@
 ---
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Apache_Spark-3.5.1-DF9A0A?logo=apachespark&style=for-the-badge" alt="Apache Spark" />
+  <img src="https://img.shields.io/badge/Apache_Spark-3.5.4-DF9A0A?logo=apachespark&style=for-the-badge" alt="Apache Spark" />
   <img src="https://img.shields.io/badge/Apache_Airflow-3.0.0-017A9B?logo=apacheairflow&style=for-the-badge" alt="Apache Airflow" />
   <img src="https://img.shields.io/badge/Apache_NiFi-Latest-728E9B?logo=apachenifi&logoColor=white&style=for-the-badge" alt="Apache NiFi" />
   <img src="https://img.shields.io/badge/CockroachDB-Latest-348540?logo=cockroachlabs&style=for-the-badge" alt="CockroachDB" />
