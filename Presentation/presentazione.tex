@@ -55,52 +55,76 @@
     \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../Report/graphs/sequence_diagram.png}
 \end{frame}
 
-% Data Extraction & Ingestion
-\section{Data Extraction \& Ingestion}
+% Extraction & Ingestion Layer
+\section{Extraction \& Ingestion Layer}
 
-\begin{frame}{Architettura Event-Driven della Pipeline NiFi}
+\begin{frame}{NiFi Ingestion Pipeline: Approccio Data-Driven}
     \begin{itemize}
-        \item \textbf{Panoramica}: Il flusso SAE\_Ingestion\_Pipeline è modulare e orchestrato esternamente tramite Apache Airflow.
-        \item \textbf{Innesco Dinamico}: La pipeline è data-driven. Si avvia con un payload JSON da cui estrae configurazioni vitali:
+        \item \textbf{Design Data-Driven}: Pipeline stateless configurata dinamicamente tramite payload JSON iniettato all'avvio (\texttt{EvaluateJsonPath}).
+        \item \textbf{Parametri chiave del JSON}:
         \begin{itemize}
-            \item Run ID ed Expected SHA-1
-            \item Percorsi e tipologia di storage
-            \item URL di callback
+            \item \texttt{experiment.id}: Identificativo univoco del job.
+            \item \texttt{ingestion}: Parametri sorgente (URL HTTP, SHA-1 atteso).
+            \item \texttt{storage}: Percorsi dinamici per dati Raw e Preprocessed (HDFS/S3).
+            \item \texttt{processing.strategy}: Scelta della strategia di ottimizzazione (\texttt{PARTITION PRUNING} o \texttt{PREDICATE PUSHDOWN}).
+            \item \texttt{callback}: Configurazione per la notifica finale ad Airflow.
         \end{itemize}
-        \item \textbf{Ruolo}: NiFi funge da middleware intelligente tra la sorgente dei dati e il Data Lake.
     \end{itemize}
 \end{frame}
 
-\begin{frame}{Estrazione, Validazione e Smistamento Iniziale}
+\begin{frame}{Ingestion, Sicurezza e Gateway}
     \begin{itemize}
-        \item \textbf{Unpacking \& Integrità}: I dati compressi vengono scompattati. Un check crittografico confronta l'hash SHA-1 con quello atteso per prevenire corruzioni.
-        \item \textbf{Routing Logico}: Separazione del flusso principale (voli) dai file di supporto (dizionari) per evitare congestioni.
-        \item \textbf{Filtraggio Preliminare}: Selezione dei soli file target (es. file \texttt{ONTIME\_REPORTING}) scartando i dati non pertinenti.
+        \item \textbf{Estrazione}: Ricezione e spacchettamento degli archivi (\texttt{UnpackContent}).
+        \item \textbf{Validazione SHA-1}:
+        \begin{itemize}
+            \item Controllo di integrità crittografica sui file estratti.
+            \item Confronto hash atteso vs calcolato (\texttt{CryptographicHashContent}).
+            \item Routing degli errori per isolare dati corrotti.
+        \end{itemize}
+        \item \textbf{Gateway \& Biforcazione}:
+        \begin{itemize}
+            \item \textbf{Ramo Raw}: Salvataggio as-is per garanzia del dato originale.
+            \item \textbf{Ramo Preprocessing}: Inoltro dei record validati alla trasformazione.
+        \end{itemize}
     \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=0.9\textwidth,height=0.45\textheight,keepaspectratio]{../Report/graphs/Nifi-Extract.png}
 \end{frame}
 
-\begin{frame}{Biforcazione: Salvataggio Raw e Inoltro al Processing}
+\begin{frame}{Preprocessing e Ottimizzazione in Parquet}
     \begin{itemize}
-        \item \textbf{Lo Split Logico}: Dopo la validazione e il filtraggio, il flusso si sdoppia seguendo il pattern Data Lake.
-        \item \textbf{Percorso A - Raw Data Storage}: I dati grezzi vengono salvati. Il sistema di destinazione (HDFS o S3) è deciso dinamicamente in base ai parametri del payload iniziale.
-        \item \textbf{Percorso B - Verso la Trasformazione}: Una copia viene instradata verso i moduli successivi per il filtraggio a livello di record e la conversione per l'analisi.
+        \item \textbf{Operatori NiFi per la Trasformazione}:
+        \begin{itemize}
+            \item \texttt{QueryRecord}/\texttt{UpdateRecord}: Filtraggio, casting e normalizzazione.
+            \item \texttt{LookupRecord}: Arricchimento dei dati via file dizionario.
+            \item \texttt{MergeRecord}: Prevenzione dello "Small Files Problem".
+        \end{itemize}
+        \item \textbf{Target Parquet}: Conversione con schema enforcement (Avro).
+        \item \textbf{Strategie di Ottimizzazione}:
+        \begin{itemize}
+            \item \textbf{Partition Pruning}: Generazione dinamica dei path (\texttt{UpdateAttribute}).
+            \item \textbf{Predicate Pushdown}: Ottimizzazione dei metadati per Spark.
+        \end{itemize}
     \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=0.9\textwidth,height=0.45\textheight,keepaspectratio]{../Report/graphs/Nifi-Convert.png}
 \end{frame}
 
-\begin{frame}{Trasformazione e Ottimizzazione in Parquet}
+\begin{frame}{Storage Finale e Handover ad Airflow}
     \begin{itemize}
-        \item \textbf{Merge \& Compattazione}: I dati CSV vengono accorpati per prevenire lo "Small Files Problem" penalizzante nei sistemi distribuiti.
-        \item \textbf{Conversione Parquet}: Conversione dei record nel formato colonnare Parquet, riducendo lo spazio e velocizzando le query analitiche.
-        \item \textbf{Preparazione per Spark}: Iniezione di attributi di ottimizzazione (\texttt{PARTITION\_PRUNING}, \texttt{PREDICATE\_PUSHDOWN}) per guidare l'engine di calcolo.
+        \item \textbf{Storage Distribuito}: Scrittura dei file Parquet ottimizzati in HDFS o S3.
+        \item \textbf{Notifica di Completamento}:
+        \begin{itemize}
+            \item Chiamata REST via \texttt{InvokeHTTP} (PATCH/POST) alle API di Airflow.
+            \item Handover del payload aggiornato con lo stato dell'elaborazione.
+        \end{itemize}
+        \item \textbf{Orchestrazione Analitica}: Sblocco automatico dei successivi job Spark in base alla strategia scelta.
     \end{itemize}
-\end{frame}
-
-\begin{frame}{Storage Finale e Chiusura del Ciclo}
-    \begin{itemize}
-        \item \textbf{Salvataggio Processed Data}: I file Parquet vengono salvati nello strato Silver del Data Lake, pronti per l'analisi.
-        \item \textbf{Chiusura (Finish\_AirFlow)}: NiFi notifica il completamento dell'ingestion tramite chiamata HTTP all'URL di callback.
-        \item \textbf{Orchestrazione}: Il segnale di successo (o errore) sblocca Airflow, permettendo l'avvio automatico dei successivi job di calcolo distribuito (Spark).
-    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=0.9\textwidth,height=0.45\textheight,keepaspectratio]{../Report/graphs/Nifi-Finalize.png}
 \end{frame}
 
 % Deployment
