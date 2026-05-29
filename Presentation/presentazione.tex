@@ -7,6 +7,7 @@
 \usepackage{graphicx}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{alltt}
 
 \definecolor{pyKeyword}{RGB}{0,90,180}
 \definecolor{pyString}{RGB}{3,110,10}
@@ -105,7 +106,7 @@
 
         \begin{column}{0.45\textwidth}
             \begin{block}{Payload JSON}
-                \begin{semiverbatim}\fontsize{4.5pt}{5.5pt}\selectfont
+                \begin{alltt}\fontsize{4.5pt}{5.5pt}\selectfont
 \{
     "job_id": "FLIGHT_INGEST_run_123",
     "ingestion": \{
@@ -131,7 +132,7 @@
         \}
     \}
 \}
-                \end{semiverbatim}
+                \end{alltt}
             \end{block}
         \end{column}
     \end{columns}
@@ -247,12 +248,12 @@
 
         \begin{column}{0.27\textwidth}
             \begin{block}{Payload JSON}
-                \begin{semiverbatim}\fontsize{4.5pt}{5.5pt}\selectfont
+                \begin{alltt}\fontsize{4.5pt}{5.5pt}\selectfont
 \{
     "key": "\$\{airflow.callback.variable_key\}",
     "value": "true"
 \}
-                \end{semiverbatim}
+                \end{alltt}
             \end{block}
         \end{column}
     \end{columns}
@@ -267,40 +268,157 @@
 %Computation Layer
 \section{Computation Layer}
 
-\begin{frame}{Architettura e Astrazione: BaseQuery}
-    \begin{itemize}
-        \item \textbf{Ecosistema Spark}: Implementazione in Java utilizzando Spark Core (RDD), Spark SQL e MLlib.
-        \item \textbf{Design Pattern Template Method}:
-        \begin{itemize}
-            \item Astrazione tramite la classe \texttt{BaseQuery.java}.
-            \item Garanzia di coerenza tra i diversi paradigmi di esecuzione.
-        \end{itemize}
-        \item \textbf{Benchmarking Comparativo}: Ogni analisi implementa obbligatoriamente tre motori:
-        \begin{itemize}
-            \item \textbf{RDD API}: Controllo granulare su partizioni e serializzazione.
-            \item \textbf{DataFrame API}: Astrazione strutturata (DSL) e ottimizzazione \textit{Catalyst}.
-            \item \textbf{Spark SQL}: Interfaccia dichiarativa per logiche di business complesse.
-        \end{itemize}
-    \end{itemize}
+\begin{frame}{Configurazione a Start-Time \& Design Pattern Java}
+    
+    \begin{columns}[T]
+        
+        \begin{column}{0.71\textwidth}
+            \begin{itemize}
+                \item \textbf{Parametrizzazione a Start-Time}:
+                \begin{itemize}
+                    \item \textbf{Configurazione senza ricompilazione}: Gestione via YAML (\texttt{ApplicationConfig}) con override da \textbf{CLI}.
+                    \item \textbf{Selezione del Backend}: Scelta a runtime del paradigma di esecuzione (\textit{RDD, DataFrame, SQL}), del partizionamento e delle strategie di calcolo (KLL vs T-Digest).
+                    \item \textbf{Storage Agnostic}: Disaccoppiamento totale dell'I/O su HDFS, S3, Local FS, PostgreSQL, CockroachDB, Redis e HBase.
+                \end{itemize}
+        
+                %\vspace{0.2cm}
+        
+                \item \textbf{Design Pattern Java}:
+                \begin{itemize}
+                    \item \textbf{Template Method}: \texttt{BaseQuery.execute()} standardizza e unifica l'intero ciclo di vita del job Spark.
+                    \item \textbf{Factory \& Repository}: \texttt{FlightRepositoryFactory} gestisce il polimorfismo, astraendo le connessioni ai database.
+                    \item \textbf{Strategy}: Switch dinamico degli algoritmi di calcolo (\texttt{PercentileSketch}) e delle modalità di esecuzione.
+                    \item \textbf{Singleton}: \texttt{PerformanceMetrics} come punto unico e centralizzato di raccolta delle metriche di esecuzione.
+                \end{itemize}
+            \end{itemize}
+        \end{column}
+        
+        \hfill
+        
+        \begin{column}{0.27\textwidth}
+            \centering
+            % \includegraphics[width=\linewidth, keepaspectratio]{percorso/tua-immagine}
+        \end{column}
+
+    \end{columns}
+
 \end{frame}
 
-\begin{frame}{Query 1: Analisi Mensile delle Performance}
-    \begin{itemize}
-        \item \textbf{Obiettivo}: Ritardi medi, estremi e tasso di cancellazione mensile per vettore.
-        \item \textbf{RDD (\texttt{aggregateByKey})}:
-        \begin{itemize}
-            \item \texttt{pairs.aggregateByKey(zeroValue, seqOp, combOp)}
-            \item Aggregazione locale su partizione per minimizzare il traffico di rete.
-        \end{itemize}
-        \item \textbf{DataFrame (DSL)}:
-        \begin{itemize}
-            \item \texttt{flights.groupBy("MONTH", "CARRIER").agg(avg("DELAY"), ...)}
-        \end{itemize}
-        \item \textbf{Spark SQL}:
-        \begin{itemize}
-            \item \texttt{SELECT MONTH, AVG(DELAY) FROM flights GROUP BY MONTH, ...}
-        \end{itemize}
-    \end{itemize}
+\begin{frame}[fragile]{Query 1: Analisi Mensile Performance — RDD API}
+
+    \vspace{-0.2cm}
+    {\scriptsize \textbf{Obiettivo:} Aggregare i voli 2025 (AA vs DL) su base mensile. Calcolare min, max, media di \textit{DEP\_DELAY} (solo voli non cancellati) e il \textit{CANCELLATION RATE}.}
+    
+    \vspace{0.1cm}
+    \hrule
+    \vspace{0.1cm}
+
+    \textbf{\footnotesize Paradigm 1: RDD API}
+
+    \begin{alltt}\fontsize{6pt}{7pt}\selectfont
+datasetVoli
+    .mapToPair(v -> ([v.airline, v.month], v))
+    .aggregateByKey(
+        zeroValue: [sommaRitardi: 0, maxDelay: -\(\infty\), minDelay: +\(\infty\), nonCancellati: 0, totali: 0],
+        combiner: (acc, v) -> \{
+            acc.totali += 1
+            if !v.cancelled then
+                acc.sommaRitardi += v.dep_delay
+                acc.maxDelay = MAX(acc.maxDelay, v.dep_delay)
+                acc.minDelay = MIN(acc.minDelay, v.dep_delay)
+                acc.nonCancellati += 1
+            return acc
+        \},
+        reducer: (a1, a2) -> \{
+            a1.sommaRitardi += a2.sommaRitardi
+            a1.maxDelay = MAX(a1.maxDelay, a2.maxDelay)
+            a1.minDelay = MIN(a1.minDelay, a2.minDelay)
+            a1.nonCancellati += a2.nonCancellati
+            a1.totali += a2.totali
+            return a1
+        \}
+    )
+    .map(tuple -> \{
+        media = ROUND(tuple.sommaRitardi / tuple.nonCancellati, 2)
+        tasso_canc = ROUND((tuple.totali - tuple.nonCancellati) / tuple.totali * 100, 2)
+        return Row(tuple.month, tuple.airline, media, tuple.minDelay, tuple.maxDelay, tasso_canc)
+    \})
+    \end{alltt}
+
+\end{frame}
+
+\begin{frame}[fragile]{Query 1: Analisi Mensile Performance — High-Level APIs}
+
+    \vspace{-0.2cm}
+    {\scriptsize \textbf{Obiettivo:} Aggregare i voli 2025 (AA vs DL) su base mensile. Calcolare min, max, media di \textit{DEP\_DELAY} (solo voli non cancellati) e il \textit{CANCELLATION RATE}.}
+    
+    \vspace{0.1cm}
+    \hrule
+    \vspace{0.2cm}
+
+    \begin{columns}[T]
+
+        % COLONNA 1: DATAFRAME
+        \begin{column}{0.48\textwidth}
+            \textbf{\footnotesize Paradigm 2: DataFrame API (DSL)}
+            \vspace{0.1cm}
+            
+            \begin{alltt}\fontsize{5.5pt}{6.5pt}\selectfont
+datasetVoli
+  .groupBy("MONTH", "OP_UNIQUE_CARRIER")
+  .agg(
+      round(avg(when(col("CANCELLED") == 0,
+          col("DEP_DELAY"))), 2)
+          .as("dep-delay-mean"),
+      round(min(when(col("CANCELLED") == 0,
+          col("DEP_DELAY"))), 2)
+          .as("dep-delay-min"),
+      round(max(when(col("CANCELLED") == 0,
+          col("DEP_DELAY"))), 2)
+          .as("dep-delay-max"),
+      
+      round(sum(col("CANCELLED")) /
+          count("*") * 100, 2)
+          .as("cancellation-rate")
+  )
+  .withColumnRenamed("MONTH", "month")
+  .withColumnRenamed("OP_UNIQUE_CARRIER",
+      "airline")
+            \end{alltt}
+        \end{column}
+
+        \hfill
+
+        % COLONNA 2: SPARK SQL
+        \begin{column}{0.48\textwidth}
+            \textbf{\footnotesize Paradigm 3: Spark SQL}
+            \vspace{0.1cm}
+            
+            \begin{alltt}\fontsize{5.5pt}{6.5pt}\selectfont
+SELECT 
+  MONTH             AS month, 
+  OP_UNIQUE_CARRIER AS airline,
+  
+    ROUND(AVG(CASE WHEN CANCELLED == 0 
+        THEN DEP_DELAY END), 2) 
+        AS \textquotesingle dep-delay-mean\textquotesingle,
+    ROUND(MIN(CASE WHEN CANCELLED == 0 
+        THEN DEP_DELAY END), 2) 
+        AS \textquotesingle dep-delay-min\textquotesingle,
+    ROUND(MAX(CASE WHEN CANCELLED == 0 
+        THEN DEP_DELAY END), 2) 
+        AS \textquotesingle dep-delay-max\textquotesingle,
+  
+    ROUND((SUM(CANCELLED) / COUNT(*)) 
+        * 100, 2) AS \textquotesingle cancellation-rate\textquotesingle
+
+FROM flights
+GROUP BY MONTH, OP_UNIQUE_CARRIER
+            \end{alltt}
+        \end{column}
+
+    \end{columns}
+
 \end{frame}
 
 \begin{frame}{Query 2: Ranking dei Ritardi in Arrivo}
@@ -354,7 +472,7 @@
     \end{itemize}
 \end{frame}
 
-\begin{frame}{Machine Learning: Airline Clustering}
+\begin{frame}[fragile]{Machine Learning: Airline Clustering}
     \begin{itemize}
         \item \textbf{Obiettivo}: Raggruppamento di vettori aerei con profili operativi simili.
         \item \textbf{Modello K-Means} (\textit{Spark MLlib}):
