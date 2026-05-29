@@ -677,36 +677,187 @@ globalMinMax = spark.sql(globalSql);
 
 \end{frame}
 
-\begin{frame}{Gestione Percentili in RDD: Strategie di Sketching}
-    \begin{itemize}
-        \item \textbf{Design Pattern Strategy}: Implementazione di algoritmi probabilistici in RDD.
-        \item \textbf{T-Digest Strategy}:
-        \begin{itemize}
-            \item Struttura dati basata su centroidi pesati.
-            \item Alta precisione nelle "code" della distribuzione (ritardi estremi).
-        \end{itemize}
-        \item \textbf{KLL Sketch Strategy}:
-        \begin{itemize}
-            \item Algoritmo stream-based con footprint di memoria fisso e predicibile.
-            \item Merge delle strutture dati tra worker senza trasferimento di interi dataset.
-        \end{itemize}
-    \end{itemize}
+\begin{frame}[fragile]{Algoritmi Percentili a Confronto: T-Digest vs KLL Sketch}
+
+    \begin{columns}[T]
+
+        % COLONNA 1: T-DIGEST
+        \begin{column}{0.49\textwidth}
+            \textbf{\footnotesize T-Digest (\textit{Ted Dunning's Library})}
+            \vspace{0.1cm}
+            \begin{itemize}
+                \item \textbf{Accuratezza}: $\sim$1\% di errore relativo nelle \textbf{code (tails)} del dataset.
+                \item \textbf{Parametro chiave}: \texttt{COMPRESSION = 100.0}.
+                \item \textbf{Meccanismo di Serializzazione}:
+            \end{itemize}
+            
+            \begin{alltt}\fontsize{5pt}{6pt}\selectfont
+// Inizializzazione e manipolazione buffer
+MergingDigest digest = new MergingDigest(100.0);
+
+// Update / Merge a runtime via ByteBuffer
+MergingDigest.fromBytes(ByteBuffer.wrap(state));
+
+// Compattazione in byte array
+ByteBuffer buf = ByteBuffer.allocate(
+    digest.smallByteSize()
+);
+digest.asSmallBytes(buf);
+return buf.array();
+            \end{alltt}
+            \vspace{0.1cm}
+            \begin{itemize}
+                \item[\(\rightarrow\)] \scriptsize Ottimo per l'analisi accurata degli estremi (es. ritardi record).
+            \end{itemize}
+        \end{column}
+
+        \hfill
+
+        % COLONNA 2: KLL SKETCH
+        \begin{column}{0.49\textwidth}
+            \textbf{\footnotesize KLL Sketch (\textit{Apache DataSketches})}
+            \vspace{0.1cm}
+            \begin{itemize}
+                \item \textbf{Accuratezza}: Errore di rango normalizzato bi-laterale di $\sim$1.65\% (simile a \texttt{percentile\_approx}).
+                \item \textbf{Parametro chiave}: Default \texttt{k=200} (bilanciamento ottimale).
+                \item \textbf{Meccanismo di Serializzazione}:
+            \end{itemize}
+            
+            \begin{alltt}\fontsize{5pt}{6pt}\selectfont
+// Allocazione nativa in Heap
+KllDoublesSketch.newHeapInstance();
+
+// Ricostruzione stato tramite org.apache.datasketches.memory.Memory
+KllDoublesSketch.heapify(Memory.wrap(state));
+
+// Export diretto nativo ultra-veloce
+return sketch.toByteArray();
+
+
+// Estrazione quantili con criterio inclusivo
+sketch.getQuantile(q, QuantileSearchCriteria.INCLUSIVE);
+            \end{alltt}
+            \vspace{0.1cm}
+            \begin{itemize}
+                \item[\(\rightarrow\)] \scriptsize Più veloce nell'I/O grazie all'integrazione nativa con lo strato \texttt{Memory}.
+            \end{itemize}
+        \end{column}
+
+    \end{columns}
+
 \end{frame}
 
-\begin{frame}[fragile]{Machine Learning: Airline Clustering}
+\begin{frame}[fragile]{Query 4: Airline Clustering — ML Pipeline}
+
+    \vspace{-0.2cm}
+    {\scriptsize \textbf{Obiettivo:} Individuare gruppi di vettori aerei con comportamenti e cause di ritardo simili sui top 15 carrier stabili, standardizzando lo spazio multivariato ed applicando l'algoritmo K-Means.}
+    
+    \vspace{0.1cm}
+    \hrule
+    \vspace{0.2cm}
+
     \begin{itemize}
-        \item \textbf{Obiettivo}: Raggruppamento di vettori aerei con profili operativi simili.
-        \item \textbf{Modello K-Means} (\textit{Spark MLlib}):
-        \begin{itemize}
-            \item Inizializzazione tramite \texttt{k-means||} (variante parallela di k-means++).
-            \item Convergenza distribuita sui centroidi dei cluster.
-        \end{itemize}
-        \item \textbf{Data Pipeline}:
-        \begin{itemize}
-            \item \textbf{VectorAssembler}: Consolidamento delle features analitiche.
-            \item \textbf{StandardScaler}: Normalizzazione fondamentale per la distanza Euclidea.
-        \end{itemize}
+        \item \textbf{1. Feature Ingestion \& Vettorizzazione}: 
+        Estrazione di 11 metriche aggregate (medie, deviazioni standard dei ritardi, tassi di cancellazione e deviazioni). Assemblaggio dello spazio multivariato tramite \texttt{VectorAssembler}.
+        
+        \item \textbf{2. Z-Score Normalization}: 
+        Uso di \texttt{StandardScaler} per azzerare la media (\texttt{withMean}) e scalare sulla varianza unitaria (\texttt{withStd}) per rendere confrontabili metriche a scale diverse.
     \end{itemize}
+
+    \vspace{0.1cm}
+    \textbf{\footnotesize Selezione del K Ottimale tramite Silhouette Analysis (MLlib DataFrame API)}
+    \vspace{0.1cm}
+
+    \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
+// Analisi iterativa dello score di Silhouette per minimizzare l'arbitrarietà di K
+ClusteringEvaluator evaluator = new ClusteringEvaluator()
+    .setFeaturesCol("features").setPredictionCol("prediction").setMetricName("silhouette");
+
+int bestK = 2; double bestScore = -1.0;
+
+for (int k = 2; k <= 5; k++) \{
+    KMeans kmeans = new KMeans().setK(k).setSeed(42L).setInitMode("k-means||");
+    KMeansModel model = kmeans.fit(scaledData);
+    
+    double score = evaluator.evaluate(model.transform(scaledData));
+    if (score > bestScore) \{ 
+        bestScore = score; bestK = k; 
+    \}
+\}
+// Esecuzione finale del fit di K-Means sul "bestK" identificato
+KMeansModel modelFinal = new KMeans().setK(bestK).setSeed(42L).fit(scaledData);
+    \end{alltt}
+
+\end{frame}
+
+\begin{frame}[fragile]{Query 4: Airline Clustering — Proiezione e Vincoli Architetturali}
+
+    \vspace{-0.2cm}
+    {\scriptsize \textbf{Obiettivo:} Individuare gruppi di vettori aerei con comportamenti e cause di ritardo simili sui top 15 carrier stabili, standardizzando lo spazio multivariato ed applicando l'algoritmo K-Means.}
+    
+    \vspace{0.1cm}
+    \hrule
+    \vspace{0.2cm}
+
+    \begin{columns}[T]
+
+        % COLONNA 1: PCA
+        \begin{column}{0.51\textwidth}
+            \textbf{\footnotesize Proiezione PCA per la Visualizzazione}
+            \vspace{0.1cm}
+            \begin{itemize}
+                \item Il clustering avviene nello spazio nativo a 11 dimensioni.
+                \item \textbf{Principal Component Analysis}: Applicata \textit{dopo} il clustering esclusivamente per mappare i punti e i centroidi su un piano cartesiano 2D (\texttt{CHART\_DIMENSION = 2}).
+            \end{itemize}
+            
+            \begin{alltt}\fontsize{5pt}{6pt}\selectfont
+PCA pca = new PCA()
+    .setInputCol("features")
+    .setOutputCol("pca_features")
+    .setK(2);
+PCAModel pcaModel = pca.fit(finalPredictions);
+
+// Espansione del vettore nei componenti x e y
+Dataset<Row> finalOutput = appendPcaColumns(
+    pcaModel.transform(finalPredictions)
+);
+            \end{alltt}
+        \end{column}
+
+        \hfill
+
+        % COLONNA 2: API CONSTRAINT
+        \begin{column}{0.47\textwidth}
+            \textbf{\footnotesize Vincoli e Limitazioni delle API}
+            \vspace{0.1cm}
+            \begin{itemize}
+                \item \textbf{Esclusività del DataFrame}: L'intero algoritmo si appoggia sulle interfacce di \texttt{org.apache.spark.ml}, strutturate per operare su contesti fortemente tipizzati di tipo \texttt{Dataset<Row>}.
+            \end{itemize}
+            
+            \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
+@Override 
+protected List<Row> runQuerySQL(...) \{ 
+    throw new 
+      UnsupportedOperationException(
+      "Clustering only via DataFrame"); 
+\}
+
+@Override 
+protected List<Tuple2> runQueryRDD(...) \{ 
+    throw new 
+      UnsupportedOperationException(
+      "Clustering only via DataFrame"); 
+\}
+            \end{alltt}
+            \vspace{0.05cm}
+            \begin{itemize}
+                \item Lo strato SQL non possiede costrutti dichiarativi per pipeline iterative.
+                \item L'API RDD (ML legacy) è deprecata e priva di ottimizzazioni di memoria basate su Catalyst.
+            \end{itemize}
+        \end{column}
+
+    \end{columns}
+
 \end{frame}
 
 \begin{frame}{Telemetria Netta: Custom Spark Listener}
