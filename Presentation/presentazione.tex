@@ -265,6 +265,41 @@
     \end{itemize}
 \end{frame}
 
+\section{Airflow Orchestration}
+
+\begin{frame}{Orchestrazione End-to-End: \texttt{flight\_analysis}}
+    \begin{itemize}
+        \item \textbf{Obiettivo}: Orchestrare l'intera pipeline, dall'ingestion in NiFi all'elaborazione Spark.
+        \item \textbf{Funzionalità}: Utilizzo della \textbf{TaskFlow API} (Airflow 3.0) per gestire il branching condizionale (\textit{Ingest Only, Execution Only, Both}).
+        \item \textbf{Sincronizzazione}: Uso di \texttt{Task.Sensor} per attendere il completamento asincrono di NiFi.
+    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../Report/graphs/Nifi-Finalize.png}
+\end{frame}
+
+\begin{frame}{Benchmarking su Cluster Self-Hosted: \texttt{ec2\_benchmark}}
+    \begin{itemize}
+        \item \textbf{Obiettivo}: Raccolta automatizzata delle metriche prestazionali in ambiente EC2.
+        \item \textbf{Logica}: Loop sequenziale per eseguire tutte le 12 combinazioni (4 Query $\times$ 3 Backend).
+        \item \textbf{Integrazione}: Sottomissione dei job tramite \texttt{LivyOperator} verso il Master Node.
+    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../Report/graphs/Nifi-Finalize.png}
+\end{frame}
+
+\begin{frame}{Benchmarking su AWS Managed: \texttt{emr\_benchmark}}
+    \begin{itemize}
+        \item \textbf{Obiettivo}: Benchmarking su cluster \textbf{AWS EMR} per testare la scalabilità managed.
+        \item \textbf{Logica}: Esecuzione delle 12 combinazioni analitiche in modalità sequenziale.
+        \item \textbf{Integrazione Cloud}: Uso di \texttt{EmrAddStepsOperator} per l'injection dei job e \texttt{EmrStepSensor} per il monitoraggio dello stato degli step.
+    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../Report/graphs/Nifi-Finalize.png}
+\end{frame}
+
 \end{document}
 
 %Ingestion Layer
@@ -278,8 +313,6 @@
 %    Query 3 confronto codice RDD vs DataFrame vs SQL
 %    Slide jobListener e intercettazione degli eventi
 %Airflow
-%    Una slide per ogni DAG
-%Deployment
 %    EC2, EMR architettura
 %Metriche
 %    Come sono state svolte le misurazioni
