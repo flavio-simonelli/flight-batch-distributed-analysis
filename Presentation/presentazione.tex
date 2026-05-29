@@ -52,18 +52,27 @@
     \tableofcontents[hideallsubsections]
 \end{frame}
 
-% Big Data Stack
-\section{Big Data Stack}
-\begin{frame}{Big Data Stack}
-    \centering
-    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../Report/graphs/BigDataStack.png}
-\end{frame}
 
-% Flow Diagram
-\section{Flow Diagram}
-\begin{frame}{Flow Diagram}
-    \centering
-    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../Report/graphs/InteractionDiagram.png}
+% Big Data Stack & Flow Diagram
+\section{Architettura e Flusso}
+\begin{frame}{Big Data Stack \& Flow Diagram}
+    \begin{columns}[c, onlytextwidth]
+        % Colonna Sinistra: Big Data Stack
+        \begin{column}{0.48\textwidth}
+            \centering
+            \includegraphics[width=\linewidth,height=0.7\textheight,keepaspectratio]{../Report/graphs/BigDataStack.png}
+            \vskip 0.2cm
+            \small \textbf{Vista Statica}: Componenti del Big Data Stack
+        \end{column}
+
+        % Colonna Destra: Flow Diagram
+        \begin{column}{0.48\textwidth}
+            \centering
+            \includegraphics[width=\linewidth,height=0.7\textheight,keepaspectratio]{../Report/graphs/InteractionDiagram.png}
+            \vskip 0.2cm
+            \small \textbf{Vista Dinamica}: Flusso di interazione dei componenti
+        \end{column}
+    \end{columns}
 \end{frame}
 
 % Sequence diagram
@@ -413,19 +422,17 @@ watch_step = EmrStepSensor(
         \centering
         \textbf{EC2 Deployment}
         \vfill
-        \includegraphics[width=\linewidth,height=0.6\textheight,keepaspectratio]{../Report/graphs/DeploymentView.png}
-        
+        \includegraphics[width=\linewidth,height=0.6\textheight,keepaspectratio]{../Report/graphs/DeploymentView-EC2}
+
         \column{0.48\textwidth}
         \centering
         \textbf{EMR Deployment}
         \vfill
-        \begin{center}
-            \Large [Immagine in arrivo]
-        \end{center}
+        \includegraphics[width=\linewidth,height=0.6\textheight,keepaspectratio]{../Report/graphs/DeploymentView-EMR}
     \end{columns}
 \end{frame}
 
-\section{Valutazione Sperimentale: Metriche}
+\section{Valutazione Sperimentale}
 \begin{frame}{Metodologia di Benchmarking}
     \begin{itemize}
         \item \textbf{Rigore Statistico}: Ogni combinazione (Query $\times$ Backend) è stata eseguita \textbf{5 volte} per garantire la stabilità delle misurazioni.
@@ -500,9 +507,9 @@ watch_step = EmrStepSensor(
     \end{itemize}
     \vfill
     \centering
-    \includegraphics[width=0.48\textwidth,height=0.4\textheight,keepaspectratio]{../Results/charts/result/Q4_cluster_center.png}
+    \includegraphics[width=0.38\textwidth,keepaspectratio]{../Results/charts/result/Q4_cluster_distribution}
     \hfill
-    \includegraphics[width=0.48\textwidth,height=0.4\textheight,keepaspectratio]{../Results/charts/result/Q4_cluster_distribution.png}
+    \includegraphics[width=0.57\textwidth,keepaspectratio]{../Results/charts/result/Q4_cluster_center}
 \end{frame}
 
 \begin{frame}{Risultati Analitici: Query 1 e Query 2}
