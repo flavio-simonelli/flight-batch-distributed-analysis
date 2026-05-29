@@ -330,26 +330,113 @@
     \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../Report/graphs/Nifi-Finalize.png}
 \end{frame}
 
-\end{document}
+\section{Valutazione Sperimentale: Metriche}
+\begin{frame}{Metodologia di Benchmarking}
+    \begin{itemize}
+        \item \textbf{Rigore Statistico}: Ogni combinazione (Query $\times$ Backend) è stata eseguita \textbf{5 volte} per garantire la stabilità delle misurazioni.
+        \item \textbf{Telemetria}: Utilizzo del \texttt{JobTimerListener} (SparkListener) per isolare il \textit{tempo netto di calcolo} dall'overhead di sistema.
+        \item \textbf{Hardware e Infrastruttura}:
+        \begin{itemize}
+            \item \textbf{EC2 (Self-Hosted)}: Master + Worker su istanze \texttt{t3.small}. Storage basato su HDFS.
+            \item \textbf{EMR (Cloud-Native)}: 1 Master + 3 Core su istanze \texttt{m6g.xlarge} (ARM64). Architettura \textit{Shared-Nothing} su Amazon S3 via \texttt{s3a://}.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
 
-%Ingestion Layer
-%    Overview del flusso NiFi: data-driven e elenco parametri del json di configurazione
-%   Estrazione, validazione (SHA-1) e smistamento iniziale dei file e biforcazione del flusso: salvataggio raw e inoltro al preprocessing 
-%    trasformazione e ottimizzazione in Parquet in cui mettiamo pure Partition Pruning e Predicate Pushdown
-%    Storage finale e chiusura del ciclo con chiamata HTTP a Airflow
-%Computation Layer
-%    Query 1 confronto codice RDD vs DataFrame vs SQL
-%    Query 2 confronto codice RDD vs DataFrame vs SQL
-%    Query 3 confronto codice RDD vs DataFrame vs SQL
-%    Slide jobListener e intercettazione degli eventi
-%Airflow
-%    EC2, EMR architettura
-%Metriche
-%    Come sono state svolte le misurazioni
-%    Partition Pruning vs Predicate Pushdown (migliore partition pruning)
-%    RDD vs DataFrame vs SQL: 4 Boxplot con tempi di esecuzione per ogni query
-%    EC2 vs EMR
-%La scelta dell'euristica per la query 3
-%Clustering
-%    Slide con risultati del clustering
-%Slide finale con risultati query 1 e 2
+\begin{frame}{Confronto API: RDD vs DataFrame vs SQL}
+    \begin{itemize}
+        \item \textbf{DataFrame/SQL}: Massima stabilità e minori tempi di esecuzione nelle query di aggregazione (es. Q1) grazie all'ottimizzatore \textit{Catalyst} e alla gestione binaria off-heap di \textit{Tungsten}.
+        \item \textbf{RDD}: Più performante in task atomici e logiche distribuite custom (Q2 e Q3), nonostante il maggior overhead di serializzazione JVM.
+    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=0.9\textwidth,height=0.55\textheight,keepaspectratio]{../Results/charts/telemetry/ec2/part_prun/metrics_ec2_monthly_performance_part_prun_cropped.png}
+\end{frame}
+
+\begin{frame}{Ottimizzazione I/O: Pruning vs Pushdown}
+    \begin{itemize}
+        \item \textbf{Partition Pruning}: Strategia ottimale. Esclude i dati a livello di file system, garantendo un I/O bilanciato e l'assenza di \textit{Workload Skew} sui nodi.
+        \item \textbf{Predicate Pushdown}: Richiede la scansione dei metadati Parquet. Genera un volume di lettura superiore e tende a sovraccaricare singoli nodi (colli di bottiglia in fase di scansione).
+    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=0.9\textwidth,height=0.55\textheight,keepaspectratio]{../Results/charts/telemetry/ec2/pred_push/metrics_ec2_monthly_performance_pred_push_cropped.png}
+\end{frame}
+
+\begin{frame}{Overhead Infrastrutturale: EC2 vs EMR}
+    \begin{itemize}
+        \item \textbf{Standalone (EC2)}: Overhead di \textit{Wall Clock Time} significativo dovuto ai tempi di negoziazione delle risorse, bootstrap del cluster e latenze di rete HDFS.
+        \item \textbf{Managed (EMR)}: L'integrazione nativa con S3 e la gestione elastica delle istanze contraggono sensibilmente i "tempi morti", massimizzando l'efficienza temporale del job.
+    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=0.9\textwidth,height=0.55\textheight,keepaspectratio]{../Results/charts/telemetry/emr/part_prun/metrics_emr_monthly_performance_part_prun_cropped.png}
+\end{frame}
+
+\section{Risultati Analitici}
+
+\begin{frame}{Query 3: Scelta dell'Euristica e Approssimazione}
+    \begin{itemize}
+        \item \textbf{Problema}: Calcolo dei percentili esatti su RDD (\texttt{groupByKey}) causa \textit{Out Of Memory} e colli di bottiglia distribuiti.
+        \item \textbf{Soluzione}: Implementazione di algoritmi di \textbf{Quantile Sketching} (T-Digest e KLL).
+        \item \textbf{Analisi Comparativa}:
+        \begin{itemize}
+            \item \textbf{KLL Sketch}: Elevata precisione teorica, ma footprint di memoria superiore.
+            \item \textbf{T-Digest}: Ottimizzato per le "code" della distribuzione e più performante.
+        \end{itemize}
+        \item \textbf{Validazione}: Risultati pressoché identici sul dataset reale; la convergenza dei dati giustifica l'uso di algoritmi probabilistici.
+        \item \textbf{Scelta Finale}: \textbf{T-Digest} per il miglior rapporto performance/accuratezza nel dominio aeronautico.
+    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=0.9\textwidth,height=0.45\textheight,keepaspectratio]{../Results/charts/result/Q3_percentiles_trend_AA.png}
+\end{frame}
+
+\begin{frame}{Risultati Analitici: Airline Clustering (Q4)}
+    \begin{itemize}
+        \item \textbf{Model Selection}: Identificazione di \textbf{$K=3$} come numero ottimale di cluster tramite \textit{Silhouette Score}.
+        \item \textbf{Profilazione dei Cluster}:
+        \begin{itemize}
+            \item \textbf{Cluster 0 (Inefficienza)}: \texttt{AA, OH, F9}. Elevata propagazione dei ritardi e instabilità operativa.
+            \item \textbf{Cluster 1 (Sensibilità Esterna)}: \texttt{G4}. Forti ritardi meteorologici ma bassissimo tasso di cancellazione.
+            \item \textbf{Cluster 2 (Virtuosi)}: \texttt{DL, UA, WN}. Alta capacità di recupero in volo (\textit{Delay Makeup}) e stabilità.
+        \end{itemize}
+        \item \textbf{Visualizzazione}: Proiezione PCA bidimensionale (perdita di varianza fisiologica rispetto al modello ad alta dimensionalità).
+    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=0.48\textwidth,height=0.4\textheight,keepaspectratio]{../Results/charts/result/Q4_cluster_center.png}
+    \hfill
+    \includegraphics[width=0.48\textwidth,height=0.4\textheight,keepaspectratio]{../Results/charts/result/Q4_cluster_distribution.png}
+\end{frame}
+
+\begin{frame}{Risultati Analitici: Query 1 e Query 2}
+    \begin{itemize}
+        \item \textbf{Query 1 (Trend)}: Divergenza tra \textbf{Delta} (miglioramento costante, ritardi $<10$ min) e \textbf{American Airlines} (degrado progressivo e maggiori cancellazioni).
+        \item \textbf{Query 2 (Ranking)}:
+        \begin{itemize}
+            \item \textbf{PSA Airlines (OH)}: Peggior vettore per ritardo all'arrivo ($17.16$ min), causato da forte propagazione (\textit{late aircraft delay}).
+            \item \textbf{United (UA)}: Più efficiente tra i grandi vettori, ma penalizzato da fattori esterni (\textit{NAS delay}).
+        \end{itemize}
+        \item \textbf{Insight}: SAE decodifica con precisione le inefficienze strutturali vs eventi esterni.
+    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=0.49\textwidth,height=0.45\textheight,keepaspectratio]{../Results/charts/result/Q1_average_delay_trend.png}
+    \hfill
+    \includegraphics[width=0.49\textwidth,height=0.45\textheight,keepaspectratio]{../Results/charts/result/Q2_top10_arrival_delay.png}
+\end{frame}
+
+\begin{frame}{Conclusioni}
+    \begin{itemize}
+        \item \textbf{Modularità}: L'architettura disaccoppiata (NiFi-Airflow-Spark) garantisce scalabilità ed estensibilità.
+        \item \textbf{Efficienza}: Il formato Parquet e il Partition Pruning sono fondamentali per abbattere l'I/O overhead.
+        \item \textbf{Insight}: La piattaforma trasforma dataset massivi in profili operativi chiari per il business.
+        \item \textbf{Sviluppi Futuri}: Transizione verso un'architettura Lambda per il processamento in streaming real-time.
+    \end{itemize}
+    \vfill
+    \centering
+    \includegraphics[width=0.3\textwidth]{logos/logo_tor_vergata.png}
+\end{frame}
+
+\end{document}
