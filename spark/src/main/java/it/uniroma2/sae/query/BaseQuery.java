@@ -61,8 +61,6 @@ public abstract class BaseQuery {
             spark.sparkContext().setLogLevel("WARN");
 
             spark.conf().set("spark.sql.adaptive.enabled", "true");
-            // Set shuffle partitions to 1 to eliminate task startup overhead for small shuffles.
-            // spark.conf().set("spark.sql.shuffle.partitions", "1");
 
             // Add the custom SparkListener for job timing
             JobTimerListener timer = new JobTimerListener();
