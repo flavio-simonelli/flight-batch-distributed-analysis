@@ -421,22 +421,128 @@ GROUP BY MONTH, OP_UNIQUE_CARRIER
 
 \end{frame}
 
-\begin{frame}{Query 2: Ranking dei Ritardi in Arrivo}
-    \begin{itemize}
-        \item \textbf{Obiettivo}: Identificazione delle Top-K tratte più critiche.
-        \item \textbf{RDD (Manuale)}:
-        \begin{itemize}
-            \item \texttt{mapToPair().reduceByKey().takeOrdered(10, comparator)}
-        \end{itemize}
-        \item \textbf{DataFrame (Window Functions)}:
-        \begin{itemize}
-            \item \texttt{agg(avg("ARR\_DELAY")).orderBy(col("mean").desc()).limit(10)}
-        \end{itemize}
-        \item \textbf{Spark SQL}:
-        \begin{itemize}
-            \item \texttt{SELECT carrier, AVG(ARR\_DELAY) as mean FROM flights ... ORDER BY mean DESC LIMIT 10}
-        \end{itemize}
-    \end{itemize}
+\begin{frame}[fragile]{Query 2: Top 10 Ritardi e Scomposizione Cause — RDD API}
+
+    \vspace{-0.2cm}
+    {\scriptsize \textbf{Obiettivo:} Classifica prime 10 compagnie per \textit{ARR\_DELAY} medio decrescente (solo voli non cancellati/deviati con conteggio $\ge$ 500), mostrando l'incidenza media di ciascuna causa di ritardo.}
+    
+    \vspace{0.1cm}
+    \hrule
+    \vspace{0.1cm}
+
+    \textbf{\footnotesize Paradigm 1: RDD API}
+
+    \begin{alltt}\fontsize{5.5pt}{6.5pt}\selectfont
+validFlights = flights.filter(f -> getSafe(f, CANCELLED) == 0 && getSafe(f, DIVERTED) == 0)
+
+reducedRDD = validFlights
+    .mapToPair(f -> (f.getString(OP_UNIQUE_CARRIER), f))
+    .aggregateByKey(
+        zeroValue: new double[7],  // [0: Count, 1: Arr, 2: Carrier, 3: Weather, 4: NAS, 5: Security, 6: Late]
+        combiner: (acc, f) -> \{
+            acc[0] += 1.0;          acc[1] += getSafe(f, ARR_DELAY);
+            acc[2] += getSafe(f, CARRIER_DELAY); acc[3] += getSafe(f, WEATHER_DELAY);
+            acc[4] += getSafe(f, NAS_DELAY);     acc[5] += getSafe(f, SECURITY_DELAY);
+            acc[6] += getSafe(f, LATE_AIRCRAFT_DELAY);
+            return acc;
+        \},
+        reducer: (acc1, acc2) -> \{
+            for (int i=0; i<7; i++) acc1[i] += acc2[i];
+            return acc1;
+        \}
+    )
+
+processedRDD = reducedRDD
+    .filter(t -> t._2[0] >= 500.0)
+    .map(t -> \{
+        double c = t._2[0];
+        return RowFactory.create(t._1, (long)c, t._2[1]/c, t._2[2]/c, t._2[3]/c, t._2[4]/c, t._2[5]/c, t._2[6]/c);
+    \})
+
+// Ordinamento globale ed estrazione Top 10 (Volume di record trascurabile post-filtraggio)
+sortedRDD = processedRDD.sortBy(r -> r.getDouble(2), false, partitions)
+top10RDD  = sortedRDD.zipWithIndex().filter(t -> t._2 < 10).map(t -> t._1).coalesce(1)
+    \end{alltt}
+
+\end{frame}
+
+\begin{frame}[fragile]{Query 2: Top 10 Ritardi e Scomposizione Cause — High-Level APIs}
+
+    \vspace{-0.2cm}
+    {\scriptsize \textbf{Obiettivo:} Classifica prime 10 compagnie per \textit{ARR\_DELAY} medio decrescente (solo voli non cancellati/deviati con conteggio $\ge$ 500), mostrando l'incidenza media di ciascuna causa di ritardo.}
+    
+    \vspace{0.1cm}
+    \hrule
+    \vspace{0.2cm}
+
+    \begin{columns}[T]
+
+        % COLONNA 1: DATAFRAME
+        \begin{column}{0.49\textwidth}
+            \textbf{\footnotesize Paradigm 2: DataFrame API (DSL)}
+            \vspace{0.1cm}
+            
+            \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
+flights
+  .filter(col("CANCELLED").equalTo(0)
+    .and(col("DIVERTED").equalTo(0)))
+  .groupBy("OP_UNIQUE_CARRIER")
+  .agg(
+    count("*").as("num_flights"),
+    round(avg(coalesce(col("ARR_DELAY"), 
+      lit(0))), 2).as("arrdelay_mean"),
+    round(avg(coalesce(col("CARRIER_DELAY"), 
+      lit(0))), 2).as("carrier_mean"),
+    round(avg(coalesce(col("WEATHER_DELAY"), 
+      lit(0))), 2).as("weather_mean"),
+    round(avg(coalesce(col("NAS_DELAY"), 
+      lit(0))), 2).as("nas_mean"),
+    round(avg(coalesce(col("SECURITY_DELAY"), 
+      lit(0))), 2).as("security_mean"),
+    round(avg(coalesce(col("LATE_AIRCRAFT_DELAY"), 
+      lit(0))), 2).as("late_aircraft_mean")
+  )
+  .withColumnRenamed("OP_UNIQUE_CARRIER", "carrier")
+  .filter(col("num_flights").geq(500))
+  .orderBy(col("arrdelay_mean").desc())
+  .limit(10)
+            \end{alltt}
+        \end{column}
+
+        \hfill
+
+        % COLONNA 2: SPARK SQL
+        \begin{column}{0.49\textwidth}
+            \textbf{\footnotesize Paradigm 3: Spark SQL}
+            \vspace{0.1cm}
+            
+            \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
+SELECT 
+  OP_UNIQUE_CARRIER AS carrier, 
+  COUNT(*)          AS num_flights, 
+  ROUND(AVG(COALESCE(ARR_DELAY, 0)), 2) 
+    AS arrdelay_mean, 
+  ROUND(AVG(COALESCE(CARRIER_DELAY, 0)), 2) 
+    AS carrier_delay_mean, 
+  ROUND(AVG(COALESCE(WEATHER_DELAY, 0)), 2) 
+    AS weather_delay_mean, 
+  ROUND(AVG(COALESCE(NAS_DELAY, 0)), 2) 
+    AS nas_delay_mean, 
+  ROUND(AVG(COALESCE(SECURITY_DELAY, 0)), 2) 
+    AS security_delay_mean, 
+  ROUND(AVG(COALESCE(LATE_AIRCRAFT_DELAY, 0)), 2) 
+    AS late_aircraft_delay_mean 
+FROM flights 
+WHERE CANCELLED = 0 AND DIVERTED = 0 
+GROUP BY OP_UNIQUE_CARRIER 
+HAVING num_flights >= 500 
+ORDER BY arrdelay_mean DESC 
+LIMIT 10
+            \end{alltt}
+        \end{column}
+
+    \end{columns}
+
 \end{frame}
 
 \begin{frame}{Query 3: Distribuzione e Percentili}
