@@ -53,22 +53,21 @@
 \end{frame}
 
 
-% Big Data Stack & Flow Diagram
-\section{Architettura e Flusso}
+\section{Architettura e Flusso}\label{sec:architecture_and_flow}
+
+% Big Data Stack e Diagramma di Flusso
 \begin{frame}{Big Data Stack \& Flow Diagram}
     \begin{columns}[c, onlytextwidth]
-        % Colonna Sinistra: Big Data Stack
         \begin{column}{0.48\textwidth}
             \centering
-            \includegraphics[width=\linewidth,height=0.7\textheight,keepaspectratio]{../Report/graphs/BigDataStack.png}
+            \includegraphics[width=\linewidth,height=0.7\textheight,keepaspectratio]{../Report/graphs/BigDataStack}
             \vskip 0.2cm
             \small \textbf{Vista Statica}: Componenti del Big Data Stack
         \end{column}
 
-        % Colonna Destra: Flow Diagram
         \begin{column}{0.48\textwidth}
             \centering
-            \includegraphics[width=\linewidth,height=0.7\textheight,keepaspectratio]{../Report/graphs/InteractionDiagram.png}
+            \includegraphics[width=\linewidth,height=0.7\textheight,keepaspectratio]{../Report/graphs/InteractionDiagram}
             \vskip 0.2cm
             \small \textbf{Vista Dinamica}: Flusso di interazione dei componenti
         \end{column}
@@ -76,50 +75,59 @@
 \end{frame}
 
 % Sequence diagram
-\section{Sequence Diagram}
 \begin{frame}{Sequence Diagram}
     \centering
-    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../Report/graphs/sequence_diagram.png}
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../Report/graphs/sequence_diagram}
 \end{frame}
 
 % Extraction & Ingestion Layer
-\section{Extraction \& Ingestion Layer}
+\section{Extraction \& Ingestion Layer}\label{sec:nifi_pipeline}
 
-\begin{frame}[fragile]{NiFi Ingestion Pipeline: Approccio Data-Driven}
-    \begin{columns}[T]
+\begin{frame}[fragile]{NiFi Ingestion Pipeline: REST Trigger}
+    \begin{columns}[c, onlytextwidth]
         \begin{column}{0.52\textwidth}
             \begin{itemize}
-                \item \textbf{Design Data-Driven}: Pipeline stateless configurata dinamicamente tramite payload JSON iniettato all'avvio.
+                \item \textbf{Design Data-Driven}: Pipeline stateless configurata dinamicamente in base al payload JSON iniettato all'avvio da Airflow.
 
-                \item \textbf{Ingestion \& Validazione}: \texttt{HandleHttpRequest} espone l'endpoint REST per l'avvio da Airflow, mentre \texttt{ValidateJson} esegue un controllo strutturale con schema rigoroso.
+                \item \textbf{Ingestion \& Validazione}:
+                \begin{itemize}
+                    \item \texttt{HandleHttpRequest}: espone l'endpoint REST per intercettare l'avvio.
+                    \item \texttt{ValidateJson}: esegue il controllo strutturale rigoroso tramite JSON Schema.
+                \end{itemize}
 
-                \item \textbf{Propagazione del Dato}: \texttt{EvaluateJsonPath} mappa le chiavi JSON in Attributi del FlowFile, guidando in modo stateless il routing e le decisioni future tramite metadati nativi.
-
+                \item \textbf{Propagazione del Dato}:
+                \begin{itemize}
+                    \item \texttt{EvaluateJsonPath}: estrae e mappa le chiavi JSON in Attributi del FlowFile.
+                    \item I metadati nativi guidano il routing successivo in logica completamente stateless.
+                \end{itemize}
             \end{itemize}
         \end{column}
 
         \begin{column}{0.45\textwidth}
             \begin{block}{Payload JSON}
-                \begin{semiverbatim}\tiny
+                \begin{semiverbatim}\fontsize{4.5pt}{5.5pt}\selectfont
 \{
     "job_id": "FLIGHT_INGEST_run_123",
-    "storage_raw": \{
-        "type": "HDFS",
-        "path": "/data/raw"
+    "ingestion": \{
+        "source_type": "HTTP",
+        "http_url": "http://www.ce.uniroma2.it/courses/sabd2526/...",
+        "expected_sha1": "17be276b72bd987e72598b0ea4907c3b19350606"
     \},
+    "storage_raw": \{ "type": "HDFS", "path": "/data/raw" \},
     "storage_preprocessed": \{
         "type": "S3",
         "bucket": "spark-flight-analysis",
         "path": "data/conv"
     \},
-    "processing": \{
-        "optimization_strategy": "PARTITION_..."
-    \},
+    "processing": \{ "optimization_strategy": "PARTITION_PRUNING" \},
     "callback": \{
-        "url": "http://airflow.../variables/v",
+        "run_id": "run_123",
+        "variable_key": "nifi_done_run_123",
+        "url": "http://.../variables/nifi_done_run_123",
         "method": "PATCH",
         "headers": \{
-            "Authorization": "Bearer eyJhbG..."
+            "Authorization": "Bearer eyJhbG...",
+            "Content-Type": "application/json"
         \}
     \}
 \}
@@ -127,61 +135,133 @@
             \end{block}
         \end{column}
     \end{columns}
+
+    % \vspace{0.15cm}
+
+    \begin{center}
+        \includegraphics[width=0.85\textwidth,height=0.22\textheight,keepaspectratio]{../Presentation/graphs/nifi-airflow-trigger}
+    \end{center}
 \end{frame}
 
-\begin{frame}{Ingestion, Sicurezza e Gateway}
-    \begin{itemize}
-        \item \textbf{Estrazione}: Ricezione e spacchettamento degli archivi (\texttt{UnpackContent}).
-        \item \textbf{Validazione SHA-1}:
-        \begin{itemize}
-            \item Controllo di integrità crittografica sui file estratti.
-            \item Confronto hash atteso vs calcolato (\texttt{CryptographicHashContent}).
-            \item Routing degli errori per isolare dati corrotti.
-        \end{itemize}
-        \item \textbf{Gateway \& Biforcazione}:
-        \begin{itemize}
-            \item \textbf{Ramo Raw}: Salvataggio as-is per garanzia del dato originale.
-            \item \textbf{Ramo Preprocessing}: Inoltro dei record validati alla trasformazione.
-        \end{itemize}
-    \end{itemize}
+\begin{frame}{NiFi Ingestion Pipeline: Download, Decompressione e Routing}
+    \begin{columns}[T]
+        \begin{column}{0.78\textwidth}
+            \begin{itemize}
+                \item \textbf{Estrazione e Validazione}:
+                \begin{itemize}
+                    \item Download automatico del dataset compresso dall'origine.
+                    \item Controllo di integrità tramite \texttt{CryptographicHashContent}.
+                \end{itemize}
+
+                \item \textbf{Decompressione e Filtraggio}:
+                \begin{itemize}
+                    \item Spacchettamento via \texttt{CompressContent} e \texttt{UnpackContent}.
+                    \item Ispezione e routing selettivo dei soli CSV d'interesse.
+                \end{itemize}
+
+                \item \textbf{Gateway \& Biforcazione}:
+                \begin{itemize}
+                    \item \textbf{Ramo Raw}: Salvataggio as-is per garanzia del dato originale.
+                    \item \textbf{Ramo Preprocessing}: Inoltro dei file d'interesse alla trasformazione.
+                \end{itemize}
+
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.25\textwidth}
+            \vspace{0.4cm}
+            \centering
+            \includegraphics[width=1\linewidth]{../Presentation/graphs/nifi-decompress}
+        \end{column}
+    \end{columns}
+
     \vfill
-    \centering
-    \includegraphics[width=0.9\textwidth,height=0.45\textheight,keepaspectratio]{../Report/graphs/Nifi-Extract.png}
+
+    \begin{center}
+        \includegraphics[width=0.85\textwidth,height=0.38\textheight,keepaspectratio]{../Report/graphs/Nifi-Extract}
+    \end{center}
 \end{frame}
 
-\begin{frame}{Preprocessing e Ottimizzazione in Parquet}
-    \begin{itemize}
-        \item \textbf{Operatori NiFi per la Trasformazione}:
-        \begin{itemize}
-            \item \texttt{QueryRecord}/\texttt{UpdateRecord}: Filtraggio, casting e normalizzazione.
-            \item \texttt{LookupRecord}: Arricchimento dei dati via file dizionario.
-            \item \texttt{MergeRecord}: Prevenzione dello "Small Files Problem".
-        \end{itemize}
-        \item \textbf{Target Parquet}: Conversione con schema enforcement (Avro).
-        \item \textbf{Strategie di Ottimizzazione}:
-        \begin{itemize}
-            \item \textbf{Partition Pruning}: Generazione dinamica dei path (\texttt{UpdateAttribute}).
-            \item \textbf{Predicate Pushdown}: Ottimizzazione dei metadati per Spark.
-        \end{itemize}
-    \end{itemize}
-    \vfill
-    \centering
-    \includegraphics[width=0.9\textwidth,height=0.45\textheight,keepaspectratio]{../Report/graphs/Nifi-Convert.png}
+% Slide senza diagramma logico
+\begin{frame}{NiFi Ingestion Pipeline: Preprocessing, Ottimizzazione e Handover}
+
+    % Primo blocco: Allineato in alto [T] per mantenere il testo ordinato
+    \begin{columns}[T, onlytextwidth]
+        \begin{column}{0.79\textwidth}
+            \begin{itemize}
+                \item \textbf{Imputazione e Sanitizzazione} - \texttt{ScriptedTransformRecord}:
+                \begin{itemize}
+                    \item Imputazione condizionale a zero dei valori nulli sulle cause di ritardo.
+                    \item Correzione e normalizzazione dei valori negativi sporchi.
+                \end{itemize}
+
+                \item \textbf{Data Quality \& Filtraggio Selettivo} - \texttt{QueryRecord}:
+                \begin{itemize}
+                    \item Scarto dei record con chiavi primarie nulle o dati temporali mancanti.
+                    \item Isolamento dei voli cancellati con orario di partenza presente.
+                    \item Eliminazione dei record con anomalie logiche sulle metriche di ritardo.
+                \end{itemize}
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.20\textwidth}
+            \vspace{0.1cm}
+            \centering
+            \includegraphics[width=\linewidth]{../Presentation/graphs/nifi-transformation}
+        \end{column}
+    \end{columns}
+
+
+    % Secondo blocco: Allineato al centro [c] per centrare l'immagine rispetto al testo
+    \begin{columns}[c, onlytextwidth]
+        \begin{column}{0.60\textwidth}
+            \begin{itemize}
+                \item \textbf{Strategie di Conversione e Ottimizzazione}:
+                \begin{itemize}
+                    \item \textbf{Partition Pruning}: Il processore \texttt{PartitionRecord} converte in Parquet partizionando per chiavi temporali e carrier, permettendo a Spark l'esclusione di intere directory in lettura.
+                    \item \textbf{Predicate Pushdown}: Il modulo \texttt{ConvertRecord} serializza in Parquet iniettando i metadati statistici nel file per consentire a Spark il filtraggio diretto a livello di storage.
+                \end{itemize}
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.38\textwidth}
+            \centering
+            \includegraphics[width=\linewidth, keepaspectratio]{../Report/graphs/Nifi-Convert}
+        \end{column}
+    \end{columns}
+
 \end{frame}
 
-\begin{frame}{Storage Finale e Handover ad Airflow}
-    \begin{itemize}
-        \item \textbf{Storage Distribuito}: Scrittura dei file Parquet ottimizzati in HDFS o S3.
-        \item \textbf{Notifica di Completamento}:
-        \begin{itemize}
-            \item Chiamata REST via \texttt{InvokeHTTP} (PATCH/POST) alle API di Airflow.
-            \item Handover del payload aggiornato con lo stato dell'elaborazione.
-        \end{itemize}
-        \item \textbf{Orchestrazione Analitica}: Sblocco automatico dei successivi job Spark in base alla strategia scelta.
-    \end{itemize}
-    \vfill
-    \centering
-    \includegraphics[width=0.9\textwidth,height=0.45\textheight,keepaspectratio]{../Report/graphs/Nifi-Finalize.png}
+\begin{frame}[fragile]{NiFi Ingestion Pipeline: Storage Finale e Handover ad Airflow}
+    \begin{columns}[c, onlytextwidth]
+        \begin{column}{0.71\textwidth}
+            \begin{itemize}
+                \item \textbf{Storage Distribuito}: Scrittura dei file Parquet ottimizzati in HDFS o S3 a seconda della configurazione.
+                \item \textbf{Notifica di Completamento}:
+                \begin{itemize}
+                    \item Chiamata HTTP PATCH via \texttt{InvokeHTTP} alle API di Airflow.
+                    \item L'url di callback viene fornito nel payload di attivazione.
+                \end{itemize}
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.27\textwidth}
+            \begin{block}{Payload JSON}
+                \begin{semiverbatim}\fontsize{4.5pt}{5.5pt}\selectfont
+\{
+    "key": "\$\{airflow.callback.variable_key\}",
+    "value": "true"
+\}
+                \end{semiverbatim}
+            \end{block}
+        \end{column}
+    \end{columns}
+
+    % \vspace{0.15cm}
+
+    \begin{center}
+        \includegraphics[width=0.85\textwidth,height=0.50\textheight,keepaspectratio]{../Report/graphs/Nifi-Finalize}
+    \end{center}
 \end{frame}
 
 %Computation Layer
@@ -207,7 +287,7 @@
 \begin{frame}{Query 1: Analisi Mensile delle Performance}
     \begin{itemize}
         \item \textbf{Obiettivo}: Ritardi medi, estremi e tasso di cancellazione mensile per vettore.
-        \item \textbf{RDD (\texttt{aggregateByKey})}: 
+        \item \textbf{RDD (\texttt{aggregateByKey})}:
         \begin{itemize}
             \item \texttt{pairs.aggregateByKey(zeroValue, seqOp, combOp)}
             \item Aggregazione locale su partizione per minimizzare il traffico di rete.
@@ -414,8 +494,9 @@ watch_step = EmrStepSensor(
     \end{columns}
 \end{frame}
 
+\section{Valutazione Sperimentale}\label{sec:experimental_evaluation}
+
 % Deployment
-\section{Deployment}
 \begin{frame}{Deployment}
     \begin{columns}[T]
         \column{0.48\textwidth}
@@ -432,7 +513,6 @@ watch_step = EmrStepSensor(
     \end{columns}
 \end{frame}
 
-\section{Valutazione Sperimentale}
 \begin{frame}{Metodologia di Benchmarking}
     \begin{itemize}
         \item \textbf{Rigore Statistico}: Ogni combinazione (Query $\times$ Backend) è stata eseguita \textbf{5 volte} per garantire la stabilità delle misurazioni.
