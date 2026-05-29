@@ -545,21 +545,136 @@ LIMIT 10
 
 \end{frame}
 
-\begin{frame}{Query 3: Distribuzione e Percentili}
-    \begin{itemize}
-        \item \textbf{Obiettivo}: Statistiche orarie (Q1, Mediana, Q3).
-        \item \textbf{RDD (La sfida)}: \texttt{groupByKey()} su milioni di record causerebbe OOM.
-        \item \textbf{DataFrame / SQL (Approssimazione)}:
-        \begin{itemize}
-            \item \texttt{agg(expr("percentile\_approx(DEP\_DELAY, 0.5)"))}
-            \item Uso dell'algoritmo nativo Greenwald-Khanna per stime efficienti.
-        \end{itemize}
-        \item \textbf{Soluzione RDD Custom}:
-        \begin{itemize}
-            \item \texttt{PercentileSketch sketch = PercentileSketch.from(config)}
-            \item Integrazione di T-Digest e KLL per calcolo distribuito e mergeable.
-        \end{itemize}
-    \end{itemize}
+\begin{frame}[fragile]{Query 3: Percentili Orari e Min/Max Globali — RDD API}
+
+    \vspace{-0.2cm}
+    {\scriptsize \textbf{Obiettivo:} Calcolo dei percentili (25, 50, 75, 90) del \textit{DEP\_DELAY} per fascia oraria (24h) tramite algoritmi di sketch integrati (\textit{KLL/t-digest}) e calcolo parallelo di min/max globali per vettore (AA, DL, UA, WN).}
+    
+    \vspace{0.1cm}
+    \hrule
+    \vspace{0.1cm}
+
+    \textbf{\footnotesize Paradigm 1: RDD API (Dual-Pipeline Architecture)}
+
+    \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
+// Subset condiviso e mantenuto in memoria per evitare scansioni multiple
+validFlights = flights.filter(f -> f.getDouble(CANCELLED) == 0.0 && !f.isNullAt(DEP_DELAY)).cache()
+
+% Pipeline 1: Calcolo Percentili Orari tramite Sketch distribuiti
+PercentileSketch sketch = PercentileSketch.from(config.getPercentileAlgorithm())
+hourlyRows = validFlights
+    .filter(f -> !f.isNullAt(CRS_DEP_TIME))
+    .mapToPair(f -> \{
+        int hour = (f.getInt(CRS_DEP_TIME) / 100) % 24;
+        return new Tuple2<>(new Tuple2<>(f.getString(CARRIER), hour), f.getDouble(DEP_DELAY));
+    \})
+    .combineByKey(sketch::init, sketch::update, sketch::merge)
+    .map(t -> \{
+        double[] q = sketch.getQuantiles(t._2, 0.25, 0.50, 0.75, 0.90);
+        return RowFactory.create(t._1._1, t._1._2, round2(q[0]), round2(q[1]), round2(q[2]), round2(q[3]));
+    \})
+
+% Pipeline 2: Aggregazione Globale Min/Max per Compagnia (Evitando overhead di array transienti)
+globalRows = validFlights
+    .mapToPair(f -> new Tuple2<>(f.getString(CARRIER), f))
+    .aggregateByKey(
+        zeroValue: new double[]\{Double.MAX_VALUE, -Double.MAX_VALUE\},
+        combiner: (acc, f) -> \{
+            double d = f.getDouble(DEP_DELAY);
+            acc[0] = Math.min(acc[0], d); acc[1] = Math.max(acc[1], d);
+            return acc;
+        \},
+        reducer: (a1, a2) -> \{
+            a1[0] = Math.min(a1[0], a2[0]); a1[1] = Math.max(a1[1], a2[1]);
+            return a1;
+        \}
+    ).map(t -> RowFactory.create(t._1, t._2[0], t._2[1]))
+    \end{alltt}
+
+\end{frame}
+
+\begin{frame}[fragile]{Query 3: Percentili Orari e Min/Max Globali — High-Level APIs}
+
+    \vspace{-0.2cm}
+    {\scriptsize \textbf{Obiettivo:} Calcolo dei percentili (25, 50, 75, 90) del \textit{DEP\_DELAY} per fascia oraria (24h) tramite algoritmi di sketch integrati (\textit{KLL/t-digest}) e calcolo parallelo di min/max globali per vettore (AA, DL, UA, WN).}
+    
+    \vspace{0.1cm}
+    \hrule
+    \vspace{0.2cm}
+
+    \begin{columns}[T]
+
+        % COLONNA 1: DATAFRAME
+        \begin{column}{0.49\textwidth}
+            \textbf{\footnotesize Paradigm 2: DataFrame API (DSL)}
+            \vspace{0.1cm}
+            
+            \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
+flights.cache()
+
+// Pipeline 1: Percentili orari approssimati
+hourlyStats = flights
+  .filter(col("CANCELLED").equalTo(0))
+  .withColumn("hour", 
+    col("CRS_DEP_TIME").divide(100).cast("int"))
+  .groupBy("OP_UNIQUE_CARRIER", "hour")
+  .agg(
+    round(expr("percentile_approx(DEP_DELAY, 0.25)"), 2).as("p25"),
+    round(expr("percentile_approx(DEP_DELAY, 0.50)"), 2).as("p50"),
+    round(expr("percentile_approx(DEP_DELAY, 0.75)"), 2).as("p75"),
+    round(expr("percentile_approx(DEP_DELAY, 0.90)"), 2).as("p90")
+  )
+  .withColumnRenamed("OP_UNIQUE_CARRIER", "airline")
+
+// Pipeline 2: Min/Max assoluti
+globalMinMax = flights
+  .groupBy("OP_UNIQUE_CARRIER")
+  .agg(
+    min("DEP_DELAY").as("min_delay"),
+    max("DEP_DELAY").as("max_delay")
+  )
+  .withColumnRenamed("OP_UNIQUE_CARRIER", "airline")
+            \end{alltt}
+        \end{column}
+
+        \hfill
+
+        % COLONNA 2: SPARK SQL
+        \begin{column}{0.49\textwidth}
+            \textbf{\footnotesize Paradigm 3: Spark SQL}
+            \vspace{0.1cm}
+            
+            \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
+flights.cache()
+
+// Pipeline 1: Stima quantili con funzioni built-in
+String hourlySql = 
+  "SELECT OP_UNIQUE_CARRIER as airline, " +
+  "CAST(CRS_DEP_TIME / 100 AS INT) AS hour, " +
+  "ROUND(percentile_approx(DEP_DELAY, 0.25), 2) AS p25, " +
+  "ROUND(percentile_approx(DEP_DELAY, 0.50), 2) AS p50, " +
+  "ROUND(percentile_approx(DEP_DELAY, 0.75), 2) AS p75, " +
+  "ROUND(percentile_approx(DEP_DELAY, 0.90), 2) AS p90 " +
+  "FROM flights " +
+  "WHERE CANCELLED = 0 " +
+  "GROUP BY OP_UNIQUE_CARRIER, hour";
+
+hourlyStats = spark.sql(hourlySql);
+
+// Pipeline 2: Estremi globali
+String globalSql = 
+  "SELECT OP_UNIQUE_CARRIER as airline, " +
+  "MIN(DEP_DELAY) AS min_delay, " +
+  "MAX(DEP_DELAY) AS max_delay " +
+  "FROM flights " +
+  "GROUP BY OP_UNIQUE_CARRIER";
+
+globalMinMax = spark.sql(globalSql);
+            \end{alltt}
+        \end{column}
+
+    \end{columns}
+
 \end{frame}
 
 \begin{frame}{Gestione Percentili in RDD: Strategie di Sketching}
