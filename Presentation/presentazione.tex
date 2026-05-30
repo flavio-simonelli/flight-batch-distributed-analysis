@@ -391,51 +391,8 @@
 
 \begin{frame}[fragile]{Query 1: Analisi Mensile Performance — RDD API}
 
-    \vspace{-0.2cm}
-    {\scriptsize \textbf{Obiettivo:} Aggregare i voli 2025 (AA vs DL) su base mensile. Calcolare min, max, media di \textit{DEP\_DELAY} (solo voli non cancellati) e il \textit{CANCELLATION RATE}.}
-    
-    \vspace{0.1cm}
-    \hrule
-    \vspace{0.1cm}
-
-    \textbf{\footnotesize Paradigm 1: RDD API}
-
-    \begin{alltt}\fontsize{6pt}{7pt}\selectfont
-datasetVoli
-    .mapToPair(v -> ([v.airline, v.month], v))
-    .aggregateByKey(
-        zeroValue: [sommaRitardi: 0, maxDelay: -\(\infty\), minDelay: +\(\infty\), nonCancellati: 0, totali: 0],
-        combiner: (acc, v) -> \{
-            acc.totali += 1
-            if !v.cancelled then
-                acc.sommaRitardi += v.dep_delay
-                acc.maxDelay = MAX(acc.maxDelay, v.dep_delay)
-                acc.minDelay = MIN(acc.minDelay, v.dep_delay)
-                acc.nonCancellati += 1
-            return acc
-        \},
-        reducer: (a1, a2) -> \{
-            a1.sommaRitardi += a2.sommaRitardi
-            a1.maxDelay = MAX(a1.maxDelay, a2.maxDelay)
-            a1.minDelay = MIN(a1.minDelay, a2.minDelay)
-            a1.nonCancellati += a2.nonCancellati
-            a1.totali += a2.totali
-            return a1
-        \}
-    )
-    .map(tuple -> \{
-        media = ROUND(tuple.sommaRitardi / tuple.nonCancellati, 2)
-        tasso_canc = ROUND((tuple.totali - tuple.nonCancellati) / tuple.totali * 100, 2)
-        return Row(tuple.month, tuple.airline, media, tuple.minDelay, tuple.maxDelay, tasso_canc)
-    \})
-    \end{alltt}
-
-\end{frame}
-
-\begin{frame}[fragile]{Query 1: Analisi Mensile Performance — RDD API}
-
     \vspace{-0.3cm}
-    \begin{exampleblock}{\footnotesize Obiettivo Analisi}
+    \begin{exampleblock}{\footnotesize Obiettivo}
         \scriptsize Aggregare i voli 2025 (AA vs DL) su base mensile. Calcolare min, max, media di \textit{DEP\_DELAY} (solo voli non cancellati) e il \textit{CANCELLATION RATE}.
     \end{exampleblock}
     
@@ -473,7 +430,7 @@ datasetVoli
 \begin{frame}[fragile]{Query 1: Analisi Mensile Performance — High-Level APIs}
 
     \vspace{-0.3cm}
-    \begin{exampleblock}{\footnotesize Obiettivo Analisi}
+    \begin{exampleblock}{\footnotesize Obiettivo}
         \scriptsize Aggregare i voli 2025 (AA vs DL) su base mensile. Calcolare min, max, media di \textit{DEP\_DELAY} e il \textit{CANCELLATION RATE}.
     \end{exampleblock}
     
@@ -529,66 +486,55 @@ GROUP BY MONTH, OP_UNIQUE_CARRIER
 
 \begin{frame}[fragile]{Query 2: Top 10 Ritardi e Scomposizione Cause — RDD API}
 
-    \vspace{-0.2cm}
-    {\scriptsize \textbf{Obiettivo:} Classifica prime 10 compagnie per \textit{ARR\_DELAY} medio decrescente (solo voli non cancellati/deviati con conteggio $\ge$ 500), mostrando l'incidenza media di ciascuna causa di ritardo.}
+    \vspace{-0.3cm}
+    \begin{exampleblock}{\footnotesize Obiettivo}
+        \scriptsize Classifica prime 10 compagnie per \textit{ARR\_DELAY} medio decrescente (voli non cancellati/deviati con conteggio $\ge$ 500), mostrando l'incidenza media di ciascuna causa di ritardo.
+    \end{exampleblock}
     
-    \vspace{0.1cm}
-    \hrule
-    \vspace{0.1cm}
+    \vspace{-0.2cm}
 
-    \textbf{\footnotesize Paradigm 1: RDD API}
-
-    \begin{alltt}\fontsize{5.5pt}{6.5pt}\selectfont
+    % Usiamo il rddcodebox a tutta larghezza visto il volume del codice
+    \begin{rddcodebox}{Paradigm 1: Low-Level RDD API}
 validFlights = flights.filter(f -> getSafe(f, CANCELLED) == 0 && getSafe(f, DIVERTED) == 0)
-
 reducedRDD = validFlights
     .mapToPair(f -> (f.getString(OP_UNIQUE_CARRIER), f))
     .aggregateByKey(
         zeroValue: new double[7],  // [0: Count, 1: Arr, 2: Carrier, 3: Weather, 4: NAS, 5: Security, 6: Late]
-        combiner: (acc, f) -> \{
-            acc[0] += 1.0;          acc[1] += getSafe(f, ARR_DELAY);
-            acc[2] += getSafe(f, CARRIER_DELAY); acc[3] += getSafe(f, WEATHER_DELAY);
-            acc[4] += getSafe(f, NAS_DELAY);     acc[5] += getSafe(f, SECURITY_DELAY);
+        combiner: (acc, f) -> {
+            acc[0] += 1.0;                       acc[1] += getSafe(f, ARR_DELAY);
+            acc[2] += getSafe(f, CARRIER_DELAY);  acc[3] += getSafe(f, WEATHER_DELAY);
+            acc[4] += getSafe(f, NAS_DELAY);      acc[5] += getSafe(f, SECURITY_DELAY);
             acc[6] += getSafe(f, LATE_AIRCRAFT_DELAY);
-            return acc;
-        \},
-        reducer: (acc1, acc2) -> \{
+            return acc;},
+        reducer: (acc1, acc2) -> {
             for (int i=0; i<7; i++) acc1[i] += acc2[i];
-            return acc1;
-        \}
-    )
-
+            return acc1;})
 processedRDD = reducedRDD
     .filter(t -> t._2[0] >= 500.0)
-    .map(t -> \{
+    .map(t -> {
         double c = t._2[0];
-        return RowFactory.create(t._1, (long)c, t._2[1]/c, t._2[2]/c, t._2[3]/c, t._2[4]/c, t._2[5]/c, t._2[6]/c);
-    \})
-
-// Ordinamento globale ed estrazione Top 10 (Volume di record trascurabile post-filtraggio)
+        return RowFactory.create(t._1, (long)c, t._2[1]/c, t._2[2]/c, t._2[3]/c, t._2[4]/c, t._2[5]/c, t._2[6]/c);})
+// Ordinamento globale ed estrazione Top 10 (Volume trascurabile post-filtraggio)
 sortedRDD = processedRDD.sortBy(r -> r.getDouble(2), false, partitions)
 top10RDD  = sortedRDD.zipWithIndex().filter(t -> t._2 < 10).map(t -> t._1).coalesce(1)
-    \end{alltt}
+    \end{rddcodebox}
 
 \end{frame}
 
 \begin{frame}[fragile]{Query 2: Top 10 Ritardi e Scomposizione Cause — High-Level APIs}
 
-    \vspace{-0.2cm}
-    {\scriptsize \textbf{Obiettivo:} Classifica prime 10 compagnie per \textit{ARR\_DELAY} medio decrescente (solo voli non cancellati/deviati con conteggio $\ge$ 500), mostrando l'incidenza media di ciascuna causa di ritardo.}
+    \vspace{-0.3cm}
+    \begin{exampleblock}{\footnotesize Obiettivo}
+        \scriptsize Classifica prime 10 compagnie per \textit{ARR\_DELAY} medio decrescente (voli non cancellati/deviati con conteggio $\ge$ 500), mostrando l'incidenza media di ciascuna causa di ritardo.
+    \end{exampleblock}
     
-    \vspace{0.1cm}
-    \hrule
-    \vspace{0.2cm}
+    \vspace{-0.2cm}
 
-    \begin{columns}[T]
+    \begin{columns}[T, totalwidth=\textwidth]
 
-        % COLONNA 1: DATAFRAME
+        % COLONNA 1: DATAFRAME (Usa dataframecodebox)
         \begin{column}{0.49\textwidth}
-            \textbf{\footnotesize Paradigm 2: DataFrame API (DSL)}
-            \vspace{0.1cm}
-            
-            \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
+            \begin{dataframecodebox}{Paradigm 2: DataFrame API (DSL)}
 flights
   .filter(col("CANCELLED").equalTo(0)
     .and(col("DIVERTED").equalTo(0)))
@@ -612,17 +558,14 @@ flights
   .filter(col("num_flights").geq(500))
   .orderBy(col("arrdelay_mean").desc())
   .limit(10)
-            \end{alltt}
+            \end{dataframecodebox}
         \end{column}
 
         \hfill
 
-        % COLONNA 2: SPARK SQL
+        % COLONNA 2: SPARK SQL (Usa sqlcodebox)
         \begin{column}{0.49\textwidth}
-            \textbf{\footnotesize Paradigm 3: Spark SQL}
-            \vspace{0.1cm}
-            
-            \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
+            \begin{sqlcodebox}{Paradigm 3: Spark SQL}
 SELECT 
   OP_UNIQUE_CARRIER AS carrier, 
   COUNT(*)          AS num_flights, 
@@ -644,7 +587,7 @@ GROUP BY OP_UNIQUE_CARRIER
 HAVING num_flights >= 500 
 ORDER BY arrdelay_mean DESC 
 LIMIT 10
-            \end{alltt}
+            \end{sqlcodebox}
         \end{column}
 
     \end{columns}
@@ -653,71 +596,60 @@ LIMIT 10
 
 \begin{frame}[fragile]{Query 3: Percentili Orari e Min/Max Globali — RDD API}
 
-    \vspace{-0.2cm}
-    {\scriptsize \textbf{Obiettivo:} Calcolo dei percentili (25, 50, 75, 90) del \textit{DEP\_DELAY} per fascia oraria (24h) tramite algoritmi di sketch integrati (\textit{KLL/t-digest}) e calcolo parallelo di min/max globali per vettore (AA, DL, UA, WN).}
+    \vspace{-0.3cm}
+    \begin{exampleblock}{\footnotesize Obiettivo}
+        \scriptsize Calcolo dei percentili (25, 50, 75, 90) del \textit{DEP\_DELAY} per fascia oraria (24h) tramite algoritmi di sketch (\textit{KLL/t-digest}) e calcolo parallelo di min/max globali.
+    \end{exampleblock}
     
-    \vspace{0.1cm}
-    \hrule
-    \vspace{0.1cm}
+    \vspace{-0.2cm}
 
-    \textbf{\footnotesize Paradigm 1: RDD API (Dual-Pipeline Architecture)}
-
-    \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
+    % Box RDD a tutta larghezza con la nuova spaziatura ottimizzata
+    \begin{rddcodebox}{Paradigm 1: RDD API (Dual-Pipeline Architecture)}
 // Subset condiviso e mantenuto in memoria per evitare scansioni multiple
 validFlights = flights.filter(f -> f.getDouble(CANCELLED) == 0.0 && !f.isNullAt(DEP_DELAY)).cache()
-
-% Pipeline 1: Calcolo Percentili Orari tramite Sketch distribuiti
+// Pipeline 1: Calcolo Percentili Orari tramite Sketch distribuiti
 PercentileSketch sketch = PercentileSketch.from(config.getPercentileAlgorithm())
 hourlyRows = validFlights
     .filter(f -> !f.isNullAt(CRS_DEP_TIME))
-    .mapToPair(f -> \{
+    .mapToPair(f -> {
         int hour = (f.getInt(CRS_DEP_TIME) / 100) % 24;
-        return new Tuple2<>(new Tuple2<>(f.getString(CARRIER), hour), f.getDouble(DEP_DELAY));
-    \})
+        return new Tuple2<>(new Tuple2<>(f.getString(CARRIER), hour), f.getDouble(DEP_DELAY));})
     .combineByKey(sketch::init, sketch::update, sketch::merge)
-    .map(t -> \{
+    .map(t -> {
         double[] q = sketch.getQuantiles(t._2, 0.25, 0.50, 0.75, 0.90);
-        return RowFactory.create(t._1._1, t._1._2, round2(q[0]), round2(q[1]), round2(q[2]), round2(q[3]));
-    \})
-
-% Pipeline 2: Aggregazione Globale Min/Max per Compagnia (Evitando overhead di array transienti)
+        return RowFactory.create(t._1._1, t._1._2, round2(q[0]), round2(q[1]), round2(q[2]), round2(q[3]));})
+// Pipeline 2: Aggregazione Globale Min/Max per Compagnia
 globalRows = validFlights
     .mapToPair(f -> new Tuple2<>(f.getString(CARRIER), f))
     .aggregateByKey(
-        zeroValue: new double[]\{Double.MAX_VALUE, -Double.MAX_VALUE\},
-        combiner: (acc, f) -> \{
+        zeroValue: new double[]{Double.MAX_VALUE, -Double.MAX_VALUE},
+        combiner: (acc, f) -> {
             double d = f.getDouble(DEP_DELAY);
             acc[0] = Math.min(acc[0], d); acc[1] = Math.max(acc[1], d);
-            return acc;
-        \},
-        reducer: (a1, a2) -> \{
+            return acc;},
+        reducer: (a1, a2) -> {
             a1[0] = Math.min(a1[0], a2[0]); a1[1] = Math.max(a1[1], a2[1]);
-            return a1;
-        \}
-    ).map(t -> RowFactory.create(t._1, t._2[0], t._2[1]))
-    \end{alltt}
+            return a1;})
+    .map(t -> RowFactory.create(t._1, t._2[0], t._2[1]))
+    \end{rddcodebox}
 
 \end{frame}
 
 \begin{frame}[fragile]{Query 3: Percentili Orari e Min/Max Globali — High-Level APIs}
 
-    \vspace{-0.2cm}
-    {\scriptsize \textbf{Obiettivo:} Calcolo dei percentili (25, 50, 75, 90) del \textit{DEP\_DELAY} per fascia oraria (24h) tramite algoritmi di sketch integrati (\textit{KLL/t-digest}) e calcolo parallelo di min/max globali per vettore (AA, DL, UA, WN).}
+    \vspace{-0.3cm}
+    \begin{exampleblock}{\footnotesize Obiettivo}
+        \scriptsize Calcolo dei percentili (25, 50, 75, 90) del \textit{DEP\_DELAY} per fascia oraria (24h) tramite algoritmi di sketch integrati (\textit{KLL/t-digest}) e calcolo parallelo di min/max globali.
+    \end{exampleblock}
     
-    \vspace{0.1cm}
-    \hrule
-    \vspace{0.2cm}
+    \vspace{-0.3cm}
 
-    \begin{columns}[T]
+    \begin{columns}[T, totalwidth=\textwidth]
 
-        % COLONNA 1: DATAFRAME
+        % COLONNA 1: DATAFRAME (Usa dataframecodebox)
         \begin{column}{0.49\textwidth}
-            \textbf{\footnotesize Paradigm 2: DataFrame API (DSL)}
-            \vspace{0.1cm}
-            
-            \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
+            \begin{dataframecodebox}{Paradigm 2: DataFrame API (DSL)}
 flights.cache()
-
 // Pipeline 1: Percentili orari approssimati
 hourlyStats = flights
   .filter(col("CANCELLED").equalTo(0))
@@ -728,55 +660,43 @@ hourlyStats = flights
     round(expr("percentile_approx(DEP_DELAY, 0.25)"), 2).as("p25"),
     round(expr("percentile_approx(DEP_DELAY, 0.50)"), 2).as("p50"),
     round(expr("percentile_approx(DEP_DELAY, 0.75)"), 2).as("p75"),
-    round(expr("percentile_approx(DEP_DELAY, 0.90)"), 2).as("p90")
-  )
+    round(expr("percentile_approx(DEP_DELAY, 0.90)"), 2).as("p90"))
   .withColumnRenamed("OP_UNIQUE_CARRIER", "airline")
-
 // Pipeline 2: Min/Max assoluti
 globalMinMax = flights
   .groupBy("OP_UNIQUE_CARRIER")
   .agg(
     min("DEP_DELAY").as("min_delay"),
-    max("DEP_DELAY").as("max_delay")
-  )
+    max("DEP_DELAY").as("max_delay"))
   .withColumnRenamed("OP_UNIQUE_CARRIER", "airline")
-            \end{alltt}
+            \end{dataframecodebox}
         \end{column}
 
         \hfill
 
-        % COLONNA 2: SPARK SQL
+        % COLONNA 2: SPARK SQL (Usa sqlcodebox)
         \begin{column}{0.49\textwidth}
-            \textbf{\footnotesize Paradigm 3: Spark SQL}
-            \vspace{0.1cm}
-            
-            \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
-flights.cache()
+            \begin{sqlcodebox}{Paradigm 3: Spark SQL}
+-- Pipeline 1: Stima quantili orari
+SELECT 
+  OP_UNIQUE_CARRIER AS airline, 
+  CAST(CRS_DEP_TIME / 100 AS INT) AS hour, 
+  ROUND(percentile_approx(DEP_DELAY, 0.25), 2) AS p25, 
+  ROUND(percentile_approx(DEP_DELAY, 0.50), 2) AS p50, 
+  ROUND(percentile_approx(DEP_DELAY, 0.75), 2) AS p75, 
+  ROUND(percentile_approx(DEP_DELAY, 0.90), 2) AS p90 
+FROM flights 
+WHERE CANCELLED = 0 
+GROUP BY OP_UNIQUE_CARRIER, hour;
 
-// Pipeline 1: Stima quantili con funzioni built-in
-String hourlySql = 
-  "SELECT OP_UNIQUE_CARRIER as airline, " +
-  "CAST(CRS_DEP_TIME / 100 AS INT) AS hour, " +
-  "ROUND(percentile_approx(DEP_DELAY, 0.25), 2) AS p25, " +
-  "ROUND(percentile_approx(DEP_DELAY, 0.50), 2) AS p50, " +
-  "ROUND(percentile_approx(DEP_DELAY, 0.75), 2) AS p75, " +
-  "ROUND(percentile_approx(DEP_DELAY, 0.90), 2) AS p90 " +
-  "FROM flights " +
-  "WHERE CANCELLED = 0 " +
-  "GROUP BY OP_UNIQUE_CARRIER, hour";
-
-hourlyStats = spark.sql(hourlySql);
-
-// Pipeline 2: Estremi globali
-String globalSql = 
-  "SELECT OP_UNIQUE_CARRIER as airline, " +
-  "MIN(DEP_DELAY) AS min_delay, " +
-  "MAX(DEP_DELAY) AS max_delay " +
-  "FROM flights " +
-  "GROUP BY OP_UNIQUE_CARRIER";
-
-globalMinMax = spark.sql(globalSql);
-            \end{alltt}
+-- Pipeline 2: Estremi globali
+SELECT 
+  OP_UNIQUE_CARRIER AS airline, 
+  MIN(DEP_DELAY) AS min_delay, 
+  MAX(DEP_DELAY) AS max_delay 
+FROM flights 
+GROUP BY OP_UNIQUE_CARRIER;
+            \end{sqlcodebox}
         \end{column}
 
     \end{columns}
