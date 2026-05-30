@@ -9,16 +9,19 @@
 \usepackage{xcolor}
 \usepackage{alltt}
 
+% --- CONFIGRUAZIONE PER PYTHON CODE ---
 \definecolor{pyKeyword}{RGB}{0,90,180}
 \definecolor{pyString}{RGB}{3,110,10}
 \definecolor{pyComment}{RGB}{120,120,120}
 
+% --- CONFIGURAZIONE PER JAVA CODE ---
+\definecolor{jvKeyword}{RGB}{125, 37, 147}
+\definecolor{jvString}{RGB}{34, 139, 34}
+\definecolor{jvComment}{RGB}{128, 128, 128}
+\definecolor{jvBackground}{RGB}{248, 249, 250}
+
 \lstset{
-    language=Python,
     basicstyle=\ttfamily\fontsize{5pt}{6.5pt}\selectfont,
-    keywordstyle=\color{pyKeyword}\bfseries,
-    stringstyle=\color{pyString},
-    commentstyle=\color{pyComment}\itshape,
     backgroundcolor=,
     frame=none,
     breaklines=true,
@@ -26,6 +29,22 @@
     showstringspaces=false,
     xleftmargin=2pt,
     xrightmargin=2pt
+}
+
+% Stile specifico per PYTHON
+\lstdefinestyle{Python}{
+    language=Python,
+    keywordstyle=\color{pyKeyword}\bfseries,
+    stringstyle=\color{pyString},
+    commentstyle=\color{pyComment}\itshape
+}
+
+% Stile specifico per JAVA
+\lstdefinestyle{Java}{
+    language=Java,
+    keywordstyle=\color{jvKeyword}\bfseries,
+    stringstyle=\color{jvString},
+    commentstyle=\color{jvComment}\itshape
 }
 
 % Informazioni sul Titolo
@@ -930,7 +949,7 @@ protected List<Tuple2> runQueryRDD(...) \{
 
         \begin{column}{0.45\textwidth}
             \begin{block}{Integrazione Livy (EC2)}
-\begin{lstlisting}
+\begin{lstlisting}[style=Python]
 spark_task = LivyOperator(
     task_id=task_id,
     livy_conn_id="livy_default",
@@ -966,7 +985,7 @@ spark_task = LivyOperator(
 
         \begin{column}{0.45\textwidth}
             \begin{block}{Integrazione EMR Step (AWS)}
-\begin{lstlisting}
+\begin{lstlisting}[style=Python]
 spark_step = {
     "Name": step_name,
     "ActionOnFailure": "CONTINUE",
