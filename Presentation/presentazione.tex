@@ -15,6 +15,7 @@
 \definecolor{pyKeyword}{RGB}{0,90,180}
 \definecolor{pyString}{RGB}{3,110,10}
 \definecolor{pyComment}{RGB}{120,120,120}
+\definecolor{pyOperator}{RGB}{180,0,90}
 
 % --- CONFIGURAZIONE PER JAVA CODE ---
 \definecolor{jvKeyword}{RGB}{166, 29, 41}
@@ -45,6 +46,24 @@
     keywordstyle=\color{pyKeyword}\bfseries,
     stringstyle=\color{pyString},
     commentstyle=\color{pyComment}\itshape
+    morekeywords=[2]{EmrAddStepsOperator, EmrStepSensor, LivyOperator},
+    keywordstyle=[2]\color{pyOperator}\bfseries
+}
+
+% Box per codice Python
+\newtcblisting{pythoncodebox}[1]{
+    listing only,
+    listing options={style=Python, aboveskip=0pt, belowskip=0pt},
+    arc=5pt,
+    boxrule=0.5pt,
+    colframe=black!15,
+    colback=black!3,
+    title={#1},
+    coltitle=green!80!black,
+    colbacktitle=green!5,
+    fonttitle=\scriptsize\bfseries\sffamily,
+    top=0pt, bottom=0pt, left=4pt, right=4pt,
+    toptitle=3pt, bottomtitle=3pt
 }
 
 % --- STILE JAVA CODE ---
@@ -916,8 +935,7 @@ Dataset<Row> finalOutput = appendPcaColumns(
 
             % \vspace{0.2cm}
 
-            \begin{block}{Cluster Self-Hosted}
-                \begin{lstlisting}[style=Python]
+            \begin{pythoncodebox}{Cluster Self-Hosted}
 spark_task = LivyOperator(
     task_id=task_id,
     livy_conn_id="livy_default",
@@ -934,15 +952,13 @@ spark_task = LivyOperator(
     name=f"benchmark-{query}-{backend}",
     polling_interval=5
 )
-                \end{lstlisting}
-            \end{block}
+            \end{pythoncodebox}
         \end{column}
 
         \hfill
 
         \begin{column}{0.48\textwidth}
-            \begin{block}{AWS EMR}
-                \begin{lstlisting}[style=Python]
+            \begin{pythoncodebox}{AWS EMR}
 spark_step = {
     "Name": step_name,
     "ActionOnFailure": "CONTINUE",
@@ -968,8 +984,7 @@ watch_step = EmrStepSensor(
     aws_conn_id="aws_default",
     poke_interval=30
 )
-                \end{lstlisting}
-            \end{block}
+            \end{pythoncodebox}
         \end{column}
     \end{columns}
 \end{frame}
