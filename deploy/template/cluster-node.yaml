@@ -94,7 +94,6 @@ Resources:
 
           echo "UserData completed $(date)"
 
-  # DNS Record in the Private Hosted Zone
   NodeDnsRecord:
     Type: AWS::Route53::RecordSet
     Properties:

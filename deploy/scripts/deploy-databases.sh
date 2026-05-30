@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Deployment script for the Databases Node of the Sky Analytics Engine.
-# This instance hosts various storage engines (Postgres, HBase, Redis Output).
+# This instance hosts various storage engines.
 # It is used for persisting the final results of the analytical queries.
 
 echo "[DEPLOY] Starting Databases Node Deployment..."
@@ -27,8 +27,8 @@ if [ -f "/home/ec2-user/.env" ]; then
     mv /home/ec2-user/.env .env
 fi
 
-# We do not start any database automatically. 
-# The operator must use the ./db-selector.sh script to activate desired databases.
+# Do not start any database automatically.
+# Must use the ./db-selector.sh script to activate desired databases.
 echo "[DEPLOY] Database Node setup complete. Use ./db-selector.sh to manage services."
 
 # Transfer ownership of the directory to the ec2-user.

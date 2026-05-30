@@ -44,8 +44,7 @@ if %ERRORLEVEL% equ 0 (
 )
 
 :: --- FOLDER STRUCTURE PROVISIONING ---
-:: Create the logical folder structure within the bucket to support logs, data, and deployment scripts.
-:: These variables are usually defined in .env or passed via CLI.
+:: Create the logical folder structure within the bucket.
 call "%SCRIPTS_DIR%create_bucket_folders.bat" "logs" "deploy" "data" "data/raw" "data/conv" "data/res"
 
 :: --- DEPLOYMENT ASSETS SYNCHRONIZATION ---

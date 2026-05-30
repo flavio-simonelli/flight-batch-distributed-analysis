@@ -3,8 +3,6 @@ Flight Analysis Sequential Benchmark DAG
 
 This DAG executes all possible combinations of Spark queries and backends 
 sequentially to generate complete performance comparison data.
-
-Total Tasks: 4 Queries * 3 Backends = 12 Spark Jobs.
 """
 
 from __future__ import annotations
@@ -23,8 +21,8 @@ SPARK_CONFIG_PATH = "local-config.yml"
 AVAILABLE_QUERIES = ["monthly_performance", "arrival_delay_ranking", "hourly_delay_percentiles", "airline_clustering"]
 AVAILABLE_BACKENDS = ["rdd", "dataframe", "sql"]
 AVAILABLE_CONFIGS = ["local-config.yml", "ec2-config.yml", "emr-config.yml"]
-AVAILABLE_INPUTS = ["hdfs", "s3", "local"]
-AVAILABLE_OUTPUTS = ["hdfs", "cockroach", "postgres", "redis", "hbase", "s3", "local"]
+AVAILABLE_INPUTS = ["local", "hdfs", "s3"]
+AVAILABLE_OUTPUTS = ["local", "hdfs", "s3", "cockroach", "postgres", "hbase", "redis"]
 AVAILABLE_METRICS = ["redis"]
 
 @dag(
@@ -32,25 +30,28 @@ AVAILABLE_METRICS = ["redis"]
     schedule=None,
     start_date=datetime(2024, 1, 1),
     catchup=False,
-    tags=["benchmark", "spark", "performance", "airflow-3"],
+    tags=["distributed", "benchmark", "performance", "spark", "processing", "ec2"],
     params={
-        "config_file": Param("ec2-config.yml", enum=AVAILABLE_CONFIGS),
-        "input_type": Param("hdfs", enum=AVAILABLE_INPUTS),
-        "output_type": Param("cockroach", enum=AVAILABLE_OUTPUTS),
-        "metrics_type": Param("redis", enum=AVAILABLE_METRICS),
+        "config_file": Param("ec2-config.yml", enum=AVAILABLE_CONFIGS, description="Select the configuration file for the Spark job."),
+        "input_type": Param("hdfs", enum=AVAILABLE_INPUTS, description="Select the input type for the Spark job."),
+        "output_type": Param("cockroach", enum=AVAILABLE_OUTPUTS, description="Select the output type for the Spark job."),
+        "metrics_type": Param("redis", enum=AVAILABLE_METRICS, description="Select the metrics type for the Spark job."),
     },
-    description="Runs all query/backend combinations sequentially for benchmarking."
+    description="Runs all query/backend combinations sequentially for benchmarking on AWS EC2."
 )
 def flight_benchmark():
 
     prev_task = None
 
+    # Loop through all combinations of queries and backends to create a LivyOperator task for each
     for query in AVAILABLE_QUERIES:
         for backend in AVAILABLE_BACKENDS:
-            task_id = f"spark_{query}_{backend}"
 
+            # Skip incompatible combinations (airline_clustering doesn't support rdd or sql)
             if query == "airline_clustering" and (backend == "rdd" or backend == "sql"):
                 continue
+
+            task_id = f"spark_{query}_{backend}"
 
             # Initialize LivyOperator for this specific combination
             spark_task = LivyOperator(

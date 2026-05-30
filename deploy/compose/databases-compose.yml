@@ -2,7 +2,7 @@ name: flight-analytics-databases
 
 services:
   # =================================================================
-  # PERSISTENCE LAYER (Result Databases)
+  # PERSISTENCE LAYER
   # =================================================================
 
   # PostgreSQL Relational Database for Final Results
@@ -27,7 +27,7 @@ services:
     tty: true
     stdin_open: true
 
-  # Redis Instance for Output Storage
+  # Redis Instance for Final Results
   redis-output:
     image: redis:latest
     container_name: redis-output
@@ -35,7 +35,7 @@ services:
     network_mode: host
     command: redis-server
 
-  # CockroachDB Single-Node Instance
+  # CockroachDB Single-Node Instance for Final Results
   cockroachdb:
     image: cockroachdb/cockroach:latest
     container_name: cockroachdb

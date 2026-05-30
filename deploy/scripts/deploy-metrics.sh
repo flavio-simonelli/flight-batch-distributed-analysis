@@ -22,7 +22,7 @@ if [ -f "/home/ec2-user/.env" ]; then
     mv /home/ec2-user/.env .env
 fi
 
-# Launch the Metrics stack (Redis Stack + Grafana) via Docker Compose.
+# Launch the Metrics stack via Docker Compose.
 # Grafana is configured to auto-install the Redis datasource plugin.
 echo "[DEPLOY] Launching Metrics containers..."
 docker-compose up -d

@@ -1,10 +1,8 @@
 """
-Flight Analysis Sequential Benchmark DAG for AWS EMR
+Flight Analysis Sequential Benchmark DAG
 
-This DAG executes all possible combinations of Spark queries and backends
-sequentially to generate complete performance comparison data on an existing EMR cluster.
-
-Total Tasks: 4 Queries * 3 Backends = 12 Spark Jobs (24 Airflow tasks including sensors).
+This DAG executes all possible combinations of Spark queries and backends 
+sequentially to generate complete performance comparison data.
 """
 
 from __future__ import annotations
@@ -20,12 +18,12 @@ S3_BUCKET = "spark-flight-analysis"
 JAR_PATH = f"s3://{S3_BUCKET}/spark/flight-analysis.jar"
 JAR_CLASS = "it.uniroma2.sae.FlightAnalysisApp"
 
-# All available combinations
+# All available combinations from Spark Java configuration
 AVAILABLE_QUERIES = ["monthly_performance", "arrival_delay_ranking", "hourly_delay_percentiles", "airline_clustering"]
 AVAILABLE_BACKENDS = ["rdd", "dataframe", "sql"]
 AVAILABLE_CONFIGS = ["local-config.yml", "ec2-config.yml", "emr-config.yml"]
-AVAILABLE_INPUTS = ["hdfs", "s3", "local"]
-AVAILABLE_OUTPUTS = ["hdfs", "cockroach", "postgres", "redis", "hbase", "s3", "local"]
+AVAILABLE_INPUTS = ["local", "hdfs", "s3"]
+AVAILABLE_OUTPUTS = ["local", "hdfs", "s3", "cockroach", "postgres", "hbase", "redis"]
 AVAILABLE_METRICS = ["redis"]
 
 @dag(
@@ -33,23 +31,25 @@ AVAILABLE_METRICS = ["redis"]
     schedule=None,
     start_date=datetime(2024, 1, 1),
     catchup=False,
-    tags=["benchmark", "spark", "emr", "performance", "airflow-3"],
+    tags=["distributed", "benchmark", "performance", "spark", "processing", "emr"],
     params={
         "job_flow_id": Param("j-XXXXXXXXXXXXX", type="string", description="The EMR Cluster ID"),
-        "config_file": Param("emr-config.yml", enum=AVAILABLE_CONFIGS),
-        "input_type": Param("s3", enum=AVAILABLE_INPUTS),
-        "output_type": Param("s3", enum=AVAILABLE_OUTPUTS),
-        "metrics_type": Param("redis", enum=AVAILABLE_METRICS),
+        "config_file": Param("emr-config.yml", enum=AVAILABLE_CONFIGS, description="Select the configuration file for the Spark job."),
+        "input_type": Param("s3", enum=AVAILABLE_INPUTS, description="Select the input type for the Spark job."),
+        "output_type": Param("s3", enum=AVAILABLE_OUTPUTS, description="Select the output type for the Spark job."),
+        "metrics_type": Param("redis", enum=AVAILABLE_METRICS, description="Select the metrics type for the Spark job."),
     },
-    description="Runs all query/backend combinations sequentially on AWS EMR."
+    description="Runs all query/backend combinations sequentially for benchmarking on AWS EMR."
 )
 def flight_benchmark_emr():
 
     prev_task = None
 
+    # Loop through all combinations of queries and backends to create a LivyOperator task for each
     for query in AVAILABLE_QUERIES:
         for backend in AVAILABLE_BACKENDS:
 
+            # Skip incompatible combinations (airline_clustering doesn't support rdd or sql)
             if query == "airline_clustering" and (backend == "rdd" or backend == "sql"):
                 continue
 
@@ -57,7 +57,7 @@ def flight_benchmark_emr():
             add_step_task_id = f"add_step_{query}_{backend}"
             sensor_task_id = f"watch_step_{query}_{backend}"
 
-            # Define the EMR Step (Spark Submit command)
+            # Define the EMR Step
             spark_step = {
                 "Name": step_name,
                 "ActionOnFailure": "CONTINUE",
@@ -96,7 +96,8 @@ def flight_benchmark_emr():
                 poke_interval=30,
             )
 
-            # Wire sequentially: Previous Sensor -> Current Add Step -> Current Sensor
+            # Wire sequentially
+            # Previous Sensor -> Current Add Step -> Current Sensor
             add_step >> watch_step
             if prev_task:
                 prev_task >> add_step

@@ -20,7 +20,7 @@ docker exec spark-master /opt/spark/bin/spark-submit \
   --master spark://spark-master.flight-analysis.local:7077 \
   --class it.uniroma2.sae.FlightAnalysisApp \
   /opt/spark/scripts/flight-analysis.jar \
-  --config /opt/spark/scripts/ec2-config.yml \
+  --config ec2-config.yml \
   --query "$QUERY_TYPE" \
   --backend "$BACKEND_TYPE"
 

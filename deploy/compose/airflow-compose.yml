@@ -34,6 +34,7 @@ x-airflow-common: &airflow-common
         - ./data/airflow/logs:/opt/airflow/logs
         - ./airflow/plugins:/opt/airflow/plugins
         - ./airflow/config:/opt/airflow/config
+        - ./airflow/templates:/opt/airflow/templates
     depends_on: &airflow-common-depends-on
         airflow-postgres:
             condition: service_healthy

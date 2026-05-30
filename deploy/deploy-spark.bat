@@ -22,7 +22,7 @@ echo [INFO] Initiating pre-deployment validation...
 
 :: --- SSH ACCESS VERIFICATION ---
 :: Ensure that the cryptographic key required for node access is properly provisioned.
-call setup-ssh-key.bat
+call setup_ssh_key.bat
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] SSH key setup failed. Provisioning aborted.
     exit /b 1

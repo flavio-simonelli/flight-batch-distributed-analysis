@@ -2,9 +2,7 @@
 Flight Analysis Distributed Orchestrator DAG
 
 This DAG orchestrates the multi-stage analytical pipeline, supporting conditional 
-execution of the Ingestion (NiFi) and Processing (Spark/Livy) layers.
-
-Fully compliant with Apache Airflow 3.0 TaskFlow API and Standard Providers.
+execution of the Ingestion and Processing layers.
 """
 
 from __future__ import annotations
@@ -21,7 +19,8 @@ from airflow.providers.apache.livy.operators.livy import LivyOperator
 
 # Path resolution for configuration files and templates
 DAGS_DIR = os.path.dirname(__file__)
-PAYLOAD_TEMPLATE_PATH = os.path.join(DAGS_DIR, "payload.json")
+TEMPLATES_DIR = os.path.join(DAGS_DIR, "..", "templates")
+PAYLOAD_TEMPLATE_PATH = os.path.join(TEMPLATES_DIR, "nifi_payload.json")
 
 # Spark application parameters and paths within the distributed nodes
 JAR_PATH = "hdfs://hdfs-master.flight-analysis.local:54310/bin/flight-analysis.jar"
@@ -31,11 +30,11 @@ JAR_CLASS = "it.uniroma2.sae.FlightAnalysisApp"
 AVAILABLE_QUERIES = ["monthly_performance", "arrival_delay_ranking", "hourly_delay_percentiles", "airline_clustering"]
 AVAILABLE_BACKENDS = ["rdd", "dataframe", "sql"]
 AVAILABLE_CONFIGS = ["local-config.yml", "ec2-config.yml", "emr-config.yml"]
-AVAILABLE_INPUTS = ["hdfs", "s3", "local"]
-AVAILABLE_OUTPUTS = ["hdfs", "cockroach", "postgres", "redis", "hbase", "s3", "local"]
+AVAILABLE_INPUTS = ["local", "hdfs", "s3"]
+AVAILABLE_OUTPUTS = ["local", "hdfs", "s3", "cockroach", "postgres", "hbase", "redis"]
 AVAILABLE_METRICS = ["redis"]
 
-# Hardcoded storage configurations for NiFi (Internal Airflow mapping)
+# Hardcoded storage configurations for NiFi
 STORAGE_MAPPINGS = {
     "HDFS": {"bucket": "", "raw_path": "/data/raw", "preprocessed_path": "/data/conv"},
     "S3": {"bucket": "spark-flight-analysis", "region": "us-east-1", "raw_path": "data/raw", "preprocessed_path": "data/conv"}
@@ -46,48 +45,55 @@ STORAGE_MAPPINGS = {
     schedule=None,
     start_date=datetime(2024, 1, 1),
     catchup=False,
-    tags=["distributed", "spark", "nifi", "orchestration", "airflow-3"],
+    tags=["distributed", "spark", "nifi", "orchestration", "ingestion", "processing"],
     params={
-        "run_mode": Param("Both", enum=["Both", "Ingest Only", "Execution Only"]),
-        "raw_storage_type": Param("HDFS", enum=["HDFS", "S3"]),
-        "optimization_strategy": Param("PREDICATE_PUSHDOWN", enum=["PREDICATE_PUSHDOWN", "PARTITION_PRUNING"]),
-        "preprocessed_storage_type": Param("HDFS", enum=["HDFS", "S3"]),
-        "selected_query": Param("monthly_performance", enum=AVAILABLE_QUERIES),
-        "spark_backend": Param("dataframe", enum=AVAILABLE_BACKENDS),
-        "config_file": Param("ec2-config.yml", enum=AVAILABLE_CONFIGS),
-        "input_type": Param("hdfs", enum=AVAILABLE_INPUTS),
-        "output_type": Param("cockroach", enum=AVAILABLE_OUTPUTS),
-        "metrics_type": Param("redis", enum=AVAILABLE_METRICS),
+        "run_mode": Param("Both", enum=["Both", "Ingest Only", "Execution Only"], description="Select 'Ingest Only' to run just the NiFi ingestion, 'Execution Only' to run just the Spark processing, or 'Both' to run the full pipeline."),
+        "raw_storage_type": Param("HDFS", enum=["HDFS", "S3"], description="Storage type for raw data."),
+        "optimization_strategy": Param("PREDICATE_PUSHDOWN", enum=["PREDICATE_PUSHDOWN", "PARTITION_PRUNING"], description="Optimization strategy for the Parquet conversion."),
+        "preprocessed_storage_type": Param("HDFS", enum=["HDFS", "S3"], description="Storage type for preprocessed data."),
+        "selected_query": Param("monthly_performance", enum=AVAILABLE_QUERIES, description="Select which analytical query to run in Spark."),
+        "spark_backend": Param("dataframe", enum=AVAILABLE_BACKENDS, description="Select the backend for the Spark job."),
+        "config_file": Param("ec2-config.yml", enum=AVAILABLE_CONFIGS, description="Select the configuration file for the Spark job."),
+        "input_type": Param("hdfs", enum=AVAILABLE_INPUTS, description="Select the input type for the Spark job."),
+        "output_type": Param("cockroach", enum=AVAILABLE_OUTPUTS, description="Select the output type for the Spark job."),
+        "metrics_type": Param("redis", enum=AVAILABLE_METRICS, description="Select the metrics type for the Spark job."),
         "output_partitions": Param(0, type="integer", minimum=0, description="Number of output partitions. 0 means no coalescing.")
     },
+    description="Orchestrates the full flight analysis pipeline with conditional execution paths for ingestion and processing."
 )
 def flight_analysis():
 
     @task
     def sanitize_id(**context) -> str:
         """Removes special characters from run_id to ensure compatibility."""
-        clean_id = re.sub(r'[^a-zA-Z0-9]', '_', context["run_id"])
-        print(f"[AIRFLOW] Sanitized Run ID: {clean_id}")
+        clean_id = re.sub(r'[^a-zA-Z0-9]', '_', context.get("run_id", "unknown_run"))
+        print(f"[SAE] Sanitized Run ID: {clean_id}")
         return clean_id
 
     @task.branch
-    def route_start(clean_id: str, **context) -> str:
+    def route_start(**context) -> str:
         """Branches the execution based on the selected run mode at the very start."""
-        if context["params"]["run_mode"] == "Execution Only":
+        params = context.get("params", {})
+        run_mode = params.get("run_mode", "Both")
+
+        if run_mode == "Execution Only":
+            print("[SAE] Run mode is 'Execution Only'. Skipping NiFi ingestion and proceeding directly to Spark execution.")
             return "start_spark"
+
+        print(f"[SAE] Run mode is '{run_mode}'. Proceeding with NiFi ingestion.")
         return "trigger_nifi_backend"
 
     @task
     def trigger_nifi_backend(clean_id: str, **context) -> str:
         """Initializes the Variable, fetches JWT, builds the payload, and triggers NiFi."""
-        params = context["params"]
+        params = context.get("params", {})
         var_name = f"nifi_done_{clean_id}"
 
-        # 1. Initialize Variable via Airflow 3 SDK
+        # Initialize Variable via Airflow  SDK
         Variable.set(var_name, "false")
-        print(f"[AIRFLOW] Variable '{var_name}' initialized.")
+        print(f"[SAE] Variable '{var_name}' initialized.")
 
-        # 2. Fetch JWT Token for the callback
+        # Fetch JWT Token for the callback
         af_host = os.getenv("AIRFLOW_HOST", "airflow.flight-analysis.local")
         af_user = os.getenv("AIRFLOW_USER", "admin")
         af_pass = os.getenv("AIRFLOW_PASSWORD", "admin_password")
@@ -96,37 +102,48 @@ def flight_analysis():
         login_res = requests.post(login_url, json={"username": af_user, "password": af_pass})
         login_res.raise_for_status()
         jwt_token = login_res.json().get("access_token")
+        print("[SAE] JWT Token fetched successfully.")
 
-        # 3. Build Payload
+        # Build Payload
         if not os.path.exists(PAYLOAD_TEMPLATE_PATH):
             raise FileNotFoundError(f"Template not found at {PAYLOAD_TEMPLATE_PATH}")
 
         with open(PAYLOAD_TEMPLATE_PATH, "r") as f:
             payload = json.load(f)
 
-        raw_info = STORAGE_MAPPINGS[params["raw_storage_type"]]
-        pre_info = STORAGE_MAPPINGS[params["preprocessed_storage_type"]]
+        raw_storage_type = params.get("raw_storage_type")
+        preprocessed_storage_type = params.get("preprocessed_storage_type")
+        raw_info = STORAGE_MAPPINGS.get(raw_storage_type)
+        pre_info = STORAGE_MAPPINGS.get(preprocessed_storage_type)
+        if not raw_info or not pre_info:
+            raise ValueError(f"Invalid storage type(s) provided: raw='{raw_storage_type}', preprocessed='{preprocessed_storage_type}'")
+        print(f"[SAE] Storage configurations resolved: RAW={raw_info}, PREPROCESSED={pre_info}")
 
         payload["job_id"] = f"FLIGHT_INGEST_{clean_id}"
-        
+        print(f"[SAE] Job ID initialized: {payload['job_id']}")
+
         # Configure RAW storage
         payload["storage_raw"].update({
-            "type": params["raw_storage_type"],
-            "bucket": raw_info["bucket"],
-            "region": raw_info["region"] if "region" in raw_info else "us-east-1",
-            "path": raw_info["raw_path"]
+            "type": params.get("raw_storage_type"),
+            "bucket": raw_info.get("bucket", ""),
+            "region": raw_info.get("region", "us-east-1"),
+            "path": raw_info.get("raw_path", "")
         })
+        print(f"[SAE] RAW storage configured: {payload['storage_raw']}")
         
         # Configure PREPROCESSED storage
         payload["storage_preprocessed"].update({
-            "type": params["preprocessed_storage_type"],
-            "bucket": pre_info["bucket"],
-            "region": pre_info["region"] if "region" in raw_info else "us-east-1",
-            "path": pre_info["preprocessed_path"]
+            "type": params.get("preprocessed_storage_type"),
+            "bucket": pre_info.get("bucket", ""),
+            "region": pre_info.get("region", "us-east-1"),
+            "path": pre_info.get("preprocessed_path", "")
         })
+        print(f"[SAE] PREPROCESSED storage configured: {payload['storage_preprocessed']}")
         
         # Mapping processing strategy
-        payload["processing"]["optimization_strategy"] = params["optimization_strategy"]
+        opt_strategy = params.get("optimization_strategy", "PARTITION_PRUNING")
+        payload["processing"]["optimization_strategy"] = opt_strategy
+        print(f"[SAE] Optimization strategy configured: {opt_strategy}")
 
         # Ensure NiFi callback is configured for a PATCH request
         payload["callback"].update({
@@ -139,34 +156,42 @@ def flight_analysis():
                 "Content-Type": "application/json"
             }
         })
+        print(f"[SAE] Callback configuration set: {payload['callback']}")
 
-        # 4. Trigger NiFi Endpoint
+        # Trigger NiFi Endpoint
         endpoint = f"http://nifi.flight-analysis.local:8085/experiment"
         nifi_res = requests.post(endpoint, json=payload)
         nifi_res.raise_for_status()
-        print(f"[AIRFLOW] NiFi triggered successfully! Status: {nifi_res.status_code}")
+        print(f"[SAE] NiFi triggered successfully! Status: {nifi_res.status_code}")
 
         return clean_id
 
-    @task.sensor(poke_interval=30, timeout=3600, mode="reschedule")
+    @task.sensor(poke_interval=15, timeout=3600, mode="reschedule")
     def wait_nifi_done(clean_id: str, **context) -> bool:
         """Polls the Airflow Variable until NiFi updates it to 'true'."""
         var_name = f"nifi_done_{clean_id}"
         try:
             # Safely fetch the variable, defaulting to "false"
             val = str(Variable.get(var_name, default="false")).strip().lower()
-            print(f"[AIRFLOW] Sensor poke for {var_name}: {val}")
+            print(f"[SAE] Sensor poke for {var_name}: {val}")
             return val == "true"
         except Exception as e:
             # Prevent the sensor from crashing on temporary DB locks
-            print(f"[AIRFLOW] Sensor exception (ignoring and retrying): {e}")
+            print(f"[SAE] Sensor exception (ignoring and retrying): {e}")
             return False
 
     @task.branch
-    def route_after_ingest(clean_id: str, **context) -> str:
+    def route_after_ingest(**context) -> str:
         """Branches the execution after ingestion is fully completed."""
-        if context["params"]["run_mode"] == "Ingest Only":
+
+        params = context.get("params", {})
+        run_mode = params.get("run_mode", "Both")
+
+        if run_mode == "Ingest Only":
+            print("[SAE] Run mode is 'Ingest Only'. Skipping Spark execution and proceeding to cleanup.")
             return "cleanup_variable"
+
+        print(f"[SAE] Run mode is '{run_mode}'. Proceeding with Spark execution.")
         return "start_spark"
 
     @task(trigger_rule="none_failed_min_one_success")
@@ -175,9 +200,9 @@ def flight_analysis():
         var_name = f"nifi_done_{clean_id}"
         try:
             Variable.delete(var_name)
-            print(f"[AIRFLOW] Temporary variable {var_name} successfully deleted.")
+            print(f"[SAE] Temporary variable {var_name} successfully deleted.")
         except Exception as e:
-            print(f"[AIRFLOW] Cleanup skipped or failed (safe to ignore): {e}")
+            print(f"[SAE] Cleanup skipped or failed (safe to ignore): {e}")
 
     # =================================================================
     # DAG WIRING & INSTANTIATION
@@ -190,36 +215,39 @@ def flight_analysis():
     )
 
     clean_id_str = sanitize_id()
-    branch_1 = route_start(clean_id_str)
+    branch_1 = route_start()
     nifi_task = trigger_nifi_backend(clean_id_str)
     wait_task = wait_nifi_done(clean_id_str)
-    branch_2 = route_after_ingest(clean_id_str)
+    branch_2 = route_after_ingest()
     cleanup_task = cleanup_variable(clean_id_str)
 
     @task(trigger_rule="none_failed_min_one_success")
     def prepare_spark_args(**context) -> list[str]:
         """Prepares the arguments for the Spark task based on user selection."""
-        params = context["params"]
-        if params["run_mode"] == "Ingest Only":
+        params = context.get("params", {})
+        run_mode = params.get("run_mode", "Both")
+        
+        if run_mode == "Ingest Only":
             return []
             
         args = [
-            "--query", params["selected_query"],
-            "--backend", params["spark_backend"],
-            "--config", params["config_file"],
-            "--input-type", params["input_type"],
-            "--output-type", params["output_type"],
-            "--metrics-type", params["metrics_type"]
+            "--query", params.get("selected_query"),
+            "--backend", params.get("spark_backend"),
+            "--config", params.get("config_file"),
+            "--input-type", params.get("input_type"),
+            "--output-type", params.get("output_type"),
+            "--metrics-type", params.get("metrics_type")
         ]
 
         if params.get("output_partitions", 0) > 0:
-            args.extend(["--partitions", str(params["output_partitions"])])
+            args.extend(["--partitions", str(params.get("output_partitions"))])
 
         return args
 
     spark_args = prepare_spark_args()
 
-    # Simple Livy task
+    # Set Livy task to only run if Spark execution is selected,
+    # and ensure it waits for the NiFi branch to complete if needed
     spark_task = LivyOperator(
         task_id="spark_execution",
         livy_conn_id="livy_default",

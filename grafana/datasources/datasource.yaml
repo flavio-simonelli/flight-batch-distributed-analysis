@@ -22,7 +22,7 @@ datasources:
     jsonData:
       database: defaultdb
       sslmode: disable
-      postgresVersion: 1000 # CockroachDB is wire-compatible with older Postgres versions
+      postgresVersion: 1000
   - name: Redis
     type: redis-datasource
     uid: redis-datasource-uid

@@ -21,7 +21,7 @@ echo "[INFO] Initiating pre-deployment validation..."
 
 # --- SSH ACCESS VERIFICATION ---
 # Ensure that the cryptographic key required for node access is properly provisioned.
-source setup-ssh-key.sh
+source setup_ssh_key.sh
 if [ $? -ne 0 ]; then
     echo "[ERROR] SSH key setup failed. Provisioning aborted."
     exit 1

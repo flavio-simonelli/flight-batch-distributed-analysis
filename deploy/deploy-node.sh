@@ -24,7 +24,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # --- SSH KEY PROVISIONING ---
-source setup-ssh-key.sh
+source setup_ssh_key.sh
 if [ $? -ne 0 ]; then
     echo "[ERROR] SSH key setup failed. Deployment aborted."
     exit 1
@@ -248,7 +248,7 @@ EOF
 fi
 
 # --- DATABASES NODE DEPLOYMENT ---
-# Persistence layer with PostgreSQL, HBase, and Redis Output.
+# Persistence layer with PostgreSQL, HBase, CockroachDB and Redis.
 if [[ "$TARGET" == "databases" || "$TARGET" == "all" ]]; then
     echo "[INFO] Cleaning up stale SSH host keys for databases-node..."
     if [ -f "$KH_PATH" ]; then sed -i.bak '/databases-node/d' "$KH_PATH"; fi

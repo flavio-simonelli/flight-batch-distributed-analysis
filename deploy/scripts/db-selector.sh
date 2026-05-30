@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Utility script for managing the active database service on the Databases Node.
-# This script allows the operator to toggle between different storage engines
+# This script allows to toggle between different storage engines
 # without keeping all services active simultaneously, optimizing resource usage.
 
 # Usage: ./db-selector.sh {postgres|redis|hbase|cockroach|all|stop}

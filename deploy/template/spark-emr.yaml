@@ -51,14 +51,12 @@ Resources:
       LogUri: !Ref LogUri
       ServiceRole: !Ref ServiceRole
       JobFlowRole: !Ref JobFlowRole
-      # Install Spark and Hadoop as base applications on the cluster
       Applications:
         - Name: Spark
         - Name: Hadoop
       Instances:
         Ec2KeyName: !Ref KeyName
         Ec2SubnetId: !Ref SubnetId
-        # Keeps the cluster active even when no steps are running
         KeepJobFlowAliveWhenNoSteps: true
         MasterInstanceGroup:
           InstanceCount: 1

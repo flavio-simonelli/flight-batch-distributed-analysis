@@ -25,7 +25,7 @@ if %ERRORLEVEL% neq 0 (
 )
 
 :: --- SSH KEY PROVISIONING ---
-call setup-ssh-key.bat
+call setup_ssh_key.bat
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] SSH key setup failed. Deployment aborted.
     exit /b 1
@@ -240,7 +240,7 @@ del "%DNS_BATCH_FILE%"
 :skip_airflow
 
 :: --- DATABASES NODE DEPLOYMENT ---
-:: Persistence layer with PostgreSQL, HBase, and Redis Output.
+:: Persistence layer with PostgreSQL, HBase, CockroachDB and Redis.
 if /I "%TARGET%"=="master" goto :skip_databases
 if /I "%TARGET%"=="worker" goto :skip_databases
 if /I "%TARGET%"=="metrics" goto :skip_databases

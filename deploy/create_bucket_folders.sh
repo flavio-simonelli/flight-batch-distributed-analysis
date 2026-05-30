@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- S3 BUCKET FOLDER INITIALIZER ---
-# This utility ensures that the logical directory structure (prefixes) required 
+# This utility ensures that the logical directory structure required
 # by the project exists within the target S3 bucket.
 
 # --- FOLDER PROVISIONING LOOP ---

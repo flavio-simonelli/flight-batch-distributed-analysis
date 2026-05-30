@@ -44,9 +44,7 @@ else
 fi
 
 # --- FOLDER STRUCTURE PROVISIONING ---
-# Create 
-# the logical folder structure within the bucket to support logs, data, and deployment scripts.
-# These variables are usually defined in .env or passed via CLI.
+# Create the logical folder structure within the bucket.
 "${SCRIPTS_DIR}/create_bucket_folders.sh" "logs" "deploy" "data" "data/raw" "data/conv" "data/res"
 
 # --- DEPLOYMENT ASSETS SYNCHRONIZATION ---
