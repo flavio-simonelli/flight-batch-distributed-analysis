@@ -113,6 +113,21 @@
     toptitle=4pt, bottomtitle=4pt
 }
 
+\newtcblisting{appcodebox}[1]{
+    listing only,
+    listing options={style=Java, aboveskip=0pt, belowskip=0pt},
+    arc=5pt,
+    boxrule=0.5pt,
+    colframe=black!25,
+    colback=black!3,
+    title={#1},
+    coltitle=black!85,
+    colbacktitle=black!8,
+    fonttitle=\scriptsize\bfseries\sffamily,
+    top=0pt, bottom=0pt, left=6pt, right=6pt,
+    toptitle=4pt, bottomtitle=4pt
+}
+
 % Informazioni sul Titolo
 \title[Sky Analytics Engine]{Sky Analytics Engine}
 \subtitle{Analisi batch e Metriche del Traffico Aereo}
@@ -705,23 +720,15 @@ GROUP BY OP_UNIQUE_CARRIER;
 
 \begin{frame}[fragile]{Algoritmi Percentili a Confronto: T-Digest vs KLL Sketch}
 
-    \begin{columns}[T]
+    \begin{columns}[T, totalwidth=\textwidth]
 
-        % COLONNA 1: T-DIGEST
+        % COLONNA 1: T-DIGEST (Usa il nuovo appcodebox)
         \begin{column}{0.49\textwidth}
-            \textbf{\footnotesize T-Digest (\textit{Ted Dunning's Library})}
-            \vspace{0.1cm}
-            \begin{itemize}
-                \item \textbf{Accuratezza}: $\sim$1\% di errore relativo nelle \textbf{code (tails)} del dataset.
-                \item \textbf{Parametro chiave}: \texttt{COMPRESSION = 100.0}.
-                \item \textbf{Meccanismo di Serializzazione}:
-            \end{itemize}
-            
-            \begin{alltt}\fontsize{5pt}{6pt}\selectfont
-// Inizializzazione e manipolazione buffer
+            \begin{appcodebox}{T-Digest (Ted Dunning's Library)}
+// Inizializzazione buffer
 MergingDigest digest = new MergingDigest(100.0);
 
-// Update / Merge a runtime via ByteBuffer
+// Update / Merge via ByteBuffer
 MergingDigest.fromBytes(ByteBuffer.wrap(state));
 
 // Compattazione in byte array
@@ -730,42 +737,40 @@ ByteBuffer buf = ByteBuffer.allocate(
 );
 digest.asSmallBytes(buf);
 return buf.array();
-            \end{alltt}
-            \vspace{0.1cm}
+            \end{appcodebox}
+            
+            \vspace{-0.1cm}
             \begin{itemize}
-                \item[\(\rightarrow\)] \scriptsize Ottimo per l'analisi accurata degli estremi (es. ritardi record).
+                \item \scriptsize \textbf{Accuratezza}: $\sim$1\% errore nelle \textbf{code}.
+                \item \scriptsize \textbf{Parametro}: \texttt{COMPRESSION = 100.0}.
+                \item \scriptsize $\rightarrow$ Ottimo per l'analisi accurata degli estremi (es. ritardi record).
             \end{itemize}
         \end{column}
 
         \hfill
 
-        % COLONNA 2: KLL SKETCH
+        % COLONNA 2: KLL SKETCH (Usa il nuovo appcodebox)
         \begin{column}{0.49\textwidth}
-            \textbf{\footnotesize KLL Sketch (\textit{Apache DataSketches})}
-            \vspace{0.1cm}
-            \begin{itemize}
-                \item \textbf{Accuratezza}: Errore di rango normalizzato bi-laterale di $\sim$1.65\% (simile a \texttt{percentile\_approx}).
-                \item \textbf{Parametro chiave}: Default \texttt{k=200} (bilanciamento ottimale).
-                \item \textbf{Meccanismo di Serializzazione}:
-            \end{itemize}
-            
-            \begin{alltt}\fontsize{5pt}{6pt}\selectfont
+            \begin{appcodebox}{KLL Sketch (Apache DataSketches)}
 // Allocazione nativa in Heap
 KllDoublesSketch.newHeapInstance();
 
-// Ricostruzione stato tramite org.apache.datasketches.memory.Memory
+// Ricostruzione stato tramite Memory
 KllDoublesSketch.heapify(Memory.wrap(state));
 
 // Export diretto nativo ultra-veloce
 return sketch.toByteArray();
 
-
 // Estrazione quantili con criterio inclusivo
-sketch.getQuantile(q, QuantileSearchCriteria.INCLUSIVE);
-            \end{alltt}
-            \vspace{0.1cm}
+sketch.getQuantile(q, 
+  QuantileSearchCriteria.INCLUSIVE);
+            \end{appcodebox}
+            
+            \vspace{-0.1cm}
             \begin{itemize}
-                \item[\(\rightarrow\)] \scriptsize Più veloce nell'I/O grazie all'integrazione nativa con lo strato \texttt{Memory}.
+                \item \scriptsize \textbf{Accuratezza}: Errore di rango $\sim$1.65\%.
+                \item \scriptsize \textbf{Parametro}: Default \texttt{k=200} (ottimale).
+                \item \scriptsize $\rightarrow$ Più veloce nell'I/O grazie all'integrazione con lo strato \texttt{Memory}.
             \end{itemize}
         \end{column}
 
@@ -775,110 +780,64 @@ sketch.getQuantile(q, QuantileSearchCriteria.INCLUSIVE);
 
 \begin{frame}[fragile]{Query 4: Airline Clustering — ML Pipeline}
 
-    \vspace{-0.2cm}
-    {\scriptsize \textbf{Obiettivo:} Individuare gruppi di vettori aerei con comportamenti e cause di ritardo simili sui top 15 carrier stabili, standardizzando lo spazio multivariato ed applicando l'algoritmo K-Means.}
+    \vspace{-0.3cm}
+    \begin{exampleblock}{\footnotesize Obiettivo Analisi}
+        \scriptsize Individuare gruppi di vettori con comportamenti simili su 11 metriche aggregate (11D), standardizzando lo spazio multivariato ed applicando l'algoritmo K-Means.
+    \end{exampleblock}
     
-    \vspace{0.1cm}
-    \hrule
-    \vspace{0.2cm}
+    \vspace{-0.2cm}
 
-    \begin{itemize}
-        \item \textbf{1. Feature Ingestion \& Vettorizzazione}: 
-        Estrazione di 11 metriche aggregate (medie, deviazioni standard dei ritardi, tassi di cancellazione e deviazioni). Assemblaggio dello spazio multivariato tramite \texttt{VectorAssembler}.
-        
-        \item \textbf{2. Z-Score Normalization}: 
-        Uso di \texttt{StandardScaler} per azzerare la media (\texttt{withMean}) e scalare sulla varianza unitaria (\texttt{withStd}) per rendere confrontabili metriche a scale diverse.
-    \end{itemize}
+    \begin{columns}[T, totalwidth=\textwidth]
 
-    \vspace{0.1cm}
-    \textbf{\footnotesize Selezione del K Ottimale tramite Silhouette Analysis (MLlib DataFrame API)}
-    \vspace{0.1cm}
-
-    \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
-// Analisi iterativa dello score di Silhouette per minimizzare l'arbitrarietà di K
+        % COLONNA 1: SILHOUETTE ANALYSIS & K-MEANS
+        \begin{column}{0.49\textwidth}
+            \begin{appcodebox}{Silhouette Analysis \& K-Means}
 ClusteringEvaluator evaluator = new ClusteringEvaluator()
-    .setFeaturesCol("features").setPredictionCol("prediction").setMetricName("silhouette");
-
+    .setFeaturesCol("features")
+    .setPredictionCol("prediction")
+    .setMetricName("silhouette");
 int bestK = 2; double bestScore = -1.0;
-
-for (int k = 2; k <= 5; k++) \{
-    KMeans kmeans = new KMeans().setK(k).setSeed(42L).setInitMode("k-means||");
-    KMeansModel model = kmeans.fit(scaledData);
-    
-    double score = evaluator.evaluate(model.transform(scaledData));
-    if (score > bestScore) \{ 
-        bestScore = score; bestK = k; 
-    \}
-\}
-// Esecuzione finale del fit di K-Means sul "bestK" identificato
-KMeansModel modelFinal = new KMeans().setK(bestK).setSeed(42L).fit(scaledData);
-    \end{alltt}
-
-\end{frame}
-
-\begin{frame}[fragile]{Query 4: Airline Clustering — Proiezione e Vincoli Architetturali}
-
-    \vspace{-0.2cm}
-    {\scriptsize \textbf{Obiettivo:} Individuare gruppi di vettori aerei con comportamenti e cause di ritardo simili sui top 15 carrier stabili, standardizzando lo spazio multivariato ed applicando l'algoritmo K-Means.}
-    
-    \vspace{0.1cm}
-    \hrule
-    \vspace{0.2cm}
-
-    \begin{columns}[T]
-
-        % COLONNA 1: PCA
-        \begin{column}{0.51\textwidth}
-            \textbf{\footnotesize Proiezione PCA per la Visualizzazione}
-            \vspace{0.1cm}
-            \begin{itemize}
-                \item Il clustering avviene nello spazio nativo a 11 dimensioni.
-                \item \textbf{Principal Component Analysis}: Applicata \textit{dopo} il clustering esclusivamente per mappare i punti e i centroidi su un piano cartesiano 2D (\texttt{CHART\_DIMENSION = 2}).
-            \end{itemize}
+for (int k = 2; k <= 5; k++) {
+    KMeans km = new KMeans().setK(k)
+        .setSeed(42L).setInitMode("k-means||");
+    KMeansModel m = km.fit(scaledData);
+    double score = evaluator.evaluate(m.transform(scaledData));
+    if (score > bestScore) { 
+        bestScore = score; bestK = k; }
+}
+KMeansModel modelFinal = new KMeans()
+    .setK(bestK).setSeed(42L).fit(scaledData);
+            \end{appcodebox}
             
-            \begin{alltt}\fontsize{5pt}{6pt}\selectfont
+            \vspace{-0.1cm}
+            \begin{itemize}
+                \item \scriptsize \textbf{Scaling}: Spazio standardizzato a 11D tramite \texttt{StandardScaler}.
+                \item \scriptsize \textbf{Ottimizzazione}: Selezione iterativa del $K$ per ridurre l'arbitrarietà.
+            \end{itemize}
+        \end{column}
+
+        \hfill
+
+        % COLONNA 2: PCA PROJECTION
+        \begin{column}{0.49\textwidth}
+            \begin{appcodebox}{Proiezione PCA per Visualizzazione}
 PCA pca = new PCA()
     .setInputCol("features")
     .setOutputCol("pca_features")
     .setK(2);
+    
 PCAModel pcaModel = pca.fit(finalPredictions);
 
 // Espansione del vettore nei componenti x e y
 Dataset<Row> finalOutput = appendPcaColumns(
     pcaModel.transform(finalPredictions)
 );
-            \end{alltt}
-        \end{column}
-
-        \hfill
-
-        % COLONNA 2: API CONSTRAINT
-        \begin{column}{0.47\textwidth}
-            \textbf{\footnotesize Vincoli e Limitazioni delle API}
-            \vspace{0.1cm}
-            \begin{itemize}
-                \item \textbf{Esclusività del DataFrame}: L'intero algoritmo si appoggia sulle interfacce di \texttt{org.apache.spark.ml}, strutturate per operare su contesti fortemente tipizzati di tipo \texttt{Dataset<Row>}.
-            \end{itemize}
+            \end{appcodebox}
             
-            \begin{alltt}\fontsize{5.2pt}{6.2pt}\selectfont
-@Override 
-protected List<Row> runQuerySQL(...) \{ 
-    throw new 
-      UnsupportedOperationException(
-      "Clustering only via DataFrame"); 
-\}
-
-@Override 
-protected List<Tuple2> runQueryRDD(...) \{ 
-    throw new 
-      UnsupportedOperationException(
-      "Clustering only via DataFrame"); 
-\}
-            \end{alltt}
-            \vspace{0.05cm}
+            \vspace{-0.1cm}
             \begin{itemize}
-                \item Lo strato SQL non possiede costrutti dichiarativi per pipeline iterative.
-                \item L'API RDD (ML legacy) è deprecata e priva di ottimizzazioni di memoria basate su Catalyst.
+                \item \scriptsize \textbf{Dimensionalità}: Il clustering avviene nel blocco nativo a 11D.
+                \item \scriptsize \textbf{Riduzione Geometrica}: PCA applicata \textit{post-clustering} solo per mappare i punti sul piano cartesiano 2D.
             \end{itemize}
         \end{column}
 
