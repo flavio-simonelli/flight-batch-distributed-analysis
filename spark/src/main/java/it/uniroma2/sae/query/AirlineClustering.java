@@ -6,13 +6,12 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.ml.clustering.KMeans;
 import org.apache.spark.ml.clustering.KMeansModel;
 import org.apache.spark.ml.evaluation.ClusteringEvaluator;
-import org.apache.spark.ml.feature.StandardScaler;
-import org.apache.spark.ml.feature.VectorAssembler;
 import org.apache.spark.ml.feature.PCA;
 import org.apache.spark.ml.feature.PCAModel;
+import org.apache.spark.ml.feature.StandardScaler;
+import org.apache.spark.ml.feature.VectorAssembler;
 import org.apache.spark.ml.linalg.SQLDataTypes;
 import org.apache.spark.ml.linalg.Vector;
-import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
@@ -33,9 +32,9 @@ import static org.apache.spark.sql.functions.*;
  * Implementation of Query 4: Airline Clustering.
  * Inherits the initialization and data loading boilerplate from {@link BaseQuery}.
  * This query groups airlines based on their operational performance features using K-Means.
- * 1. Clusters airlines based on multiple operational features (multidimensional space).
- * 2. Evaluates the optimal number of clusters (K) using the Silhouette Score.
- * 3. Projects the multidimensional results into a lower-dimensional space (e.g., 2D) 
+ * 1. Clusters airlines based on multiple operational features.
+ * 2. Evaluates the optimal number of clusters using the Silhouette Score.
+ * 3. Projects the multidimensional results into a lower-dimensional space 
  *    using PCA AFTER clustering, specifically for visualization purposes.
  */
 public class AirlineClustering extends BaseQuery {
@@ -53,17 +52,10 @@ public class AirlineClustering extends BaseQuery {
 
     @Override
     protected Dataset<Row> loadData(FlightRepository repository, ApplicationConfig config) {
-        // Method-level constants for data loading (Algorithmically uninfluential)
-        final String[] REQUIRED_COLUMNS = {
-                "OP_UNIQUE_CARRIER", "DEP_DELAY", "ARR_DELAY", "CANCELLED", "DIVERTED",
-                "CARRIER_DELAY", "WEATHER_DELAY", "NAS_DELAY", "SECURITY_DELAY", "LATE_AIRCRAFT_DELAY"
-        };
-        
         String datasetFilename = config.getInput().getDatasetFilename();
-        
-        // Select only the necessary columns to optimize read performance
-        Column[] cols = Arrays.stream(REQUIRED_COLUMNS).map(colName -> col(colName)).toArray(Column[]::new);
-        return repository.getFlights(datasetFilename).select(cols);
+        // Return raw Dataset<Row> with only needed columns
+        return repository.getFlights(datasetFilename)
+                .select("OP_UNIQUE_CARRIER", "DEP_DELAY", "ARR_DELAY", "CANCELLED", "DIVERTED", "CARRIER_DELAY", "WEATHER_DELAY", "NAS_DELAY", "SECURITY_DELAY", "LATE_AIRCRAFT_DELAY");
     }
 
     /**
@@ -78,7 +70,6 @@ public class AirlineClustering extends BaseQuery {
     @Override
     protected List<Dataset<Row>> runQueryDataFrame(Dataset<Row> dataset, ApplicationConfig config) {
         
-        // --- Method-Level Constants ---
         final String CARRIER_COL = "OP_UNIQUE_CARRIER";
         final String CANCELLED_COL = "CANCELLED";
         final String DIVERTED_COL = "DIVERTED";
@@ -108,34 +99,36 @@ public class AirlineClustering extends BaseQuery {
                 .join(topCarriers, CARRIER_COL)
                 .groupBy(CARRIER_COL)
                 .agg(
-                        avg(when(col(CANCELLED_COL).equalTo(0), col(DEP_DELAY_COL))).as("avg_dep_delay"),
-                        avg(when(col(CANCELLED_COL).equalTo(0), col(ARR_DELAY_COL))).as("avg_arr_delay"),
+                    avg(when(col(CANCELLED_COL).equalTo(0), col(DEP_DELAY_COL))).as("avg_dep_delay"),
+                    avg(when(col(CANCELLED_COL).equalTo(0), col(ARR_DELAY_COL))).as("avg_arr_delay"),
 
-                        // Recovered time in fly
-                        avg(when(col(CANCELLED_COL).equalTo(0), col(ARR_DELAY_COL).minus(col(DEP_DELAY_COL)))).as("avg_flight_makeup"),
-                        stddev(ARR_DELAY_COL).as("arr_delay_stddev"),
-                        (sum(col(DIVERTED_COL)).divide(count("*"))).as("diverted_rate"),
+                    // Recovered time in fly
+                    avg(when(col(CANCELLED_COL).equalTo(0), col(ARR_DELAY_COL).minus(col(DEP_DELAY_COL)))).as("avg_flight_makeup"),
+                    stddev(ARR_DELAY_COL).as("arr_delay_stddev"),
+                    (sum(col(DIVERTED_COL)).divide(count("*"))).as("diverted_rate"),
 
-                        (sum(col(CANCELLED_COL)).divide(count("*"))).as("cancellation_rate"),
-                        avg(coalesce(col("CARRIER_DELAY"), lit(0))).as("avg_carrier_delay"),
-                        avg(coalesce(col("WEATHER_DELAY"), lit(0))).as("avg_weather_delay"),
-                        avg(coalesce(col("NAS_DELAY"), lit(0))).as("avg_nas_delay"),
-                        avg(coalesce(col("SECURITY_DELAY"), lit(0))).as("avg_security_delay"),
-                        avg(coalesce(col("LATE_AIRCRAFT_DELAY"), lit(0))).as("avg_late_aircraft_delay")
+                    (sum(col(CANCELLED_COL)).divide(count("*"))).as("cancellation_rate"),
+                    avg(coalesce(col("CARRIER_DELAY"), lit(0))).as("avg_carrier_delay"),
+                    avg(coalesce(col("WEATHER_DELAY"), lit(0))).as("avg_weather_delay"),
+                    avg(coalesce(col("NAS_DELAY"), lit(0))).as("avg_nas_delay"),
+                    avg(coalesce(col("SECURITY_DELAY"), lit(0))).as("avg_security_delay"),
+                    avg(coalesce(col("LATE_AIRCRAFT_DELAY"), lit(0))).as("avg_late_aircraft_delay")
                 )
                 .withColumnRenamed(CARRIER_COL, "carrier")
                 .na().fill(0.0);
 
         final String[] featureCols = {
-                "avg_dep_delay", "avg_arr_delay", "cancellation_rate",
-                "avg_flight_makeup", "arr_delay_stddev", "diverted_rate",
-                "avg_carrier_delay", "avg_weather_delay", "avg_nas_delay",
-                "avg_security_delay", "avg_late_aircraft_delay"
+            "avg_dep_delay", "avg_arr_delay", "cancellation_rate",
+            "avg_flight_makeup", "arr_delay_stddev", "diverted_rate",
+            "avg_carrier_delay", "avg_weather_delay", "avg_nas_delay",
+            "avg_security_delay", "avg_late_aircraft_delay"
         };
         
         // PHASE 3: Feature Assembly and Scaling
-        // Combine individual feature columns into a single vector and standardize them (mean=0, std=1).
-        VectorAssembler assembler = new VectorAssembler().setInputCols(featureCols).setOutputCol(RAW_FEATURES_COL);
+        // Combine individual feature columns into a single vector and standardize them.
+        VectorAssembler assembler = new VectorAssembler()
+                .setInputCols(featureCols)
+                .setOutputCol(RAW_FEATURES_COL);
         Dataset<Row> assembledData = assembler.transform(featuresRaw);
 
         StandardScaler scaler = new StandardScaler()
@@ -146,7 +139,7 @@ public class AirlineClustering extends BaseQuery {
         Dataset<Row> scaledData = scaler.fit(assembledData).transform(assembledData);
         scaledData.cache();
 
-        // PHASE 4: Optimal K Selection (Silhouette Analysis)
+        // PHASE 4: Optimal K Selection
         // Iteratively test values of K to find the configuration with the highest Silhouette score.
         ClusteringEvaluator evaluator = new ClusteringEvaluator()
                 .setFeaturesCol(FEATURES_COL)
@@ -156,7 +149,7 @@ public class AirlineClustering extends BaseQuery {
         int bestK = MIN_K;
         double bestScore = -1.0;
         
-        logger.info("--- Finding optimal K using Silhouette Score ---");
+        logger.debug("--- Finding optimal K using Silhouette Score ---");
         for (int k = MIN_K; k <= MAX_K; k++) {
             KMeans kmeans = new KMeans()
                     .setK(k)
@@ -165,7 +158,7 @@ public class AirlineClustering extends BaseQuery {
                     .setInitMode(KMEANS_INIT_MODE);
             KMeansModel model = kmeans.fit(scaledData);
             double score = evaluator.evaluate(model.transform(scaledData));
-            logger.info("K={} -> Silhouette Score: {}", k, score);
+            logger.debug("K={} -> Silhouette Score: {}", k, score);
             if (score > bestScore) { 
                 bestScore = score; 
                 bestK = k; 
@@ -201,18 +194,20 @@ public class AirlineClustering extends BaseQuery {
         Vector[] centers = modelFinal.clusterCenters();
         
         for (int i = 0; i < centers.length; i++) {
-             centerFeatureRows.add(RowFactory.create(i, centers[i]));
+            centerFeatureRows.add(RowFactory.create(i, centers[i]));
         }
         
+        // Create a DataFrame for the centers and apply the same PCA transformation to get their coordinates in the reduced space.
         StructType centerFeatureSchema = new StructType(new StructField[]{
-             DataTypes.createStructField(CLUSTER_COL, DataTypes.IntegerType, false),
-             DataTypes.createStructField(FEATURES_COL, SQLDataTypes.VectorType(), false)
+                DataTypes.createStructField(CLUSTER_COL, DataTypes.IntegerType, false),
+                DataTypes.createStructField(FEATURES_COL, SQLDataTypes.VectorType(), false)
         });
         
         Dataset<Row> centersND = spark.createDataFrame(centerFeatureRows, centerFeatureSchema);
         Dataset<Row> centersPCA = pcaModel.transform(centersND);
         List<Row> pcaCenterRows = centersPCA.collectAsList();
         
+        // Combine original center features and PCA coordinates into a single row for each cluster center.
         List<Row> finalCenterRows = new ArrayList<>();
         for (int i = 0; i < centers.length; i++) {
             double[] originalFeatures = centers[i].toArray();

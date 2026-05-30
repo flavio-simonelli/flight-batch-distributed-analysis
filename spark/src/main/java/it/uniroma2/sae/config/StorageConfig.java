@@ -26,7 +26,7 @@ import java.io.Serializable;
         @JsonSubTypes.Type(value = JdbcStorageConfig.class, name = "cockroach"),
         @JsonSubTypes.Type(value = RedisStorageConfig.class, name = "redis"),
         @JsonSubTypes.Type(value = HBaseStorageConfig.class, name = "hbase"),
-        @JsonSubTypes.Type(value = StorageConfig.class, name = "local") // Default for local, no 'uri' field
+        @JsonSubTypes.Type(value = StorageConfig.class, name = "local")
 })
 public class StorageConfig implements Serializable {
     private StorageType type;

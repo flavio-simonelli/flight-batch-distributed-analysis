@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import java.io.InputStream;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Main class representing the application's overall configuration loaded from a YAML file.
@@ -16,6 +16,10 @@ import java.util.HashMap;
 public class ApplicationConfig {
 
     public static final String CONFIG_FILE = "local-config.yml";
+
+    private static final String DEFAULT_SELECTED_INPUT = "hdfs";
+    private static final String DEFAULT_SELECTED_OUTPUT = "cockroach";
+    private static final String DEFAULT_SELECTED_METRICS = "redis";
 
     /**
      * Loads and parses a YAML configuration file from the classpath into an ApplicationConfig object.
@@ -47,9 +51,9 @@ public class ApplicationConfig {
     private Map<String, StorageConfig> metricsOptions = new HashMap<>();
 
     // --- Selection State (ignored by Jackson deserialization from YAML) ---
-    private String selectedInput = "hdfs";
-    private String selectedOutput = "cockroach";
-    private String selectedMetrics = "redis";
+    private String selectedInput    = DEFAULT_SELECTED_INPUT;
+    private String selectedOutput   = DEFAULT_SELECTED_OUTPUT;
+    private String selectedMetrics  = DEFAULT_SELECTED_METRICS;
 
     // --- Partition Configuration ---
     private Integer outputPartitions = null;
@@ -133,16 +137,16 @@ public class ApplicationConfig {
 
     @JsonIgnore
     public StorageConfig getInput() {
-        return inputs.getOrDefault(selectedInput, inputs.get("hdfs"));
+        return inputs.getOrDefault(selectedInput, inputs.get(DEFAULT_SELECTED_INPUT));
     }
 
     @JsonIgnore
     public StorageConfig getOutput() {
-        return outputs.getOrDefault(selectedOutput, outputs.get("cockroach"));
+        return outputs.getOrDefault(selectedOutput, outputs.get(DEFAULT_SELECTED_OUTPUT));
     }
 
     @JsonIgnore
     public StorageConfig getMetrics() {
-        return metricsOptions.getOrDefault(selectedMetrics, metricsOptions.get("redis"));
+        return metricsOptions.getOrDefault(selectedMetrics, metricsOptions.get(DEFAULT_SELECTED_METRICS));
     }
 }

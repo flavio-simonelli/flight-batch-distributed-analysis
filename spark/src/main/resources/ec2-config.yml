@@ -2,7 +2,7 @@
 appName: Flight Analysis
 appBackend: dataframe
 
-# --- STORAGE LAYER (Inputs) ---
+# --- STORAGE LAYER ---
 inputs:
   hdfs:
     type: "hdfs"
@@ -22,7 +22,7 @@ sparkCluster:
     hostname: spark-master.flight-analysis.local
     port: 7077
 
-# --- PERSISTENCE LAYER (Outputs) ---
+# --- PERSISTENCE LAYER ---
 outputs:
   hdfs:
     type: "hdfs"
@@ -53,7 +53,7 @@ outputs:
     port: 2181
     database: "flight_results"
 
-# --- MONITORING LAYER (Metrics) ---
+# --- MONITORING LAYER ---
 metrics:
   redis:
     type: "redis"

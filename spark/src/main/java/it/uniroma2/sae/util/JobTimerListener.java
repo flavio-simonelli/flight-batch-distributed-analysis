@@ -9,7 +9,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class JobTimerListener extends SparkListener {
     
+    // Map to track start times of jobs and stages
     private final ConcurrentHashMap<Integer, Long> jobStartTimes = new ConcurrentHashMap<>();
+    // Map to track start times of stages
     private final ConcurrentHashMap<Integer, Long> stageStartTimes = new ConcurrentHashMap<>();
 
     @Override

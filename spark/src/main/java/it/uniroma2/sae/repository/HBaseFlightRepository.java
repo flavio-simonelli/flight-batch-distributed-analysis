@@ -26,6 +26,12 @@ import static org.apache.spark.sql.functions.*;
  */
 public class HBaseFlightRepository extends DbFlightRepository<HBaseStorageConfig> implements Serializable {
 
+    /**
+     * Constructs a new HBaseFlightRepository with the given SparkSession and HBase configuration.
+     * 
+     * @param spark the SparkSession to be used for data operations
+     * @param config the HBase storage configuration
+     */
     public HBaseFlightRepository(SparkSession spark, HBaseStorageConfig config) {
         super(spark, config);
     }
@@ -34,6 +40,7 @@ public class HBaseFlightRepository extends DbFlightRepository<HBaseStorageConfig
     public void saveResults(Dataset<Row> results, String table) {
         if (results == null) throw new IllegalArgumentException("Results dataset cannot be null.");
         
+        // Determine target table/key for HBase output
         final String targetTable = (table != null && !table.isEmpty()) ? table : config.getTableName();
         if (targetTable == null || targetTable.isEmpty()) {
             throw new IllegalArgumentException("Target table must be provided for HBase output.");
@@ -45,7 +52,7 @@ public class HBaseFlightRepository extends DbFlightRepository<HBaseStorageConfig
         // Ensure table exists on the Driver
         ensureTableExists(quorum, port, targetTable);
 
-        // STRATEGY: Use a Timestamp + Monotonic ID to identify the run.
+        // Use a Timestamp + Monotonic ID to identify the run.
         // We use Spark native functions to generate the row key column.
         final String queryId = String.valueOf(System.currentTimeMillis());
         Dataset<Row> preparedResults = results.withColumn("hbase_row_key", 
@@ -61,6 +68,8 @@ public class HBaseFlightRepository extends DbFlightRepository<HBaseStorageConfig
 
         // Distributed insertion using foreachPartition
         preparedResults.toJavaRDD().foreachPartition(partition -> {
+
+            // Create HBase connection and table reference for this partition
             Configuration hbaseConfig = HBaseConfiguration.create();
             hbaseConfig.set("hbase.zookeeper.quorum", quorum);
             hbaseConfig.set("hbase.zookeeper.property.clientPort", port);
@@ -68,6 +77,7 @@ public class HBaseFlightRepository extends DbFlightRepository<HBaseStorageConfig
             try (Connection connection = ConnectionFactory.createConnection(hbaseConfig);
                  Table hbaseTable = connection.getTable(TableName.valueOf(targetTable))) {
 
+                // Batch puts for efficiency
                 List<Put> batch = new ArrayList<>();
                 StructField[] fields = schema.fields();
                 byte[] cf = Bytes.toBytes("cf");
@@ -100,6 +110,7 @@ public class HBaseFlightRepository extends DbFlightRepository<HBaseStorageConfig
                     }
                 }
 
+                // Flush any remaining puts
                 if (!batch.isEmpty()) {
                     hbaseTable.put(batch);
                 }

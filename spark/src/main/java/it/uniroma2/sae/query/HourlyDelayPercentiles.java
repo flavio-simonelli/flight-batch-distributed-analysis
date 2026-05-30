@@ -4,7 +4,6 @@ import it.uniroma2.sae.config.AppBackendType;
 import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.config.PercentileAlgorithm;
 import it.uniroma2.sae.repository.FlightRepository;
-import it.uniroma2.sae.util.SparkDiagnostics;
 import it.uniroma2.sae.util.percentile.PercentileSketch;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -57,7 +56,10 @@ public class HourlyDelayPercentiles extends BaseQuery {
     @Override
     protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<Row> dataset, ApplicationConfig config) {
 
+        // Initialize the chosen percentile sketch based on configuration
         PercentileSketch sketch = PercentileSketch.from(config.getPercentileAlgorithm());
+
+        // Load the dataset for specific airlines
         JavaRDD<Row> flights = dataset.javaRDD();
 
         // Single non-cancelled filter shared by both pipelines (cached to avoid double scan).
@@ -65,7 +67,12 @@ public class HourlyDelayPercentiles extends BaseQuery {
                 f.getDouble(CANCELLED_IDX) == 0.0 && !f.isNullAt(DEP_DELAY_IDX)
         ).cache();
 
-        // Pipeline 1: hourly percentiles
+        // --------------------------------------
+        // --- Pipeline 1: hourly percentiles ---
+        // --------------------------------------
+
+        // Map each flight to a pair of ((airline, hour), delay)
+        // and use combineByKey to build quantile sketches
         JavaPairRDD<Tuple2<String, Integer>, Double> hourlyPairs = validFlights
                 .filter(f -> !f.isNullAt(CRS_DEP_TIME_IDX))
                 .mapToPair(f -> {
@@ -73,52 +80,66 @@ public class HourlyDelayPercentiles extends BaseQuery {
                     return new Tuple2<>(new Tuple2<>(f.getString(OP_UNIQUE_CARRIER_IDX), hour), f.getDouble(DEP_DELAY_IDX));
                 });
 
+        // Using combineByKey to build quantile sketches per (airline, hour)
+        // without materializing large intermediate collections.
         JavaPairRDD<Tuple2<String, Integer>, byte[]> hourlySketches = hourlyPairs.combineByKey(
                 sketch::init,
                 sketch::update,
                 sketch::merge
         );
 
+        final int p25Idx = 0;
+        final int p50Idx = 1;
+        final int p75Idx = 2;
+        final int p90Idx = 3;
+
+        // Extract quantiles from sketches and format as Rows
         JavaRDD<Row> hourlyRows = hourlySketches.map(t -> {
             double[] q = sketch.getQuantiles(t._2, 0.25, 0.50, 0.75, 0.90);
             return RowFactory.create(
                     t._1._1,
                     t._1._2,
-                    round2(q[0]),
-                    round2(q[1]),
-                    round2(q[2]),
-                    round2(q[3])
+                    roundDecimals(q[p25Idx]),   // 25th percentile
+                    roundDecimals(q[p50Idx]),   // 50th percentile
+                    roundDecimals(q[p75Idx]),   // 75th percentile
+                    roundDecimals(q[p90Idx])    // 90th percentile
             );
         });
 
         StructType hourlySchema = DataTypes.createStructType(new StructField[]{
-                DataTypes.createStructField("airline",         DataTypes.StringType, false),
-                DataTypes.createStructField("hour",            DataTypes.IntegerType, false),
-                DataTypes.createStructField("p25",             DataTypes.DoubleType, false),
-                DataTypes.createStructField("p50",             DataTypes.DoubleType, false),
-                DataTypes.createStructField("p75",             DataTypes.DoubleType, false),
-                DataTypes.createStructField("p90",             DataTypes.DoubleType, false)
+            DataTypes.createStructField("airline",         DataTypes.StringType, false),
+            DataTypes.createStructField("hour",            DataTypes.IntegerType, false),
+            DataTypes.createStructField("p25",             DataTypes.DoubleType, false),
+            DataTypes.createStructField("p50",             DataTypes.DoubleType, false),
+            DataTypes.createStructField("p75",             DataTypes.DoubleType, false),
+            DataTypes.createStructField("p90",             DataTypes.DoubleType, false)
         });
 
-        // Pipeline 2: global min/max per airline
-        // Using aggregateByKey to avoid creating millions of double[2] arrays.
+        // ----------------------------------------------
+        // --- Pipeline 2: global min/max per airline ---
+        // ----------------------------------------------
+
+        final int minDelayIdx = 0;
+        final int maxDelayIdx = 1;
+
+        // Using aggregateByKey to avoid creating millions of double arrays.
         JavaRDD<Row> globalRows = validFlights
                 .mapToPair(f -> new Tuple2<>(f.getString(OP_UNIQUE_CARRIER_IDX), f))
                 .aggregateByKey(
                     new double[]{Double.MAX_VALUE, -Double.MAX_VALUE}, // [0: min, 1: max]
                     (acc, flight) -> {
                         double delay = getDoubleSafe(flight, DEP_DELAY_IDX);
-                        acc[0] = Math.min(acc[0], delay);
-                        acc[1] = Math.max(acc[1], delay);
+                        acc[minDelayIdx] = Math.min(acc[minDelayIdx], delay);
+                        acc[maxDelayIdx] = Math.max(acc[maxDelayIdx], delay);
                         return acc;
                     },
                     (acc1, acc2) -> {
-                        acc1[0] = Math.min(acc1[0], acc2[0]);
-                        acc1[1] = Math.max(acc1[1], acc2[1]);
+                        acc1[minDelayIdx] = Math.min(acc1[minDelayIdx], acc2[minDelayIdx]);
+                        acc1[maxDelayIdx] = Math.max(acc1[maxDelayIdx], acc2[maxDelayIdx]);
                         return acc1;
                     }
                 )
-                .map(t -> RowFactory.create(t._1, t._2[0], t._2[1]));
+                .map(t -> RowFactory.create(t._1, t._2[minDelayIdx], t._2[maxDelayIdx]));
 
         StructType globalSchema = DataTypes.createStructType(new StructField[]{
                 DataTypes.createStructField("airline",          DataTypes.StringType, false),
@@ -127,13 +148,9 @@ public class HourlyDelayPercentiles extends BaseQuery {
         });
 
         return Arrays.asList(
-                new Tuple2<>(hourlyRows, hourlySchema),
-                new Tuple2<>(globalRows,   globalSchema)
+            new Tuple2<>(hourlyRows, hourlySchema),
+            new Tuple2<>(globalRows, globalSchema)
         );
-        }
-
-    private static double round2(double v) {
-        return Math.round(v * 100.0) / 100.0;
     }
 
     /**
@@ -170,10 +187,10 @@ public class HourlyDelayPercentiles extends BaseQuery {
                 .withColumn("hour", col("CRS_DEP_TIME").divide(100).cast("int"))
                 .groupBy("OP_UNIQUE_CARRIER", "hour")
                 .agg(
-                        round(expr("percentile_approx(DEP_DELAY, 0.25)"), 2).as("p25"),
-                        round(expr("percentile_approx(DEP_DELAY, 0.50)"), 2).as("p50"),
-                        round(expr("percentile_approx(DEP_DELAY, 0.75)"), 2).as("p75"),
-                        round(expr("percentile_approx(DEP_DELAY, 0.90)"), 2).as("p90")
+                    round(expr("percentile_approx(DEP_DELAY, 0.25)"), 2).as("p25"),
+                    round(expr("percentile_approx(DEP_DELAY, 0.50)"), 2).as("p50"),
+                    round(expr("percentile_approx(DEP_DELAY, 0.75)"), 2).as("p75"),
+                    round(expr("percentile_approx(DEP_DELAY, 0.90)"), 2).as("p90")
                 )
                 .withColumnRenamed("OP_UNIQUE_CARRIER", "airline");
 
@@ -204,19 +221,19 @@ public class HourlyDelayPercentiles extends BaseQuery {
         flights.createOrReplaceTempView("flights");
 
         String hourlyStatsSql = "SELECT OP_UNIQUE_CARRIER as airline, CAST(CRS_DEP_TIME / 100 AS INT) AS hour, " +
-                "ROUND(percentile_approx(DEP_DELAY, 0.25), 2) AS p25, " +
-                "ROUND(percentile_approx(DEP_DELAY, 0.50), 2) AS p50, " +
-                "ROUND(percentile_approx(DEP_DELAY, 0.75), 2) AS p75, " +
-                "ROUND(percentile_approx(DEP_DELAY, 0.90), 2) AS p90 " +
-                "FROM flights " +
-                "WHERE CANCELLED = 0 " +
-                "GROUP BY OP_UNIQUE_CARRIER, hour";
+                                "ROUND(percentile_approx(DEP_DELAY, 0.25), 2) AS p25, " +
+                                "ROUND(percentile_approx(DEP_DELAY, 0.50), 2) AS p50, " +
+                                "ROUND(percentile_approx(DEP_DELAY, 0.75), 2) AS p75, " +
+                                "ROUND(percentile_approx(DEP_DELAY, 0.90), 2) AS p90 " +
+                                "FROM flights " +
+                                "WHERE CANCELLED = 0 " +
+                                "GROUP BY OP_UNIQUE_CARRIER, hour";
         
         Dataset<Row> hourlyStats = spark.sql(hourlyStatsSql);
 
-        String globalMinMaxSql = "SELECT OP_UNIQUE_CARRIER as airline, MIN(DEP_DELAY) AS min_delay, MAX(DEP_DELAY) AS max_delay " +
-                "FROM flights " +
-                "GROUP BY OP_UNIQUE_CARRIER";
+        String globalMinMaxSql =    "SELECT OP_UNIQUE_CARRIER as airline, MIN(DEP_DELAY) AS min_delay, MAX(DEP_DELAY) AS max_delay " +
+                                    "FROM flights " +
+                                    "GROUP BY OP_UNIQUE_CARRIER";
         
         Dataset<Row> globalMinMax = spark.sql(globalMinMaxSql);
 

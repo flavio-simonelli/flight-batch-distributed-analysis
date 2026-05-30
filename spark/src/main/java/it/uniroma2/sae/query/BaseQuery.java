@@ -1,9 +1,11 @@
 package it.uniroma2.sae.query;
 
-import it.uniroma2.sae.config.*;
+import it.uniroma2.sae.config.AppBackendType;
+import it.uniroma2.sae.config.ApplicationConfig;
+import it.uniroma2.sae.config.QueryType;
 import it.uniroma2.sae.factory.FlightRepositoryFactory;
 import it.uniroma2.sae.repository.FlightRepository;
-import it.uniroma2.sae.util.JobTimerListener; // Import the new listener
+import it.uniroma2.sae.util.JobTimerListener;
 import it.uniroma2.sae.util.PerformanceMetrics;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
@@ -20,27 +22,29 @@ import java.util.List;
  * Base abstract class for all Spark queries in the project.
  * It encapsulates the common boilerplate code required to bootstrap a Spark job:
  * 1. Initializing the SparkSession with cluster settings.
- * 2. Instantiating the appropriate input repository via the Factory.
- * 3. Managing the SparkSession lifecycle (stopping it safely).
+ * 2. Instantiating the appropriate repository via the Factory.
+ * 3. Managing the SparkSession lifecycle.
  *
- * Subclasses must implement the execution methods (runQueryDataFrame, runQueryRDD, runQuerySQL)
- * depending on which backend APIs they support.
+ * Subclasses must implement the execution methods depending on which backend APIs they support.
  */
 public abstract class BaseQuery {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     /**
      * The main execution flow for the query.
-     * It handles setup, executes the specific query logic based on the configured backend, and performs cleanup.
+     * It handles setup, executes the specific query logic
+     * based on the configured backend, and performs cleanup.
      *
      * @param config the application configuration loaded at startup
      */
     public void execute(ApplicationConfig config) {
         SparkSession spark = null;
 
+        // Reset performance metrics at the start of execution
         PerformanceMetrics metrics = PerformanceMetrics.getInstance();
         metrics.reset();
 
+        // Validate configuration parameters that are critical for execution before starting Spark
         QueryType query = config.getQueryToRun();
         if (query == null) throw new IllegalArgumentException("queryToRun is not defined. Please choose monthly_performance, arrival_delay_ranking, or hourly_delay_percentiles via config or CLI.");
         String queryName = query.name().toLowerCase();
@@ -50,7 +54,7 @@ public abstract class BaseQuery {
             SparkSession.Builder builder = SparkSession.builder()
                     .appName(config.getFullAppName());
 
-            // If master is provided in config, use it (typically for local/docker).
+            // If master is provided in config, use it
             if (config.getSparkCluster() != null && config.getSparkCluster().getMaster() != null) {
                 logger.info("Using explicit master from config | master={}", config.getSparkCluster().getMasterUri());
                 builder.master(config.getSparkCluster().getMasterUri());
@@ -58,8 +62,10 @@ public abstract class BaseQuery {
 
             spark = builder.getOrCreate();
 
+            // Set log level to WARN to reduce verbosity
             spark.sparkContext().setLogLevel("WARN");
 
+            // Enable Adaptive Query Execution for better performance on large datasets
             spark.conf().set("spark.sql.adaptive.enabled", "true");
 
             // Add the custom SparkListener for job timing
@@ -72,6 +78,7 @@ public abstract class BaseQuery {
             FlightRepository outputRepository = FlightRepositoryFactory.createOutputRepository(config, spark);
             FlightRepository metricsRepository = FlightRepositoryFactory.createMetricsRepository(config, spark);
 
+            // Determine which backend to use for execution
             AppBackendType backend = config.getAppBackend();
             if (backend == null) throw new IllegalArgumentException("appBackend is not defined. Please choose rdd, dataframe, or sql via config or CLI.");
 
@@ -194,7 +201,7 @@ public abstract class BaseQuery {
     protected abstract List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<Row> dataset, ApplicationConfig config);
 
     /**
-     * Builds the base name used to derive output target identifiers (table names, file names).
+     * Builds the base name used to derive output target identifiers.
      * Default form: {@code <queryName>_<backendName>}. Subclasses can override to append further
      * qualifiers (e.g., the chosen percentile algorithm) so that runs with different parameters
      * produce distinct outputs and don't overwrite each other.
@@ -205,6 +212,10 @@ public abstract class BaseQuery {
         return String.format("%s_%s", queryName, backendName);
     }
 
+    /* --- UTILS --- */
+
+    protected static final int DEFAULT_DECIMALS = 2;
+
     /**
      * Null-safe extraction of a double value from a Spark SQL Row.
      *
@@ -214,6 +225,68 @@ public abstract class BaseQuery {
      */
     protected static double getDoubleSafe(Row row, int index) {
         return row.isNullAt(index) ? 0.0 : row.getDouble(index);
+    }
+
+
+    /**
+     * Rounds a double value to a default number of decimal places.
+     * 
+     * @param value the value to round
+     * @return the rounded value
+     */
+    protected static double roundDecimals(double value) {
+        return roundDecimals(value, DEFAULT_DECIMALS);
+    }
+
+    /**
+     * Performs a safe division of two double values, returning 0.0 if the denominator is zero or negative.
+     * The result is rounded to a specified number of decimal places.
+     * 
+     * @param numerator the numerator of the division
+     * @param denominator the denominator of the division
+     * @return the result of the division rounded to the specified number of decimal places, or 0.0 if the denominator is zero or negative
+     */
+    protected static double safeDivideRounded(double numerator, double denominator) {
+        return safeDivideRounded(numerator, denominator, DEFAULT_DECIMALS);
+    }
+
+
+    /**
+     * Rounds a double value to a specified number of decimal places.
+     * 
+     * @param value the value to round
+     * @param decimals the number of decimal places to round to
+     * @return the rounded value
+     */
+    protected static double roundDecimals(double value, int decimals) {
+        if (decimals <= 0) return Math.round(value);
+        double multiplier = Math.pow(10, decimals);
+        return Math.round(value * multiplier) / multiplier;
+    }
+
+    /**
+     * Performs a safe division of two double values, returning 0.0 if the denominator is zero or negative.
+     * 
+     * @param numerator the numerator of the division
+     * @param denominator the denominator of the division
+     * @return the result of the division, or 0.0 if the denominator is zero or negative
+     */
+    protected static double safeDivide(double numerator, double denominator) {
+        if (denominator <= 0) return 0.0;
+        return numerator / denominator;
+    }
+
+    /**
+     * Performs a safe division of two double values, returning 0.0 if the denominator is zero or negative.
+     * The result is rounded to a specified number of decimal places.
+     * 
+     * @param numerator the numerator of the division
+     * @param denominator the denominator of the division
+     * @param decimals the number of decimal places to round to
+     * @return the result of the division rounded to the specified number of decimal places, or 0.0 if the denominator is zero or negative
+     */
+    protected static double safeDivideRounded(double numerator, double denominator, int decimals) {
+        return roundDecimals(safeDivide(numerator, denominator), decimals);
     }
 
 }

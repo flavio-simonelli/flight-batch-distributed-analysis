@@ -4,8 +4,6 @@
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{ISO8601} %-5p [%t] %c{1}: %m%n" />
         </Console>
-
-        <!-- Structured Logging Appender (could be a file or socket in production) -->
         <RollingFile name="StructuredLog" fileName="/opt/spark/logs/app-structured.log"
                      filePattern="/opt/spark/logs/app-structured-%d{yyyy-MM-dd}-%i.log.gz">
             <JsonLayout complete="false" compact="true" eventEol="true" properties="true" />

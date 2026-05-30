@@ -209,6 +209,9 @@ public class PerformanceMetrics implements Serializable {
         return phases;
     }
 
+    /**
+     * Metrics for a single phase of the application.
+     */
     public static class PhaseMetrics implements Serializable {
         public long wallClockTime;
         public final List<SparkJobMetric> sparkJobs = new ArrayList<>();
@@ -222,6 +225,9 @@ public class PerformanceMetrics implements Serializable {
         public Map<String, ExecutorMetric> getExecutorMetrics() { return executorMetrics; }
     }
 
+    /**
+     * Metrics for a single Spark job.
+     */
     public static class SparkJobMetric implements Serializable {
         public final int jobId;
         public final long duration;
@@ -235,6 +241,9 @@ public class PerformanceMetrics implements Serializable {
         public long getDuration() { return duration; }
     }
 
+    /**
+     * Metrics for a single Spark stage, including GC time and I/O metrics.
+     */
     public static class SparkStageMetric implements Serializable {
         public final int stageId;
         public final long duration;
@@ -263,6 +272,11 @@ public class PerformanceMetrics implements Serializable {
         public long getShuffleWrite() { return shuffleWrite; }
     }
 
+    /**
+     * Metrics aggregated for a single executor,
+     * including total run time, CPU time, GC time,
+     * and I/O metrics across all tasks executed on that node.
+     */
     public static class ExecutorMetric implements Serializable {
         public final String executorId;
         public final String host;

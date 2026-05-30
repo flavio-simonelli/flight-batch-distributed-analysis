@@ -1,7 +1,5 @@
 package it.uniroma2.sae.config;
 
-import java.io.Serializable;
-
 /**
  * Base configuration class for database-based storage systems.
  * Consolidates common connection parameters such as hostname, port, database name, and credentials.

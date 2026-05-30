@@ -6,22 +6,18 @@ import it.uniroma2.sae.repository.FlightRepository;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.StructType;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Assumptions;
 import scala.Tuple2;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test class to verify the consistency of results across different Spark backends (RDD, DataFrame, SQL).
@@ -33,6 +29,9 @@ public class QueryConsistencyTest {
     private static ApplicationConfig config;
     private static Dataset<Row> fullDf;
     private static boolean datasetPresent = false;
+
+    private final static Double DELTA_TOLERANCE = 0.01;
+    private final static Double PERCENTILES_TOLERANCE = 10.00;
 
     @BeforeAll
     public static void setup() {
@@ -85,7 +84,7 @@ public class QueryConsistencyTest {
         List<Row> sqlRows = sqlResultList.get(0).orderBy("month", "airline").collectAsList();
         List<Row> rddRows = spark.createDataFrame(rddResultList.get(0)._1, rddResultList.get(0)._2).orderBy("month", "airline").collectAsList();
 
-        assertTrue(dfRows.size() > 0, "Should have some results with real data");
+        assertFalse(dfRows.isEmpty(), "Should have some results with real data");
         assertEquals(dfRows.size(), sqlRows.size(), "DataFrame and SQL row counts should match");
         assertEquals(dfRows.size(), rddRows.size(), "DataFrame and RDD row counts should match");
 
@@ -100,16 +99,16 @@ public class QueryConsistencyTest {
             assertEquals(df.get(0), rdd.get(0));
             assertEquals(df.get(1), rdd.get(1));
 
-            // Compare Metrics (Avg Delay and Cancellation Rate)
-            assertEquals(df.getDouble(2), sql.getDouble(2), 0.01, "Avg delay should match between DF and SQL");
-            assertEquals(df.getDouble(3), sql.getDouble(3), 0.01, "Min delay should match between DF and SQL");
-            assertEquals(df.getDouble(4), sql.getDouble(4), 0.01, "Max delay should match between DF and SQL");
-            assertEquals(df.getDouble(5), sql.getDouble(5), 0.01, "Cancellation rate should match between DF and SQL");
+            // Compare Metrics
+            assertEquals(df.getDouble(2), sql.getDouble(2), DELTA_TOLERANCE, "Avg delay should match between DF and SQL");
+            assertEquals(df.getDouble(3), sql.getDouble(3), DELTA_TOLERANCE, "Min delay should match between DF and SQL");
+            assertEquals(df.getDouble(4), sql.getDouble(4), DELTA_TOLERANCE, "Max delay should match between DF and SQL");
+            assertEquals(df.getDouble(5), sql.getDouble(5), DELTA_TOLERANCE, "Cancellation rate should match between DF and SQL");
             
-            assertEquals(df.getDouble(2), rdd.getDouble(2), 0.01, "Avg delay should match between DF and RDD");
-            assertEquals(df.getDouble(3), rdd.getDouble(3), 0.01, "Min delay should match between DF and RDD");
-            assertEquals(df.getDouble(4), rdd.getDouble(4), 0.01, "Max delay should match between DF and RDD");
-            assertEquals(df.getDouble(5), rdd.getDouble(5), 0.01, "Cancellation rate should match between DF and RDD");
+            assertEquals(df.getDouble(2), rdd.getDouble(2), DELTA_TOLERANCE, "Avg delay should match between DF and RDD");
+            assertEquals(df.getDouble(3), rdd.getDouble(3), DELTA_TOLERANCE, "Min delay should match between DF and RDD");
+            assertEquals(df.getDouble(4), rdd.getDouble(4), DELTA_TOLERANCE, "Max delay should match between DF and RDD");
+            assertEquals(df.getDouble(5), rdd.getDouble(5), DELTA_TOLERANCE, "Cancellation rate should match between DF and RDD");
         }
     }
 
@@ -133,7 +132,7 @@ public class QueryConsistencyTest {
         List<Row> sqlRows = sqlResultList.get(0).orderBy("carrier").collectAsList();
         List<Row> rddRows = spark.createDataFrame(rddResultList.get(0)._1, rddResultList.get(0)._2).orderBy("carrier").collectAsList();
 
-        assertTrue(dfRows.size() > 0, "Should have some airlines passing the 500 flights filter in real data");
+        assertFalse(dfRows.isEmpty(), "Should have some airlines passing the 500 flights filter in real data");
         assertEquals(dfRows.size(), sqlRows.size());
         assertEquals(dfRows.size(), rddRows.size());
 
@@ -148,29 +147,29 @@ public class QueryConsistencyTest {
             assertEquals(df.getLong(1), sql.getLong(1));
             assertEquals(df.getLong(1), rdd.getLong(1));
 
-            assertEquals(df.getDouble(2), sql.getDouble(2), 0.01, "Avg arrival delay should match between DF and SQL");
-            assertEquals(df.getDouble(2), rdd.getDouble(2), 0.01, "Avg arrival delay should match between DF and RDD");
+            assertEquals(df.getDouble(2), sql.getDouble(2), DELTA_TOLERANCE, "Avg arrival delay should match between DF and SQL");
+            assertEquals(df.getDouble(2), rdd.getDouble(2), DELTA_TOLERANCE, "Avg arrival delay should match between DF and RDD");
 
-            assertEquals(df.getDouble(3), sql.getDouble(3), 0.01, "Avg carrier delay should match between DF and SQL");
-            assertEquals(df.getDouble(3), rdd.getDouble(3), 0.01, "Avg carrier delay should match between DF and SQL");
+            assertEquals(df.getDouble(3), sql.getDouble(3), DELTA_TOLERANCE, "Avg carrier delay should match between DF and SQL");
+            assertEquals(df.getDouble(3), rdd.getDouble(3), DELTA_TOLERANCE, "Avg carrier delay should match between DF and SQL");
 
-            assertEquals(df.getDouble(4), sql.getDouble(4), 0.01, "Avg weather delay should match between DF and SQL");
-            assertEquals(df.getDouble(4), rdd.getDouble(4), 0.01, "Avg weather delay should match between DF and SQL");
+            assertEquals(df.getDouble(4), sql.getDouble(4), DELTA_TOLERANCE, "Avg weather delay should match between DF and SQL");
+            assertEquals(df.getDouble(4), rdd.getDouble(4), DELTA_TOLERANCE, "Avg weather delay should match between DF and SQL");
 
-            assertEquals(df.getDouble(5), sql.getDouble(5), 0.01, "Avg NAS delay should match between DF and SQL");
-            assertEquals(df.getDouble(5), rdd.getDouble(5), 0.01, "Avg NAS delay should match between DF and SQL");
+            assertEquals(df.getDouble(5), sql.getDouble(5), DELTA_TOLERANCE, "Avg NAS delay should match between DF and SQL");
+            assertEquals(df.getDouble(5), rdd.getDouble(5), DELTA_TOLERANCE, "Avg NAS delay should match between DF and SQL");
 
-            assertEquals(df.getDouble(6), sql.getDouble(6), 0.01, "Avg security delay should match between DF and SQL");
-            assertEquals(df.getDouble(6), rdd.getDouble(6), 0.01, "Avg security delay should match between DF and SQL");
+            assertEquals(df.getDouble(6), sql.getDouble(6), DELTA_TOLERANCE, "Avg security delay should match between DF and SQL");
+            assertEquals(df.getDouble(6), rdd.getDouble(6), DELTA_TOLERANCE, "Avg security delay should match between DF and SQL");
 
-            assertEquals(df.getDouble(7), sql.getDouble(7), 0.01, "Avg late aircraft delay should match between DF and SQL");
-            assertEquals(df.getDouble(7), rdd.getDouble(7), 0.01, "Avg late aircraft delay should match between DF and SQL");
+            assertEquals(df.getDouble(7), sql.getDouble(7), DELTA_TOLERANCE, "Avg late aircraft delay should match between DF and SQL");
+            assertEquals(df.getDouble(7), rdd.getDouble(7), DELTA_TOLERANCE, "Avg late aircraft delay should match between DF and SQL");
         }
     }
 
     /**
      * Verifies consistency for Query 3: Hourly Delay Percentiles.
-     * Note: Percentiles are estimated, so we use a wider tolerance for RDD (sketches) vs SQL/DF (percentile_approx).
+     * Percentiles are estimated, so we use a wider tolerance for RDD vs SQL/DF.
      */
     @Test
     public void testHourlyDelayPercentilesConsistency() {
@@ -193,26 +192,26 @@ public class QueryConsistencyTest {
         List<Row> sqlHourly = sqlResultList.get(0).orderBy("airline", "hour").collectAsList();
         List<Row> rddHourly = spark.createDataFrame(rddResultList.get(0)._1, rddResultList.get(0)._2).orderBy("airline", "hour").collectAsList();
 
-        assertTrue(dfHourly.size() > 0, "Should have some hourly percentiles results");
+        assertFalse(dfHourly.isEmpty(), "Should have some hourly percentiles results");
         assertEquals(dfHourly.size(), sqlHourly.size());
         assertEquals(dfHourly.size(), rddHourly.size());
 
         for (int i = 0; i < dfHourly.size(); i++) {
             // SQL/DF use the same implementation, so they should be identical.
-            assertEquals(dfHourly.get(i).getDouble(3), sqlHourly.get(i).getDouble(3), 0.01, "p50 should match between DF and SQL");
+            assertEquals(dfHourly.get(i).getDouble(3), sqlHourly.get(i).getDouble(3), DELTA_TOLERANCE, "p50 should match between DF and SQL");
             
             // RDD uses sketches, so we expect some approximation error. 
-            // With real data and potentially high variance, we use a more relaxed tolerance (50.0).
+            // With real data and potentially high variance, we use a more relaxed tolerance.
             double p50_df = dfHourly.get(i).getDouble(3);
             double p50_rdd = rddHourly.get(i).getDouble(3);
-            assertTrue(Math.abs(p50_df - p50_rdd) < 50.0, "p50 RDD sketch should be close to DF estimate");
+            assertTrue(Math.abs(p50_df - p50_rdd) < PERCENTILES_TOLERANCE, "p50 RDD sketch should be close to DF estimate");
         }
 
         // Verification of Global Min/Max (Result 2)
         List<Row> dfGlobal = dfResultList.get(1).orderBy("airline").collectAsList();
         List<Row> rddGlobal = spark.createDataFrame(rddResultList.get(1)._1, rddResultList.get(1)._2).orderBy("airline").collectAsList();
 
-        assertEquals(dfGlobal.get(0).getDouble(1), rddGlobal.get(0).getDouble(1), 0.01, "Global Min should match exactly");
-        assertEquals(dfGlobal.get(0).getDouble(2), rddGlobal.get(0).getDouble(2), 0.01, "Global Max should match exactly");
+        assertEquals(dfGlobal.get(0).getDouble(1), rddGlobal.get(0).getDouble(1), DELTA_TOLERANCE, "Global Min should match exactly");
+        assertEquals(dfGlobal.get(0).getDouble(2), rddGlobal.get(0).getDouble(2), DELTA_TOLERANCE, "Global Max should match exactly");
     }
 }

@@ -9,11 +9,11 @@ queryToRun: monthly_performance
 # Options: rdd, dataframe, sql
 appBackend: dataframe
 
-# Algorithm for Q3 (hourly_delay_percentiles) percentile estimation in the RDD backend
+# Algorithm for Q3 percentile estimation in the RDD backend
 # Options: kll, tdigest
 percentileAlgorithm: kll
 
-# --- STORAGE LAYER (Inputs) ---
+# --- STORAGE LAYER ---
 inputs:
   hdfs:
     type: "hdfs"
@@ -33,7 +33,7 @@ sparkCluster:
     hostname: spark-master.flight-analysis.local
     port: 7077
 
-# --- PERSISTENCE LAYER (Outputs) ---
+# --- PERSISTENCE LAYER ---
 outputs:
   hdfs:
     type: "hdfs"
@@ -64,7 +64,7 @@ outputs:
     port: 2181
     database: "flight_results"
 
-# --- MONITORING LAYER (Metrics) ---
+# --- MONITORING LAYER ---
 metrics:
   redis:
     type: "redis"
