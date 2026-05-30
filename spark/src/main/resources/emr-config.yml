@@ -2,7 +2,7 @@
 appName: Flight Analysis
 appBackend: dataframe
 
-# --- STORAGE LAYER (Inputs) ---
+# --- STORAGE LAYER ---
 inputs:
   s3:
     type: "s3"
@@ -13,7 +13,7 @@ inputs:
     uri: "hdfs://hdfs-master.flight-analysis.local:54310/bin"
     path: "/data/conv"
 
-# --- PERSISTENCE LAYER (Outputs) ---
+# --- PERSISTENCE LAYER ---
 outputs:
   s3:
     type: "s3"
@@ -38,7 +38,7 @@ outputs:
     user: "root"
     password: ""
 
-# --- MONITORING LAYER (Metrics) ---
+# --- MONITORING LAYER ---
 metrics:
   redis:
     type: "redis"

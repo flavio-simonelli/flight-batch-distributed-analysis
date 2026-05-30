@@ -66,7 +66,7 @@ public final class SparkDiagnostics {
     }
 
     /**
-     * Logs per-partition row counts for a Dataset (DataFrame). The Dataset is cached
+     * Logs per-partition row counts for a DataFrame. The Dataset is cached
      * before inspection; callers are responsible for unpersisting it when done.
      */
     public static void profilePartitions(Dataset<Row> dataset, String label) {

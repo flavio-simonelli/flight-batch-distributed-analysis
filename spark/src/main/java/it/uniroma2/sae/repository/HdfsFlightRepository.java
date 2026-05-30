@@ -3,7 +3,7 @@ package it.uniroma2.sae.repository;
 import org.apache.spark.sql.SparkSession;
 
 /**
- * An implementation of {@link RemoteFlightRepository} that reads flight data from a Hadoop Distributed File System (HDFS).
+ * An implementation of {@link RemoteFlightRepository} that reads flight data from a Hadoop Distributed File System.
  */
 public class HdfsFlightRepository extends RemoteFlightRepository {
 

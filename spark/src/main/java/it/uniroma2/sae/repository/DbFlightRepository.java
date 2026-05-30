@@ -1,7 +1,7 @@
 package it.uniroma2.sae.repository;
 
 import it.uniroma2.sae.config.DbStorageConfig;
-import it.uniroma2.sae.model.RawFlight;
+
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;

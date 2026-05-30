@@ -2,6 +2,10 @@ package it.uniroma2.sae.model;
 
 import java.io.Serializable;
 
+/**
+ * A simple JavaBean representing a raw flight record, with fields corresponding to the original dataset columns.
+ * This class is used for mapping CSV input data into Java objects for easier manipulation in Spark.
+ */
 public class RawFlight implements Serializable {
 
     // Time is in format HHmm, e.g., 2359 for 11:59 PM

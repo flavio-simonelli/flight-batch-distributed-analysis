@@ -61,11 +61,33 @@ public class FlightRepositoryFactory {
         return createRepository(metricsConfig, spark);
     }
 
+    /**
+     * Helper method to create a FlightRepository instance based on the storage configuration.
+     * It centralizes the logic for determining which repository implementation
+     * to instantiate based on the storage type and configuration details.
+     * 
+     * @param storageConfig the storage configuration for the repository
+     * @param spark the initialized SparkSession
+     * @return an instance of FlightRepository corresponding to the storage type
+     * @throws IllegalArgumentException if the storage type is not supported or configuration is invalid
+     */
     private static FlightRepository createRepository(StorageConfig storageConfig, SparkSession spark) {
         StorageType storageType = storageConfig.getType();
         String storagePath = storageConfig.getPath();
 
         switch (storageType) {
+
+            // --------------------------
+            // --- LOCAL FILE SYSTEMS ---
+            // --------------------------
+
+            case LOCAL:
+                return new LocalFlightRepository(spark, storagePath);
+
+            // ---------------------------            
+            // --- REMOTE FILE SYSTEMS ---
+            // ---------------------------
+
             case HDFS:
                 if (!(storageConfig instanceof RemoteStorageConfig)) {
                     throw new IllegalArgumentException("Configuration mismatch: Expected RemoteStorageConfig for HDFS output type.");
@@ -88,12 +110,13 @@ public class FlightRepositoryFactory {
                 }
                 return new S3FlightRepository(spark, s3Uri, storagePath);
 
-            case LOCAL:
-                return new LocalFlightRepository(spark, storagePath);
-
+            // ----------------            
+            // --- DATABASE ---
+            // ----------------
+                
             case POSTGRES:
                 if (!(storageConfig instanceof JdbcStorageConfig)) {
-                     throw new IllegalArgumentException("Configuration mismatch: Expected JdbcStorageConfig for POSTGRES output type.");
+                    throw new IllegalArgumentException("Configuration mismatch: Expected JdbcStorageConfig for POSTGRES output type.");
                 }
                 JdbcStorageConfig jdbcConfig = (JdbcStorageConfig) storageConfig;
                 return new PostgresFlightRepository(spark, jdbcConfig);
@@ -116,6 +139,10 @@ public class FlightRepositoryFactory {
                     throw new IllegalArgumentException("Configuration mismatch: Expected HBaseStorageConfig for HBASE output type.");
                 }
                 return new HBaseFlightRepository(spark, (HBaseStorageConfig) storageConfig);
+
+            // -------------           
+            // --- EXTRA ---
+            // -------------
 
             default:
                 throw new IllegalArgumentException("Unsupported storage type: " + storageType);

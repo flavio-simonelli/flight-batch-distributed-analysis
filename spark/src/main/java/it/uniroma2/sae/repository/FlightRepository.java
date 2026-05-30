@@ -52,6 +52,12 @@ public abstract class FlightRepository {
         this.spark = spark;
     }
 
+    /**
+     * Sets the number of partitions for the output dataset.
+     *
+     * @param outputPartitions the number of partitions
+     * @throws IllegalArgumentException if the number of partitions is not positive
+     */
     public void setOutputPartitions(Integer outputPartitions) {
         if (outputPartitions != null && outputPartitions <= 0) {
             throw new IllegalArgumentException("Output partitions must be greater than 0");
@@ -59,6 +65,11 @@ public abstract class FlightRepository {
         this.outputPartitions = outputPartitions;
     }
 
+    /**
+     * Retrieves the number of partitions for the output dataset.
+     *
+     * @return the number of partitions
+     */
     public Integer getOutputPartitions() {
         return outputPartitions;
     }
@@ -82,6 +93,7 @@ public abstract class FlightRepository {
      * @param airlines an array of airline codes to filter the dataset
      * @return a Dataset of Row objects
      * @throws IllegalArgumentException if the filename is invalid (when provided)
+     * @throws IllegalArgumentException if the airlines array is null or empty
      */
     public final Dataset<Row> getFlightsOfAirlines(String datasetFilename, String... airlines) {
         if(airlines == null || airlines.length == 0) throw new IllegalArgumentException("Airlines array cannot be null or empty");
@@ -150,6 +162,7 @@ public abstract class FlightRepository {
      * @param results the JavaRDD to save
      * @param schema the schema of the RDD
      * @param resultDirectory the name of the output directory
+     * @throws IllegalArgumentException if the results RDD or schema is null
      */
     public void saveResults(JavaRDD<Row> results, StructType schema, String resultDirectory) {
         if (results == null) throw new IllegalArgumentException("Results RDD cannot be null.");
@@ -157,6 +170,12 @@ public abstract class FlightRepository {
         // Avoid to use .empty() for performance reasons
         // if (results.isEmpty()) return;
 
+        // Convert the JavaRDD<Row> to a Dataset<Row> using the provided schema
+        // then save it using the existing saveResults method for Dataset<Row>
+        //
+        // This conversion is necessary because saving a JavaRDD<Row> directly
+        // as CSV is more complex and less efficient
+        // than leveraging Spark's built-in writer for Datasets.
         Dataset<Row> convertedResults = spark.createDataFrame(results, schema);
         saveResults(convertedResults, resultDirectory);
     }
@@ -169,6 +188,7 @@ public abstract class FlightRepository {
      * @param results the JavaRDD to save
      * @param schema the schema of the RDD
      * @param resultDirectory the name of the output directory
+     * @throws IllegalArgumentException if the results RDD or schema is null
      */
     @Deprecated
     public void saveResults(JavaSparkContext jsc, JavaRDD<Row> results, StructType schema, String resultDirectory) {
@@ -192,15 +212,16 @@ public abstract class FlightRepository {
             return sb.toString();
         });
 
+        // Prepend the header to the data lines
         JavaRDD<String> headerRDD = jsc.parallelize(Collections.singletonList(header));
 
         if (outputPartitions != null) {
             headerRDD.union(dataLines)
                     .coalesce(outputPartitions)
-                    .saveAsTextFile(getFullPath(resultDirectory));
+                    .saveAsTextFile(fullPath);
         } else {
             headerRDD.union(dataLines)
-                    .saveAsTextFile(getFullPath(resultDirectory));
+                    .saveAsTextFile(fullPath);
         }
     }
 
@@ -268,13 +289,12 @@ public abstract class FlightRepository {
     /**
      * Converts a generic Dataset<Row> into a strongly typed Dataset<RawFlight>.
      * It maps the snake_case column names from the Parquet file to the camelCase fields of the RawFlight class.
+     * If necessary, it also casts columns to the appropriate data types expected by the RawFlight class.
      *
      * @param rawRows the input Dataset of Row objects
      * @return a strongly typed Dataset of RawFlight objects
      */
     public static Dataset<RawFlight> convertToRawFlight(Dataset<Row> rawRows) {
-        // Here we explicitly cast CANCELLED and DIVERTED to Double because in the model RawFlight 
-        // they are Double (as read from Parquet), NOT Boolean.
         return rawRows.select(
                 col("YEAR").as("year"),
                 col("MONTH").as("month"),

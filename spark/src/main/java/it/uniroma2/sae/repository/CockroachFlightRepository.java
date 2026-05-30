@@ -9,6 +9,12 @@ import org.apache.spark.sql.SparkSession;
  */
 public class CockroachFlightRepository extends JdbcFlightRepository {
 
+    /**
+     * Constructs a new CockroachFlightRepository with the given SparkSession and JDBC configuration.
+     *
+     * @param spark the SparkSession to be used for data operations
+     * @param config the JDBC storage configuration
+     */
     public CockroachFlightRepository(SparkSession spark, JdbcStorageConfig config) {
         super(spark, config);
     }

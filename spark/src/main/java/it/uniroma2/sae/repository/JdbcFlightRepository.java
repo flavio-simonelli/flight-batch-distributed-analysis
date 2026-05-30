@@ -20,21 +20,43 @@ import java.util.Properties;
  */
 public abstract class JdbcFlightRepository extends DbFlightRepository<JdbcStorageConfig> {
 
+    /**
+     * Constructs a new JdbcFlightRepository with the given SparkSession and JDBC configuration.
+     *
+     * @param spark the SparkSession to be used for data operations
+     * @param config the JDBC storage configuration
+     */
     public JdbcFlightRepository(SparkSession spark, JdbcStorageConfig config) {
         super(spark, config);
         checkConnectionDetails();
     }
 
+    /**
+     * Validates the JDBC connection details provided in the configuration.
+     * 
+     * @throws IllegalArgumentException if any required connection detail is missing or invalid.
+     */
     private void checkConnectionDetails() {
-        if (config.getHostname() == null || config.getHostname().isEmpty()) throw new IllegalArgumentException("Invalid JDBC hostname.");
-        if (config.getPort() == null || config.getPort() <= 0) throw new IllegalArgumentException("Invalid JDBC port.");
-        if (config.getDatabase() == null || config.getDatabase().isEmpty()) throw new IllegalArgumentException("JDBC database name cannot be empty.");
-        if (config.getUser() == null || config.getUser().isEmpty()) throw new IllegalArgumentException("JDBC user cannot be empty.");
-        if (config.getPassword() == null) throw new IllegalArgumentException("JDBC password cannot be null (use empty string for no password).");
-        if (config.getDriver() == null || config.getDriver().isEmpty()) throw new IllegalArgumentException("JDBC driver must be provided or derived.");
-        if (config.getConnectionUri() == null || config.getConnectionUri().isEmpty() || !config.getConnectionUri().startsWith("jdbc:")) {
-             throw new IllegalArgumentException("JDBC URL must be provided and start with 'jdbc:'.");
-        }
+        if (config.getHostname() == null || config.getHostname().isEmpty())
+            throw new IllegalArgumentException("Invalid JDBC hostname.");
+
+        if (config.getPort() == null || config.getPort() <= 0)
+            throw new IllegalArgumentException("Invalid JDBC port.");
+
+        if (config.getDatabase() == null || config.getDatabase().isEmpty())
+            throw new IllegalArgumentException("JDBC database name cannot be empty.");
+
+        if (config.getUser() == null || config.getUser().isEmpty())
+            throw new IllegalArgumentException("JDBC user cannot be empty.");
+
+        if (config.getPassword() == null)
+            throw new IllegalArgumentException("JDBC password cannot be null (use empty string for no password).");
+
+        if (config.getDriver() == null || config.getDriver().isEmpty())
+            throw new IllegalArgumentException("JDBC driver must be provided or derived.");
+
+        if (config.getConnectionUri() == null || config.getConnectionUri().isEmpty() || !config.getConnectionUri().startsWith("jdbc:"))
+            throw new IllegalArgumentException("JDBC URL must be provided and start with 'jdbc:'.");
     }
 
     /**
@@ -48,6 +70,7 @@ public abstract class JdbcFlightRepository extends DbFlightRepository<JdbcStorag
         if (results == null) throw new IllegalArgumentException("Results dataset cannot be null.");
         if (table == null || table.isEmpty()) throw new IllegalArgumentException("Target table name must be provided for JDBC output.");
 
+        // Prepare JDBC connection properties
         Properties connectionProperties = new Properties();
         connectionProperties.put("user", config.getUser());
         connectionProperties.put("password", config.getPassword());
@@ -95,8 +118,7 @@ public abstract class JdbcFlightRepository extends DbFlightRepository<JdbcStorag
         // Avoid to use .empty() for performance reasons
         // if (results.isEmpty()) return;
 
-        System.out.println("Saving results to JDBC database. This may take a while for large datasets...");
-
+        // Extract connection details from configuration
         final String url = config.getConnectionUri();
         final String user = config.getUser();
         final String password = config.getPassword();

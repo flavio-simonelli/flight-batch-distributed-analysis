@@ -8,6 +8,12 @@ import org.apache.spark.sql.SparkSession;
  */
 public class PostgresFlightRepository extends JdbcFlightRepository {
 
+    /**
+     * Constructs a new PostgresFlightRepository with the given SparkSession and JDBC configuration.
+     *
+     * @param spark the SparkSession to be used for data operations
+     * @param config the JDBC storage configuration
+     */
     public PostgresFlightRepository(SparkSession spark, JdbcStorageConfig config) {
         super(spark, config);
     }

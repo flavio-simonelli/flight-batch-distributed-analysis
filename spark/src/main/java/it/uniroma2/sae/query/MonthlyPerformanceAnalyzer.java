@@ -6,6 +6,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
@@ -52,7 +53,7 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         // Load the dataset for specific airlines
         JavaRDD<Row> flights = dataset.javaRDD();
 
-        // PHASE 1 & 2: Map-Side Aggregation (Combiner) and Reduction
+        // PHASE 1 & 2: Map-Side Aggregation (with Combiner) and Reduction
         // Transforms each flight into a key-value pair where the key is (Airline, Month)
         // and uses aggregateByKey to aggregate statistics efficiently without creating
         // millions of temporary arrays.
@@ -63,29 +64,35 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         // Zero value for the accumulator: [0: SumDelay, 1: MaxDelay, 2: MinDelay, 3: NotCancelledCount, 4: TotalCount]
         double[] zeroValue = {0.0, -Double.MAX_VALUE, Double.MAX_VALUE, 0.0, 0.0};
 
+        final int sumDelayIdx = 0;
+        final int maxDelayIdx = 1;
+        final int minDelayIdx = 2;
+        final int notCancelledCountIdx = 3;
+        final int totalCountIdx = 4;
+
         JavaPairRDD<Tuple2<String, Integer>, double[]> reducedRDD = pairs.aggregateByKey(
                 zeroValue,
                 (acc, flight) -> {
-                    // SEQ OP: Aggregation within a partition (The "Combiner")
+                    // SEQ OP: Aggregation within a partition
                     boolean isCancelled = getDoubleSafe(flight, CANCELLED_IDX) > 0.0;
-                    acc[4] += 1.0; // Increment TotalCount for every flight
+                    acc[totalCountIdx] += 1.0; // Increment TotalCount for every flight
 
                     if (!isCancelled) {
                         double delay = getDoubleSafe(flight, DEP_DELAY_IDX);
-                        acc[0] += delay; // Sum delay
-                        acc[1] = Math.max(acc[1], delay); // Max delay
-                        acc[2] = Math.min(acc[2], delay); // Min delay
-                        acc[3] += 1.0; // Increment NotCancelledCount
+                        acc[sumDelayIdx] += delay;                              // Sum delay
+                        acc[maxDelayIdx] = Math.max(acc[maxDelayIdx], delay);   // Max delay
+                        acc[minDelayIdx] = Math.min(acc[minDelayIdx], delay);   // Min delay
+                        acc[notCancelledCountIdx] += 1.0;                       // Increment NotCancelledCount
                     }
                     return acc;
                 },
                 (acc1, acc2) -> {
                     // COMB OP: Merging results between partitions
-                    acc1[0] += acc2[0]; // Sum of delays
-                    acc1[1] = Math.max(acc1[1], acc2[1]); // Maximum delay
-                    acc1[2] = Math.min(acc1[2], acc2[2]); // Minimum delay
-                    acc1[3] += acc2[3]; // Sum of not cancelled flights
-                    acc1[4] += acc2[4]; // Sum of total flights
+                    acc1[sumDelayIdx] += acc2[sumDelayIdx];                                 // Sum of delays
+                    acc1[maxDelayIdx] = Math.max(acc1[maxDelayIdx], acc2[maxDelayIdx]);     // Maximum delay
+                    acc1[minDelayIdx] = Math.min(acc1[minDelayIdx], acc2[minDelayIdx]);     // Minimum delay
+                    acc1[notCancelledCountIdx] += acc2[notCancelledCountIdx];               // Sum of not cancelled flights
+                    acc1[totalCountIdx] += acc2[totalCountIdx];                             // Sum of total flights
                     return acc1;
                 }
         );
@@ -99,27 +106,27 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
             String carrier = key._1;
             Integer month = key._2;
 
-            double totalFlights = stats[4];
-            double notCancelledFlights = stats[3];
+            double totalFlights = stats[totalCountIdx];
+            double notCancelledFlights = stats[notCancelledCountIdx];
             double cancelledFlights = totalFlights - notCancelledFlights;
 
             // Round calculations to 2 decimal places
-            double avgDelay = Math.round(((notCancelledFlights > 0) ? (stats[0] / notCancelledFlights) : 0.0) * 100.0) / 100.0;
-            double maxDelay = Math.round(((notCancelledFlights > 0) ? stats[1] : 0.0) * 100.0) / 100.0;
-            double minDelay = Math.round(((notCancelledFlights > 0) ? stats[2] : 0.0) * 100.0) / 100.0;
-            double cancellationRate = Math.round(((totalFlights > 0) ? (cancelledFlights / totalFlights) * 100 : 0.0) * 100.0) / 100.0;
+            double avgDelay = safeDivideRounded(stats[sumDelayIdx], notCancelledFlights);
+            double maxDelay = roundDecimals(notCancelledFlights > 0 ? stats[maxDelayIdx] : 0.0);
+            double minDelay = roundDecimals(notCancelledFlights > 0 ? stats[minDelayIdx] : 0.0);
+            double cancellationRate = safeDivideRounded(cancelledFlights * 100.0, totalFlights);
 
-            return org.apache.spark.sql.RowFactory.create(month, carrier, avgDelay, minDelay, maxDelay, cancellationRate);
+            return RowFactory.create(month, carrier, avgDelay, minDelay, maxDelay, cancellationRate);
         });
 
         // Define the schema for the RDD
         StructType schema = DataTypes.createStructType(new StructField[]{
-                DataTypes.createStructField("month", DataTypes.IntegerType, false),
-                DataTypes.createStructField("airline", DataTypes.StringType, false),
-                DataTypes.createStructField("dep-delay-mean", DataTypes.DoubleType, false),
-                DataTypes.createStructField("dep-delay-min", DataTypes.DoubleType, false),
-                DataTypes.createStructField("dep-delay-max", DataTypes.DoubleType, false),
-                DataTypes.createStructField("cancellation-rate", DataTypes.DoubleType, false)
+            DataTypes.createStructField("month", DataTypes.IntegerType, false),
+            DataTypes.createStructField("airline", DataTypes.StringType, false),
+            DataTypes.createStructField("dep-delay-mean", DataTypes.DoubleType, false),
+            DataTypes.createStructField("dep-delay-min", DataTypes.DoubleType, false),
+            DataTypes.createStructField("dep-delay-max", DataTypes.DoubleType, false),
+            DataTypes.createStructField("cancellation-rate", DataTypes.DoubleType, false)
         });
 
         return Collections.singletonList(new Tuple2<>(rowRDD, schema));
@@ -140,10 +147,10 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         Dataset<Row> result = flights
                 .groupBy("MONTH", "OP_UNIQUE_CARRIER")
                 .agg(
-                        round(avg(when(col("CANCELLED").equalTo(0.0), col("DEP_DELAY"))), 2).as("dep-delay-mean"),
-                        round(min(when(col("CANCELLED").equalTo(0.0), col("DEP_DELAY"))), 2).as("dep-delay-min"),
-                        round(max(when(col("CANCELLED").equalTo(0.0), col("DEP_DELAY"))), 2).as("dep-delay-max"),
-                        round(sum(col("CANCELLED")).divide(count("*")).multiply(100), 2).as("cancellation-rate")
+                    round(avg(when(col("CANCELLED").equalTo(0.0), col("DEP_DELAY"))), 2).as("dep-delay-mean"),
+                    round(min(when(col("CANCELLED").equalTo(0.0), col("DEP_DELAY"))), 2).as("dep-delay-min"),
+                    round(max(when(col("CANCELLED").equalTo(0.0), col("DEP_DELAY"))), 2).as("dep-delay-max"),
+                    round(sum(col("CANCELLED")).divide(count("*")).multiply(100), 2).as("cancellation-rate")
                 )
                 .withColumnRenamed("MONTH", "month")
                 .withColumnRenamed("OP_UNIQUE_CARRIER", "airline");
@@ -165,13 +172,13 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         // Create a temporary view to run SQL queries against it
         flights.createOrReplaceTempView("flights");
 
-        String sqlQuery = "SELECT MONTH as month, OP_UNIQUE_CARRIER as airline, " +
-                "ROUND(AVG(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-mean`, " +
-                "ROUND(MIN(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-min`, " +
-                "ROUND(MAX(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-max`, " +
-                "ROUND((SUM(CANCELLED) / COUNT(*)) * 100, 2) AS `cancellation-rate` " +
-                "FROM flights " +
-                "GROUP BY MONTH, OP_UNIQUE_CARRIER ";
+        String sqlQuery =   "SELECT MONTH as month, OP_UNIQUE_CARRIER as airline, " +
+                            "ROUND(AVG(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-mean`, " +
+                            "ROUND(MIN(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-min`, " +
+                            "ROUND(MAX(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-max`, " +
+                            "ROUND((SUM(CANCELLED) / COUNT(*)) * 100, 2) AS `cancellation-rate` " +
+                            "FROM flights " +
+                            "GROUP BY MONTH, OP_UNIQUE_CARRIER ";
 
         Dataset<Row> result = spark.sql(sqlQuery);
         return Collections.singletonList(result);

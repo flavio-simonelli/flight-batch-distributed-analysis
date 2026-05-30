@@ -2,7 +2,6 @@ package it.uniroma2.sae.query;
 
 import it.uniroma2.sae.config.ApplicationConfig;
 import it.uniroma2.sae.repository.FlightRepository;
-import it.uniroma2.sae.util.SparkDiagnostics;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
@@ -51,11 +50,12 @@ public class ArrivalDelayRanking extends BaseQuery {
      *
      * @param dataset the dataset to query
      * @param config the application configuration containing input/output paths
-     * @return a list containing a single RDD with the top 10 airlines ranked by arrival delay, and its schema
+     * @return a list containing a single RDD with the formatted results and its schema
      */
     @Override
     protected List<Tuple2<JavaRDD<Row>, StructType>> runQueryRDD(Dataset<Row> dataset, ApplicationConfig config) {
 
+        // Load the dataset for specific airlines
         JavaRDD<Row> flights = dataset.javaRDD();
 
         // Discard flights that were either cancelled or diverted
@@ -65,8 +65,16 @@ public class ArrivalDelayRanking extends BaseQuery {
             return !isCancelled && !isDiverted;
         });
 
-        // PHASE 1 & 2: Map-Side Aggregation (Combiner) and Reduction
-        // Using aggregateByKey to avoid creating millions of double[7] arrays.
+        final int totalCountIdx = 0;
+        final int avgArrDelayIdx = 1;
+        final int avgCarrierIdx = 2;
+        final int avgWeatherIdx = 3;
+        final int avgNasIdx = 4;
+        final int avgSecurityIdx = 5;
+        final int avgLateAircraftIdx = 6;
+
+        // PHASE 1 & 2: Map-Side Aggregation (with Combiner) and Reduction
+        // Using aggregateByKey to avoid creating millions of temporary arrays.
         // It performs an initial aggregation locally in each partition (Combiner phase)
         // and then merges results across the cluster (Reduce phase).
         JavaPairRDD<String, double[]> reducedRDD = validFlights
@@ -74,14 +82,14 @@ public class ArrivalDelayRanking extends BaseQuery {
                 .aggregateByKey(
                         new double[7], // [0: Count, 1: Arrive, 2: Carrier, 3: Weather, 4: NAS, 5: Security, 6: LateAircraft]
                         (acc, flight) -> {
-                            // SEQ OP: Aggregation within a partition (The "Combiner")
-                            acc[0] += 1.0;
-                            acc[1] += getDoubleSafe(flight, ARR_DELAY_IDX);
-                            acc[2] += getDoubleSafe(flight, CARRIER_DELAY_IDX);
-                            acc[3] += getDoubleSafe(flight, WEATHER_DELAY_IDX);
-                            acc[4] += getDoubleSafe(flight, NAS_DELAY_IDX);
-                            acc[5] += getDoubleSafe(flight, SECURITY_DELAY_IDX);
-                            acc[6] += getDoubleSafe(flight, LATE_AIRCRAFT_DELAY_IDX);
+                            // SEQ OP: Aggregation within a partition
+                            acc[totalCountIdx]      += 1.0;                                             // Total count of valid flights
+                            acc[avgArrDelayIdx]     += getDoubleSafe(flight, ARR_DELAY_IDX);            // Sum of arrival delays
+                            acc[avgCarrierIdx]      += getDoubleSafe(flight, CARRIER_DELAY_IDX);        // Sum of carrier delays
+                            acc[avgWeatherIdx]      += getDoubleSafe(flight, WEATHER_DELAY_IDX);        // Sum of weather delays
+                            acc[avgNasIdx]          += getDoubleSafe(flight, NAS_DELAY_IDX);            // Sum of NAS delays
+                            acc[avgSecurityIdx]     += getDoubleSafe(flight, SECURITY_DELAY_IDX);       // Sum of security delays
+                            acc[avgLateAircraftIdx] += getDoubleSafe(flight, LATE_AIRCRAFT_DELAY_IDX);  // Sum of late aircraft delays
                             return acc;
                         },
                         (acc1, acc2) -> {
@@ -96,18 +104,18 @@ public class ArrivalDelayRanking extends BaseQuery {
         // PHASE 3: Filter and Map to Rows
         // Retains airlines with at least 500 flights and computes the averages.
         JavaRDD<Row> processedRDD = reducedRDD
-                .filter(tuple -> tuple._2[0] >= 500.0) // Filter airlines with >= 500 valid flights
+                .filter(tuple -> tuple._2[totalCountIdx] >= 500.0) // Filter airlines with >= 500 valid flights
                 .map(tuple -> {
                     String carrier = tuple._1;
                     double[] stats = tuple._2;
 
-                    double count = stats[0];
-                    double avgArrDelay = stats[1] / count;
-                    double avgCarrier = stats[2] / count;
-                    double avgWeather = stats[3] / count;
-                    double avgNas = stats[4] / count;
-                    double avgSecurity = stats[5] / count;
-                    double avgLateAircraft = stats[6] / count;
+                    double count            = stats[totalCountIdx];                                     // Total count of valid flights
+                    double avgArrDelay      = safeDivideRounded(stats[avgArrDelayIdx], count);          // Average arrival delay
+                    double avgCarrier       = safeDivideRounded(stats[avgCarrierIdx], count);           // Average carrier delay
+                    double avgWeather       = safeDivideRounded(stats[avgWeatherIdx], count);           // Average weather delay
+                    double avgNas           = safeDivideRounded(stats[avgNasIdx], count);               // Average NAS delay
+                    double avgSecurity      = safeDivideRounded(stats[avgSecurityIdx], count);          // Average security delay
+                    double avgLateAircraft  = safeDivideRounded(stats[avgLateAircraftIdx], count);      // Average late aircraft delay
 
                     return RowFactory.create(
                             carrier,
@@ -122,19 +130,17 @@ public class ArrivalDelayRanking extends BaseQuery {
                 });
 
         // Diagnostic print
-        // Diagnostic print
         // SparkDiagnostics.profilePartitions(processedRDD, "Airlines after 500 filter");
         // SparkDiagnostics.checkSkew(processedRDD, "Airlines", 3.0);
 
-        /*
-         * Note: We use a simple global sortBy followed by a filter on index because we know that
-         * the number of airlines remaining after the >= 500 flights filter is very small (approx. 14).
-         * In this specific case, implementing a complex distributed top-N (local sorts followed by
-         * global sort) would add unnecessary complexity without providing measurable performance gains,
-         * as the shuffle volume for 14 records is negligible.
-         */
         // Sort the result by average arrival delay in descending order
-        JavaRDD<Row> sortedRDD = processedRDD.sortBy(r -> r.getDouble(2), false, processedRDD.getNumPartitions());
+        //
+        // We use a simple global sortBy followed by a filter on index because we know that
+        // the number of airlines remaining after the >= 500 flights filter is very small (approx. 14).
+        // In this specific case, implementing a complex distributed top-N (local sorts followed by
+        // global sort) would add unnecessary complexity without providing measurable performance gains,
+        // as the shuffle volume for 14 records is negligible.
+        JavaRDD<Row> sortedRDD = processedRDD.sortBy(r -> r.getDouble(avgCarrierIdx), false, processedRDD.getNumPartitions());
         JavaRDD<Row> top10RDD = sortedRDD.zipWithIndex()
                 .filter(tuple -> tuple._2 < 10)
                 .map(tuple -> tuple._1)
@@ -170,13 +176,13 @@ public class ArrivalDelayRanking extends BaseQuery {
                 .filter(col("CANCELLED").equalTo(0).and(col("DIVERTED").equalTo(0)))
                 .groupBy("OP_UNIQUE_CARRIER")
                 .agg(
-                        count("*").as("num_flights"),
-                        round(avg(coalesce(col("ARR_DELAY"), lit(0))), 2).as("arrdelay_mean"),
-                        round(avg(coalesce(col("CARRIER_DELAY"), lit(0))), 2).as("carrier_delay_mean"),
-                        round(avg(coalesce(col("WEATHER_DELAY"), lit(0))), 2).as("weather_delay_mean"),
-                        round(avg(coalesce(col("NAS_DELAY"), lit(0))), 2).as("nas_delay_mean"),
-                        round(avg(coalesce(col("SECURITY_DELAY"), lit(0))), 2).as("security_delay_mean"),
-                        round(avg(coalesce(col("LATE_AIRCRAFT_DELAY"), lit(0))), 2).as("late_aircraft_delay_mean")
+                    count("*").as("num_flights"),
+                    round(avg(coalesce(col("ARR_DELAY"), lit(0))), 2).as("arrdelay_mean"),
+                    round(avg(coalesce(col("CARRIER_DELAY"), lit(0))), 2).as("carrier_delay_mean"),
+                    round(avg(coalesce(col("WEATHER_DELAY"), lit(0))), 2).as("weather_delay_mean"),
+                    round(avg(coalesce(col("NAS_DELAY"), lit(0))), 2).as("nas_delay_mean"),
+                    round(avg(coalesce(col("SECURITY_DELAY"), lit(0))), 2).as("security_delay_mean"),
+                    round(avg(coalesce(col("LATE_AIRCRAFT_DELAY"), lit(0))), 2).as("late_aircraft_delay_mean")
                 )
                 .withColumnRenamed("OP_UNIQUE_CARRIER", "carrier")
                 .filter(col("num_flights").geq(500))
@@ -200,20 +206,20 @@ public class ArrivalDelayRanking extends BaseQuery {
 
         flights.createOrReplaceTempView("flights");
 
-        String sqlQuery = "SELECT OP_UNIQUE_CARRIER as carrier, " +
-                "COUNT(*) AS num_flights, " +
-                "ROUND(AVG(COALESCE(ARR_DELAY, 0)), 2) AS arrdelay_mean, " +
-                "ROUND(AVG(COALESCE(CARRIER_DELAY, 0)), 2) AS carrier_delay_mean, " +
-                "ROUND(AVG(COALESCE(WEATHER_DELAY, 0)), 2) AS weather_delay_mean, " +
-                "ROUND(AVG(COALESCE(NAS_DELAY, 0)), 2) AS nas_delay_mean, " +
-                "ROUND(AVG(COALESCE(SECURITY_DELAY, 0)), 2) AS security_delay_mean, " +
-                "ROUND(AVG(COALESCE(LATE_AIRCRAFT_DELAY, 0)), 2) AS late_aircraft_delay_mean " +
-                "FROM flights " +
-                "WHERE CANCELLED = 0 AND DIVERTED = 0 " +
-                "GROUP BY OP_UNIQUE_CARRIER " +
-                "HAVING num_flights >= 500 " +
-                "ORDER BY arrdelay_mean DESC " +
-                "LIMIT 10";
+        String sqlQuery =   "SELECT OP_UNIQUE_CARRIER as carrier, " +
+                            "COUNT(*) AS num_flights, " +
+                            "ROUND(AVG(COALESCE(ARR_DELAY, 0)), 2) AS arrdelay_mean, " +
+                            "ROUND(AVG(COALESCE(CARRIER_DELAY, 0)), 2) AS carrier_delay_mean, " +
+                            "ROUND(AVG(COALESCE(WEATHER_DELAY, 0)), 2) AS weather_delay_mean, " +
+                            "ROUND(AVG(COALESCE(NAS_DELAY, 0)), 2) AS nas_delay_mean, " +
+                            "ROUND(AVG(COALESCE(SECURITY_DELAY, 0)), 2) AS security_delay_mean, " +
+                            "ROUND(AVG(COALESCE(LATE_AIRCRAFT_DELAY, 0)), 2) AS late_aircraft_delay_mean " +
+                            "FROM flights " +
+                            "WHERE CANCELLED = 0 AND DIVERTED = 0 " +
+                            "GROUP BY OP_UNIQUE_CARRIER " +
+                            "HAVING num_flights >= 500 " +
+                            "ORDER BY arrdelay_mean DESC " +
+                            "LIMIT 10";
 
         Dataset<Row> result = spark.sql(sqlQuery);
         return Collections.singletonList(result);

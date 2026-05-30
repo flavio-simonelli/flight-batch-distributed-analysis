@@ -10,16 +10,16 @@ public class JdbcStorageConfig extends DbStorageConfig {
 
     public String getDriver() {
         if (driver != null) return driver;
+        if (getType() == null) return null;
         
         // Default drivers based on storage type
-        if (getType() != null) {
-            switch (getType()) {
-                case POSTGRES:
-                case COCKROACH:
-                    return "org.postgresql.Driver";
-            }
+        switch (getType()) {
+            case POSTGRES:
+            case COCKROACH:
+                return "org.postgresql.Driver";
+            default:
+                return null;
         }
-        return null;
     }
     
     public void setDriver(String driver) {
@@ -28,16 +28,16 @@ public class JdbcStorageConfig extends DbStorageConfig {
 
     public String getUrl() {
         if (url != null) return url;
+        if (getType() == null) return null;
 
         // Construct default URL based on storage type and parameters
-        if (getType() != null) {
-            switch (getType()) {
-                case POSTGRES:
-                case COCKROACH:
-                    return String.format("jdbc:postgresql://%s:%d/%s", getHostname(), getPort(), getDatabase());
-            }
+        switch (getType()) {
+            case POSTGRES:
+            case COCKROACH:
+                return String.format("jdbc:postgresql://%s:%d/%s", getHostname(), getPort(), getDatabase());
+            default:
+                return null;
         }
-        return null;
     }
     
     public void setUrl(String url) {
