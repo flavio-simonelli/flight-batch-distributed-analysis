@@ -182,7 +182,7 @@
 \end{frame}
 
 % Extraction & Ingestion Layer
-\section{Extraction \& Ingestion Layer}\label{sec:nifi_pipeline}
+\section{Extraction \& Ingestion Layer}\label{sec:extraction_and_ingestion_layer}
 
 \begin{frame}[fragile]{NiFi Ingestion Pipeline: REST Trigger}
     \begin{columns}[c, onlytextwidth]
@@ -366,12 +366,12 @@
 \end{frame}
 
 %Computation Layer
-\section{Computation Layer}
+\section{Computation Layer}\label{sec:computation_layer}
 
 \begin{frame}{Configurazione a Start-Time \& Design Pattern Java}
-    
+
     \begin{columns}[T]
-        
+
         \begin{column}{0.71\textwidth}
             \begin{itemize}
                 \item \textbf{Parametrizzazione a Start-Time}:
@@ -380,9 +380,9 @@
                     \item \textbf{Selezione del Backend}: Scelta a runtime del paradigma di esecuzione (\textit{RDD, DataFrame, SQL}), del partizionamento e delle strategie di calcolo (KLL vs T-Digest).
                     \item \textbf{Storage Agnostic}: Disaccoppiamento totale dell'I/O su HDFS, S3, Local FS, PostgreSQL, CockroachDB, Redis e HBase.
                 \end{itemize}
-        
+
                 %\vspace{0.2cm}
-        
+
                 \item \textbf{Design Pattern Java}:
                 \begin{itemize}
                     \item \textbf{Template Method}: \texttt{BaseQuery.execute()} standardizza e unifica l'intero ciclo di vita del job Spark.
@@ -392,9 +392,9 @@
                 \end{itemize}
             \end{itemize}
         \end{column}
-        
+
         \hfill
-        
+
         \begin{column}{0.27\textwidth}
             \centering
             % \includegraphics[width=\linewidth, keepaspectratio]{percorso/tua-immagine}
@@ -410,7 +410,7 @@
     \begin{exampleblock}{\footnotesize Obiettivo}
         \scriptsize Aggregare i voli 2025 (AA vs DL) su base mensile. Calcolare min, max, media di \textit{DEP\_DELAY} (solo voli non cancellati) e il \textit{CANCELLATION RATE}.
     \end{exampleblock}
-    
+
     \vspace{-0.2cm}
 
     % Usiamo il rddcodebox a tutta larghezza (senza colonne) visto che il codice è lungo
@@ -448,7 +448,7 @@ datasetVoli
     \begin{exampleblock}{\footnotesize Obiettivo}
         \scriptsize Aggregare i voli 2025 (AA vs DL) su base mensile. Calcolare min, max, media di \textit{DEP\_DELAY} e il \textit{CANCELLATION RATE}.
     \end{exampleblock}
-    
+
     \vspace{0.2cm}
 
     \begin{columns}[T, totalwidth=\textwidth]
@@ -459,14 +459,10 @@ datasetVoli
 datasetVoli
   .groupBy("MONTH", "OP_UNIQUE_CARRIER")
   .agg(
-    round(avg(when(col("CANCELLED") == 0,
-      col("DEP_DELAY"))), 2).as("mean"),
-    round(min(when(col("CANCELLED") == 0,
-      col("DEP_DELAY"))), 2).as("min"),
-    round(max(when(col("CANCELLED") == 0,
-      col("DEP_DELAY"))), 2).as("max"),
-    round(sum(col("CANCELLED")) /
-      count("*") * 100, 2).as("cancel_rate")
+    avg(when(col("CANCELLED") == 0, col("DEP_DELAY"))).as("mean"),
+    min(when(col("CANCELLED") == 0, col("DEP_DELAY"))).as("min"),
+    max(when(col("CANCELLED") == 0, col("DEP_DELAY"))).as("max"),
+    sum(when(col("CANCELLED") == 0, col("DEP_DELAY"))).as("sum")
   )
   .withColumnRenamed("MONTH", "month")
   .withColumnRenamed("OP_UNIQUE_CARRIER", "airline")
@@ -476,19 +472,18 @@ datasetVoli
         % COLONNA 2: SPARK SQL (Usa sqlcodebox)
         \begin{column}{0.49\textwidth}
             \begin{sqlcodebox}{Paradigm 3: Spark SQL}
-SELECT 
-  MONTH             AS month, 
+SELECT
+  MONTH             AS month,
   OP_UNIQUE_CARRIER AS airline,
-  
-  ROUND(AVG(CASE WHEN CANCELLED == 0 
-    THEN DEP_DELAY END), 2) AS 'mean',
-  ROUND(MIN(CASE WHEN CANCELLED == 0 
-    THEN DEP_DELAY END), 2) AS 'min',
-  ROUND(MAX(CASE WHEN CANCELLED == 0 
-    THEN DEP_DELAY END), 2) AS 'max',
-  
-  ROUND((SUM(CANCELLED) / COUNT(*)) 
-    * 100, 2) AS 'cancel_rate'
+
+  AVG(CASE WHEN CANCELLED == 0
+    THEN DEP_DELAY END) AS 'mean',
+  MIN(CASE WHEN CANCELLED == 0
+    THEN DEP_DELAY END) AS 'min',
+  MAX(CASE WHEN CANCELLED == 0
+    THEN DEP_DELAY END) AS 'max',
+
+  (SUM(CANCELLED) / COUNT(*)) * 100 AS 'cancel_rate'
 
 FROM flights
 GROUP BY MONTH, OP_UNIQUE_CARRIER
@@ -505,7 +500,7 @@ GROUP BY MONTH, OP_UNIQUE_CARRIER
     \begin{exampleblock}{\footnotesize Obiettivo}
         \scriptsize Classifica prime 10 compagnie per \textit{ARR\_DELAY} medio decrescente (voli non cancellati/deviati con conteggio $\ge$ 500), mostrando l'incidenza media di ciascuna causa di ritardo.
     \end{exampleblock}
-    
+
     \vspace{-0.2cm}
 
     % Usiamo il rddcodebox a tutta larghezza visto il volume del codice
@@ -542,7 +537,7 @@ top10RDD  = sortedRDD.zipWithIndex().filter(t -> t._2 < 10).map(t -> t._1).coale
     \begin{exampleblock}{\footnotesize Obiettivo}
         \scriptsize Classifica prime 10 compagnie per \textit{ARR\_DELAY} medio decrescente (voli non cancellati/deviati con conteggio $\ge$ 500), mostrando l'incidenza media di ciascuna causa di ritardo.
     \end{exampleblock}
-    
+
     \vspace{-0.2cm}
 
     \begin{columns}[T, totalwidth=\textwidth]
@@ -556,18 +551,12 @@ flights
   .groupBy("OP_UNIQUE_CARRIER")
   .agg(
     count("*").as("num_flights"),
-    round(avg(coalesce(col("ARR_DELAY"), 
-      lit(0))), 2).as("arrdelay_mean"),
-    round(avg(coalesce(col("CARRIER_DELAY"), 
-      lit(0))), 2).as("carrier_mean"),
-    round(avg(coalesce(col("WEATHER_DELAY"), 
-      lit(0))), 2).as("weather_mean"),
-    round(avg(coalesce(col("NAS_DELAY"), 
-      lit(0))), 2).as("nas_mean"),
-    round(avg(coalesce(col("SECURITY_DELAY"), 
-      lit(0))), 2).as("security_mean"),
-    round(avg(coalesce(col("LATE_AIRCRAFT_DELAY"), 
-      lit(0))), 2).as("late_aircraft_mean")
+    avg(coalesce(col("ARR_DELAY"), lit(0))).as("arrdelay_mean"),
+    avg(coalesce(col("CARRIER_DELAY"), lit(0))).as("carrier_mean"),
+    avg(coalesce(col("WEATHER_DELAY"), lit(0))).as("weather_mean"),
+    avg(coalesce(col("NAS_DELAY"), lit(0))).as("nas_mean"),
+    avg(coalesce(col("SECURITY_DELAY"), lit(0))).as("security_mean"),
+    avg(coalesce(col("LATE_AIRCRAFT_DELAY"), lit(0))).as("late_aircraft_mean")
   )
   .withColumnRenamed("OP_UNIQUE_CARRIER", "carrier")
   .filter(col("num_flights").geq(500))
@@ -581,26 +570,20 @@ flights
         % COLONNA 2: SPARK SQL (Usa sqlcodebox)
         \begin{column}{0.49\textwidth}
             \begin{sqlcodebox}{Paradigm 3: Spark SQL}
-SELECT 
-  OP_UNIQUE_CARRIER AS carrier, 
-  COUNT(*)          AS num_flights, 
-  ROUND(AVG(COALESCE(ARR_DELAY, 0)), 2) 
-    AS arrdelay_mean, 
-  ROUND(AVG(COALESCE(CARRIER_DELAY, 0)), 2) 
-    AS carrier_delay_mean, 
-  ROUND(AVG(COALESCE(WEATHER_DELAY, 0)), 2) 
-    AS weather_delay_mean, 
-  ROUND(AVG(COALESCE(NAS_DELAY, 0)), 2) 
-    AS nas_delay_mean, 
-  ROUND(AVG(COALESCE(SECURITY_DELAY, 0)), 2) 
-    AS security_delay_mean, 
-  ROUND(AVG(COALESCE(LATE_AIRCRAFT_DELAY, 0)), 2) 
-    AS late_aircraft_delay_mean 
-FROM flights 
-WHERE CANCELLED = 0 AND DIVERTED = 0 
-GROUP BY OP_UNIQUE_CARRIER 
-HAVING num_flights >= 500 
-ORDER BY arrdelay_mean DESC 
+SELECT
+  OP_UNIQUE_CARRIER AS carrier,
+  COUNT(*)          AS num_flights,
+  AVG(COALESCE(ARR_DELAY, 0)) AS arrdelay_mean,
+  AVG(COALESCE(CARRIER_DELAY, 0)) AS carrier_delay_mean,
+  AVG(COALESCE(WEATHER_DELAY, 0)) AS weather_delay_mean,
+  AVG(COALESCE(NAS_DELAY, 0)) AS nas_delay_mean,
+  AVG(COALESCE(SECURITY_DELAY, 0)) AS security_delay_mean,
+  AVG(COALESCE(LATE_AIRCRAFT_DELAY, 0)) AS late_aircraft_delay_mean
+FROM flights
+WHERE CANCELLED = 0 AND DIVERTED = 0
+GROUP BY OP_UNIQUE_CARRIER
+HAVING num_flights >= 500
+ORDER BY arrdelay_mean DESC
 LIMIT 10
             \end{sqlcodebox}
         \end{column}
@@ -615,7 +598,7 @@ LIMIT 10
     \begin{exampleblock}{\footnotesize Obiettivo}
         \scriptsize Calcolo dei percentili (25, 50, 75, 90) del \textit{DEP\_DELAY} per fascia oraria (24h) tramite algoritmi di sketch (\textit{KLL/t-digest}) e calcolo parallelo di min/max globali.
     \end{exampleblock}
-    
+
     \vspace{-0.2cm}
 
     % Box RDD a tutta larghezza con la nuova spaziatura ottimizzata
@@ -656,7 +639,7 @@ globalRows = validFlights
     \begin{exampleblock}{\footnotesize Obiettivo}
         \scriptsize Calcolo dei percentili (25, 50, 75, 90) del \textit{DEP\_DELAY} per fascia oraria (24h) tramite algoritmi di sketch integrati (\textit{KLL/t-digest}) e calcolo parallelo di min/max globali.
     \end{exampleblock}
-    
+
     \vspace{-0.3cm}
 
     \begin{columns}[T, totalwidth=\textwidth]
@@ -668,14 +651,14 @@ flights.cache()
 // Pipeline 1: Percentili orari approssimati
 hourlyStats = flights
   .filter(col("CANCELLED").equalTo(0))
-  .withColumn("hour", 
+  .withColumn("hour",
     col("CRS_DEP_TIME").divide(100).cast("int"))
   .groupBy("OP_UNIQUE_CARRIER", "hour")
   .agg(
-    round(expr("percentile_approx(DEP_DELAY, 0.25)"), 2).as("p25"),
-    round(expr("percentile_approx(DEP_DELAY, 0.50)"), 2).as("p50"),
-    round(expr("percentile_approx(DEP_DELAY, 0.75)"), 2).as("p75"),
-    round(expr("percentile_approx(DEP_DELAY, 0.90)"), 2).as("p90"))
+    expr("percentile_approx(DEP_DELAY, 0.25)").as("p25"),
+    expr("percentile_approx(DEP_DELAY, 0.50)").as("p50"),
+    expr("percentile_approx(DEP_DELAY, 0.75)").as("p75"),
+    expr("percentile_approx(DEP_DELAY, 0.90)").as("p90"))
   .withColumnRenamed("OP_UNIQUE_CARRIER", "airline")
 // Pipeline 2: Min/Max assoluti
 globalMinMax = flights
@@ -693,23 +676,23 @@ globalMinMax = flights
         \begin{column}{0.49\textwidth}
             \begin{sqlcodebox}{Paradigm 3: Spark SQL}
 -- Pipeline 1: Stima quantili orari
-SELECT 
-  OP_UNIQUE_CARRIER AS airline, 
-  CAST(CRS_DEP_TIME / 100 AS INT) AS hour, 
-  ROUND(percentile_approx(DEP_DELAY, 0.25), 2) AS p25, 
-  ROUND(percentile_approx(DEP_DELAY, 0.50), 2) AS p50, 
-  ROUND(percentile_approx(DEP_DELAY, 0.75), 2) AS p75, 
-  ROUND(percentile_approx(DEP_DELAY, 0.90), 2) AS p90 
-FROM flights 
-WHERE CANCELLED = 0 
+SELECT
+  OP_UNIQUE_CARRIER AS airline,
+  CAST(CRS_DEP_TIME / 100 AS INT) AS hour,
+  percentile_approx(DEP_DELAY, 0.25) AS p25,
+  percentile_approx(DEP_DELAY, 0.50) AS p50,
+  percentile_approx(DEP_DELAY, 0.75) AS p75,
+  percentile_approx(DEP_DELAY, 0.90) AS p90
+FROM flights
+WHERE CANCELLED = 0
 GROUP BY OP_UNIQUE_CARRIER, hour;
 
 -- Pipeline 2: Estremi globali
-SELECT 
-  OP_UNIQUE_CARRIER AS airline, 
-  MIN(DEP_DELAY) AS min_delay, 
-  MAX(DEP_DELAY) AS max_delay 
-FROM flights 
+SELECT
+  OP_UNIQUE_CARRIER AS airline,
+  MIN(DEP_DELAY) AS min_delay,
+  MAX(DEP_DELAY) AS max_delay
+FROM flights
 GROUP BY OP_UNIQUE_CARRIER;
             \end{sqlcodebox}
         \end{column}
@@ -738,7 +721,7 @@ ByteBuffer buf = ByteBuffer.allocate(
 digest.asSmallBytes(buf);
 return buf.array();
             \end{appcodebox}
-            
+
             \vspace{-0.1cm}
             \begin{itemize}
                 \item \scriptsize \textbf{Accuratezza}: $\sim$1\% errore nelle \textbf{code}.
@@ -762,10 +745,10 @@ KllDoublesSketch.heapify(Memory.wrap(state));
 return sketch.toByteArray();
 
 // Estrazione quantili con criterio inclusivo
-sketch.getQuantile(q, 
+sketch.getQuantile(q,
   QuantileSearchCriteria.INCLUSIVE);
             \end{appcodebox}
-            
+
             \vspace{-0.1cm}
             \begin{itemize}
                 \item \scriptsize \textbf{Accuratezza}: Errore di rango $\sim$1.65\%.
@@ -784,7 +767,7 @@ sketch.getQuantile(q,
     \begin{exampleblock}{\footnotesize Obiettivo Analisi}
         \scriptsize Individuare gruppi di vettori con comportamenti simili su 11 metriche aggregate (11D), standardizzando lo spazio multivariato ed applicando l'algoritmo K-Means.
     \end{exampleblock}
-    
+
     \vspace{-0.2cm}
 
     \begin{columns}[T, totalwidth=\textwidth]
@@ -802,13 +785,13 @@ for (int k = 2; k <= 5; k++) {
         .setSeed(42L).setInitMode("k-means||");
     KMeansModel m = km.fit(scaledData);
     double score = evaluator.evaluate(m.transform(scaledData));
-    if (score > bestScore) { 
+    if (score > bestScore) {
         bestScore = score; bestK = k; }
 }
 KMeansModel modelFinal = new KMeans()
     .setK(bestK).setSeed(42L).fit(scaledData);
             \end{appcodebox}
-            
+
             \vspace{-0.1cm}
             \begin{itemize}
                 \item \scriptsize \textbf{Scaling}: Spazio standardizzato a 11D tramite \texttt{StandardScaler}.
@@ -825,7 +808,7 @@ PCA pca = new PCA()
     .setInputCol("features")
     .setOutputCol("pca_features")
     .setK(2);
-    
+
 PCAModel pcaModel = pca.fit(finalPredictions);
 
 // Espansione del vettore nei componenti x e y
@@ -833,7 +816,7 @@ Dataset<Row> finalOutput = appendPcaColumns(
     pcaModel.transform(finalPredictions)
 );
             \end{appcodebox}
-            
+
             \vspace{-0.1cm}
             \begin{itemize}
                 \item \scriptsize \textbf{Dimensionalità}: Il clustering avviene nel blocco nativo a 11D.
@@ -871,17 +854,36 @@ Dataset<Row> finalOutput = appendPcaColumns(
 
 \end{frame}
 
-\section{Airflow Orchestration}
+\section{Orchestration Layer}\label{sec:orchestration_layer}
 
-\begin{frame}{Orchestrazione End-to-End: \texttt{flight\_analysis}}
-    \begin{itemize}
-        \item \textbf{Obiettivo}: Orchestrare l'intera pipeline, dall'ingestion in NiFi all'elaborazione Spark.
-        \item \textbf{Funzionalità}: Utilizzo della \textbf{TaskFlow API} (Airflow 3.0) per gestire il branching condizionale (\textit{Ingest Only, Execution Only, Both}).
-        \item \textbf{Sincronizzazione}: Uso di \texttt{Task.Sensor} per attendere il completamento asincrono di NiFi.
-    \end{itemize}
-    \vfill
-    \centering
-    \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{../Presentation/graphs/flight_analysis-graph-hor}
+\begin{frame}[fragile]{Orchestrazione End-to-End: \texttt{flight\_analysis}}
+    \begin{columns}[c]
+        \begin{column}{0.87\textwidth}
+
+            \begin{itemize}
+                \item \textbf{Obiettivo del Workflow}: Coordinare l'intero ciclo di elaborazione in maniera totalmente parametrica, assicurando la corretta sincronizzazione e il passaggio dei metadati tra la fase di Ingestione e la fase di Computazione.
+
+                \vspace{0.3cm}
+
+                \item \textbf{Workflow Operativo}:
+                \begin{itemize}
+                    \item \texttt{route\_start}: Valutazione dinamica della modalità operativa per il branching del flusso: \textit{Ingest}, \textit{Execution}, \textit{Both}.
+                    \item \texttt{trigger\_nifi\_backend}: Generazione del payload JSON e iniezione dei metadati via chiamata REST a NiFi.
+                    \item \texttt{wait\_nifi\_done}: Sincronizzazione asincrona tramite \textbf{Sensor} (polling su variabile aggiornata da NiFi via callback).
+                    \item \texttt{prepare\_spark\_args}: Mapping dei parametri del DAG in argomenti CLI per il job Spark.
+                    \item \texttt{spark\_execution}: Sottomissione del job Spark tramite \textbf{LivyOperator} con monitoraggio integrato.
+                \end{itemize}
+            \end{itemize}
+
+        \end{column}
+
+        \hfill
+
+        \begin{column}{0.22\textwidth}
+            \centering
+            \includegraphics[width=\linewidth, height=\textheight, keepaspectratio]{../Presentation/graphs/flight_analysis-graph-ver}
+        \end{column}
+    \end{columns}
 \end{frame}
 
 % \begin{frame}{Orchestrazione End-to-End: \texttt{flight\_analysis}}
@@ -903,19 +905,19 @@ Dataset<Row> finalOutput = appendPcaColumns(
 % \end{frame}
 %
 
-\begin{frame}[fragile]{Benchmarking su Cluster Self-Hosted: \texttt{ec2\_benchmark}}
+\begin{frame}[fragile]{Orchestrazione del Benchmarking: EC2 vs EMR}
     \begin{columns}[c]
-        \begin{column}{0.55\textwidth}
-            \begin{itemize}
-                \item \textbf{Obiettivo}: Raccolta automatizzata delle metriche prestazionali in ambiente EC2.
-                \item \textbf{Logica}: Loop sequenziale per eseguire tutte le 12 combinazioni (4 Query $\times$ 3 Backend).
-                \item \textbf{Integrazione}: Sottomissione dei job tramite \texttt{LivyOperator} verso il Master Node.
-            \end{itemize}
-        \end{column}
 
-        \begin{column}{0.45\textwidth}
-            \begin{block}{Integrazione Livy (EC2)}
-\begin{lstlisting}[style=Python]
+        \begin{column}{0.48\textwidth}
+            \begin{itemize}
+                \item \textbf{Obiettivo}: Valutazione sistematica di tutte le combinazioni.
+                \item Loop nidificati per la creazione dinamica di una pipeline sequenziale, garantendo l'isolamento delle risorse per ogni job Spark.
+            \end{itemize}
+
+            % \vspace{0.2cm}
+
+            \begin{block}{Cluster Self-Hosted}
+                \begin{lstlisting}[style=Python]
 spark_task = LivyOperator(
     task_id=task_id,
     livy_conn_id="livy_default",
@@ -932,26 +934,15 @@ spark_task = LivyOperator(
     name=f"benchmark-{query}-{backend}",
     polling_interval=5
 )
-\end{lstlisting}
+                \end{lstlisting}
             \end{block}
         \end{column}
-    \end{columns}
-\end{frame}
 
-% --- Slide EMR ---
-\begin{frame}[fragile]{Benchmarking su AWS Managed: \texttt{emr\_benchmark}}
-    \begin{columns}[c]
-        \begin{column}{0.55\textwidth}
-            \begin{itemize}
-                \item \textbf{Obiettivo}: Benchmarking su \textbf{AWS EMR} per testare la scalabilità managed.
-                \item \textbf{Logica}: Esecuzione delle 12 combinazioni in modalità sequenziale.
-                \item \textbf{Integrazione Cloud}: Uso di \texttt{EmrAddStepsOperator} e \texttt{EmrStepSensor}.
-            \end{itemize}
-        \end{column}
+        \hfill
 
-        \begin{column}{0.45\textwidth}
-            \begin{block}{Integrazione EMR Step (AWS)}
-\begin{lstlisting}[style=Python]
+        \begin{column}{0.48\textwidth}
+            \begin{block}{AWS EMR}
+                \begin{lstlisting}[style=Python]
 spark_step = {
     "Name": step_name,
     "ActionOnFailure": "CONTINUE",
@@ -968,20 +959,100 @@ add_step = EmrAddStepsOperator(
     task_id=tid,
     job_flow_id="{{ params.job_flow_id }}",
     aws_conn_id="aws_default",
-    steps=[spark_step],
+    steps=[spark_step]
 )
 watch_step = EmrStepSensor(
     task_id=task_id,
     job_flow_id="{{ params.job_flow_id }}",
     step_id=f"{{{{ ti.xcom_pull(task_ids='{tid}')[0] }}}}",
     aws_conn_id="aws_default",
-    poke_interval=30,
+    poke_interval=30
 )
-\end{lstlisting}
+                \end{lstlisting}
             \end{block}
         \end{column}
     \end{columns}
 \end{frame}
+
+%\begin{frame}[fragile]{Benchmarking su Cluster Self-Hosted: \texttt{ec2\_benchmark}}
+%    \begin{columns}[c]
+%        \begin{column}{0.55\textwidth}
+%            \begin{itemize}
+%                \item \textbf{Obiettivo}: Raccolta automatizzata delle metriche prestazionali in ambiente EC2.
+%                \item \textbf{Logica}: Loop sequenziale per eseguire tutte le 12 combinazioni (4 Query $\times$ 3 Backend).
+%                \item \textbf{Integrazione}: Sottomissione dei job tramite \texttt{LivyOperator} verso il Master Node.
+%            \end{itemize}
+%        \end{column}
+%
+%        \begin{column}{0.45\textwidth}
+%            \begin{block}{Integrazione Livy (EC2)}
+%\begin{lstlisting}[style=Python]
+%spark_task = LivyOperator(
+%    task_id=task_id,
+%    livy_conn_id="livy_default",
+%    file=JAR_PATH,
+%    class_name=JAR_CLASS,
+%    args=[
+%        "--query", query,
+%        "--backend", backend,
+%        "--config", "{{ params.config_file }}",
+%        "--input-type", "{{ params.input_type }}",
+%        "--output-type", "{{ params.output_type }}",
+%        "--metrics-type", "{{ params.metrics_type }}"
+%    ],
+%    name=f"benchmark-{query}-{backend}",
+%    polling_interval=5
+%)
+%\end{lstlisting}
+%            \end{block}
+%        \end{column}
+%    \end{columns}
+%\end{frame}
+%
+%% --- Slide EMR ---
+%\begin{frame}[fragile]{Benchmarking su AWS Managed: \texttt{emr\_benchmark}}
+%    \begin{columns}[c]
+%        \begin{column}{0.55\textwidth}
+%            \begin{itemize}
+%                \item \textbf{Obiettivo}: Benchmarking su \textbf{AWS EMR} per testare la scalabilità managed.
+%                \item \textbf{Logica}: Esecuzione delle 12 combinazioni in modalità sequenziale.
+%                \item \textbf{Integrazione Cloud}: Uso di \texttt{EmrAddStepsOperator} e \texttt{EmrStepSensor}.
+%            \end{itemize}
+%        \end{column}
+%
+%        \begin{column}{0.45\textwidth}
+%            \begin{block}{Integrazione EMR Step (AWS)}
+%\begin{lstlisting}[style=Python]
+%spark_step = {
+%    "Name": step_name,
+%    "ActionOnFailure": "CONTINUE",
+%    "HadoopJarStep": {
+%        "Jar": "command-runner.jar",
+%        "Args": [
+%            "spark-submit", "--deploy-mode", "client",
+%            "--class", JAR_CLASS, JAR_PATH,
+%            "--query", query, ...
+%        ],
+%    },
+%}
+%add_step = EmrAddStepsOperator(
+%    task_id=tid,
+%    job_flow_id="{{ params.job_flow_id }}",
+%    aws_conn_id="aws_default",
+%    steps=[spark_step],
+%)
+%watch_step = EmrStepSensor(
+%    task_id=task_id,
+%    job_flow_id="{{ params.job_flow_id }}",
+%    step_id=f"{{{{ ti.xcom_pull(task_ids='{tid}')[0] }}}}",
+%    aws_conn_id="aws_default",
+%    poke_interval=30,
+%)
+%\end{lstlisting}
+%            \end{block}
+%        \end{column}
+%    \end{columns}
+%\end{frame}
 
 \section{Valutazione Sperimentale}\label{sec:experimental_evaluation}
 

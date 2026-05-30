@@ -50,7 +50,11 @@ call "%SCRIPTS_DIR%create_bucket_folders.bat" "logs" "deploy" "data" "data/raw" 
 :: --- DEPLOYMENT ASSETS SYNCHRONIZATION ---
 :: Sync the local deploy directory containing templates, compose files, and bash scripts.
 echo [INFO] Syncing deployment scripts and configurations...
-aws s3 sync "%SCRIPTS_DIR%." "s3://%BUCKET_NAME%/deploy/" --exclude "*.bat" --exclude ".env" --exclude "template/*"
+aws s3 sync "%SCRIPTS_DIR%." "s3://%BUCKET_NAME%/deploy/" ^
+    --exclude "*.bat" --include "*/*.bat" ^
+    --exclude "*.sh" --include "*/*.sh" ^
+    --exclude ".env*" --include "envs/*.env" ^
+    --exclude "template/*"
 
 :: Sync NiFi custom extensions, flows and configurations from the project structure.
 if exist "%PROJECT_ROOT%nifi\" (

@@ -50,7 +50,11 @@ fi
 # --- DEPLOYMENT ASSETS SYNCHRONIZATION ---
 # Sync the local deploy directory containing templates, compose files, and bash scripts.
 echo "[INFO] Syncing deployment scripts and configurations..."
-aws s3 sync "${SCRIPTS_DIR}/" "s3://${BUCKET_NAME}/deploy/" --exclude "*.sh" --exclude ".env" --exclude "template/*"
+aws s3 sync "${SCRIPTS_DIR}/" "s3://${BUCKET_NAME}/deploy/" \
+    --exclude "*.bat" --include "*/*.bat" \
+    --exclude "*.sh" --include "*/*.sh" \
+    --exclude ".env*" --include "envs/*.env" \
+    --exclude "template/*"
 
 # Sync NiFi custom extensions, flows and configurations from the project structure.
 if [ -d "${PROJECT_ROOT}/nifi/" ]; then

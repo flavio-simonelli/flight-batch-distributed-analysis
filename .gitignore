@@ -46,11 +46,19 @@ Thumbs.db
 # ========================
 auxil
 *.synctex.gz
+
 docs/report/relazione.*
 !docs/report/relazione.tex
 !docs/report/relazione.pdf
 
-# Presentation LaTeX build artifacts
+Report/relazione.*
+!Report/relazione.tex
+!Report/relazione.pdf
+
+Presentation/presentazione.*
+!Presentation/presentazione.tex
+!Presentation/presentazione.pdf
+
 Presentation/*.aux
 Presentation/*.fls
 Presentation/*.fdb_latexmk
