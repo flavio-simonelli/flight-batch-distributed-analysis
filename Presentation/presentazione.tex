@@ -8,6 +8,8 @@
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{alltt}
+\usepackage[most]{tcolorbox} % Pacchetto per creare box perfetti senza righe
+\tcbuselibrary{listings}     % Permette a tcolorbox di integrarsi con listings
 
 % --- CONFIGRUAZIONE PER PYTHON CODE ---
 \definecolor{pyKeyword}{RGB}{0,90,180}
@@ -15,11 +17,17 @@
 \definecolor{pyComment}{RGB}{120,120,120}
 
 % --- CONFIGURAZIONE PER JAVA CODE ---
-\definecolor{jvKeyword}{RGB}{125, 37, 147}
-\definecolor{jvString}{RGB}{34, 139, 34}
-\definecolor{jvComment}{RGB}{128, 128, 128}
-\definecolor{jvBackground}{RGB}{248, 249, 250}
+\definecolor{jvKeyword}{RGB}{166, 29, 41}
+\definecolor{jvString}{RGB}{3, 47, 98}
+\definecolor{jvComment}{RGB}{106, 115, 125}
 
+% --- CONFIGURAZIONE PER SQL CODE ---
+\definecolor{sqlKeyword}{RGB}{0, 51, 153}
+\definecolor{sqlFunction}{RGB}{227, 98, 9}
+\definecolor{sqlString}{RGB}{3, 110, 10}
+\definecolor{sqlComment}{RGB}{106, 115, 125}
+
+% --- IMPOSTAZIONI GLOBALI LISTINGS ---
 \lstset{
     basicstyle=\ttfamily\fontsize{5pt}{6.5pt}\selectfont,
     backgroundcolor=,
@@ -31,7 +39,7 @@
     xrightmargin=2pt
 }
 
-% Stile specifico per PYTHON
+% --- STILE PYTHON CODE ---
 \lstdefinestyle{Python}{
     language=Python,
     keywordstyle=\color{pyKeyword}\bfseries,
@@ -39,12 +47,70 @@
     commentstyle=\color{pyComment}\itshape
 }
 
-% Stile specifico per JAVA
+% --- STILE JAVA CODE ---
 \lstdefinestyle{Java}{
     language=Java,
     keywordstyle=\color{jvKeyword}\bfseries,
     stringstyle=\color{jvString},
     commentstyle=\color{jvComment}\itshape
+}
+
+% --- STILE SQL CODE ---
+\lstdefinestyle{Sql}{
+    language=SQL,
+    keywordstyle=\color{sqlKeyword}\bfseries,
+    stringstyle=\color{sqlString},
+    commentstyle=\color{sqlComment}\itshape,
+    morekeywords=[2]{ROUND, AVG, MIN, MAX, SUM, COUNT, CASE, WHEN, THEN, END},
+    keywordstyle=[2]\color{sqlFunction}\bfseries
+}
+
+% 1. Box per SPARK SQL (Tema Azzurro)
+\newtcblisting{sqlcodebox}[1]{
+    listing only,
+    listing options={style=Sql, aboveskip=0pt, belowskip=0pt},
+    arc=5pt,
+    boxrule=0.5pt,
+    colframe=black!15,
+    colback=black!3,
+    title={#1},
+    coltitle=cyan!80!black,
+    colbacktitle=cyan!5,
+    fonttitle=\scriptsize\bfseries\sffamily,
+    top=0pt, bottom=0pt, left=6pt, right=6pt,
+    toptitle=4pt, bottomtitle=4pt
+}
+
+% 2. Box per DATAFRAME API (Tema Rosa/Viola)
+\newtcblisting{dataframecodebox}[1]{
+    listing only,
+    listing options={style=Java, aboveskip=0pt, belowskip=0pt},
+    arc=5pt,
+    boxrule=0.5pt,
+    colframe=black!15,
+    colback=black!3,
+    title={#1},
+    coltitle=purple!80!black,
+    colbacktitle=purple!5,
+    fonttitle=\scriptsize\bfseries\sffamily,
+    top=0pt, bottom=0pt, left=6pt, right=6pt,
+    toptitle=4pt, bottomtitle=4pt
+}
+
+% 3. Box per RDD API (Tema Arancione/Terra)
+\newtcblisting{rddcodebox}[1]{
+    listing only,
+    listing options={style=Java, aboveskip=0pt, belowskip=0pt},
+    arc=5pt,
+    boxrule=0.5pt,
+    colframe=black!15,
+    colback=black!3,
+    title={#1},
+    coltitle=orange!80!black,
+    colbacktitle=orange!6,
+    fonttitle=\scriptsize\bfseries\sffamily,
+    top=0pt, bottom=0pt, left=6pt, right=6pt,
+    toptitle=4pt, bottomtitle=4pt
 }
 
 % Informazioni sul Titolo
@@ -366,74 +432,95 @@ datasetVoli
 
 \end{frame}
 
+\begin{frame}[fragile]{Query 1: Analisi Mensile Performance — RDD API}
+
+    \vspace{-0.3cm}
+    \begin{exampleblock}{\footnotesize Obiettivo Analisi}
+        \scriptsize Aggregare i voli 2025 (AA vs DL) su base mensile. Calcolare min, max, media di \textit{DEP\_DELAY} (solo voli non cancellati) e il \textit{CANCELLATION RATE}.
+    \end{exampleblock}
+    
+    \vspace{-0.2cm}
+
+    % Usiamo il rddcodebox a tutta larghezza (senza colonne) visto che il codice è lungo
+    \begin{rddcodebox}{Paradigm 1: Low-Level RDD API}
+datasetVoli
+    .mapToPair(v -> ([v.airline, v.month], v))
+    .aggregateByKey(
+        zeroValue: [sommaRitardi: 0, maxDelay: -inf, minDelay: +inf, nonCancellati: 0, totali: 0],
+        combiner: (acc, v) -> {
+            acc.totali += 1
+            if !v.cancelled then
+                acc.sommaRitardi += v.dep_delay
+                acc.maxDelay = MAX(acc.maxDelay, v.dep_delay)
+                acc.minDelay = MIN(acc.minDelay, v.dep_delay)
+                acc.nonCancellati += 1
+            return acc},
+        reducer: (a1, a2) -> {
+            a1.sommaRitardi += a2.sommaRitardi
+            a1.maxDelay = MAX(a1.maxDelay, a2.maxDelay)
+            a1.minDelay = MIN(a1.minDelay, a2.minDelay)
+            a1.nonCancellati += a2.nonCancellati
+            a1.totali += a2.totali
+            return a1})
+    .map(tuple -> {
+        media = ROUND(tuple.sommaRitardi / tuple.nonCancellati, 2)
+        tasso_canc = ROUND((tuple.totali - tuple.nonCancellati) / tuple.totali * 100, 2)
+        return Row(tuple.month, tuple.airline, media, tuple.minDelay, tuple.maxDelay, tasso_canc)})
+    \end{rddcodebox}
+
+\end{frame}
+
 \begin{frame}[fragile]{Query 1: Analisi Mensile Performance — High-Level APIs}
 
-    \vspace{-0.2cm}
-    {\scriptsize \textbf{Obiettivo:} Aggregare i voli 2025 (AA vs DL) su base mensile. Calcolare min, max, media di \textit{DEP\_DELAY} (solo voli non cancellati) e il \textit{CANCELLATION RATE}.}
+    \vspace{-0.3cm}
+    \begin{exampleblock}{\footnotesize Obiettivo Analisi}
+        \scriptsize Aggregare i voli 2025 (AA vs DL) su base mensile. Calcolare min, max, media di \textit{DEP\_DELAY} e il \textit{CANCELLATION RATE}.
+    \end{exampleblock}
     
-    \vspace{0.1cm}
-    \hrule
     \vspace{0.2cm}
 
-    \begin{columns}[T]
+    \begin{columns}[T, totalwidth=\textwidth]
 
-        % COLONNA 1: DATAFRAME
-        \begin{column}{0.48\textwidth}
-            \textbf{\footnotesize Paradigm 2: DataFrame API (DSL)}
-            \vspace{0.1cm}
-            
-            \begin{alltt}\fontsize{5.5pt}{6.5pt}\selectfont
+        % COLONNA 1: DATAFRAME (Usa javacodebox)
+        \begin{column}{0.49\textwidth}
+            \begin{dataframecodebox}{Paradigm 2: DataFrame API (DSL)}
 datasetVoli
   .groupBy("MONTH", "OP_UNIQUE_CARRIER")
   .agg(
-      round(avg(when(col("CANCELLED") == 0,
-          col("DEP_DELAY"))), 2)
-          .as("dep-delay-mean"),
-      round(min(when(col("CANCELLED") == 0,
-          col("DEP_DELAY"))), 2)
-          .as("dep-delay-min"),
-      round(max(when(col("CANCELLED") == 0,
-          col("DEP_DELAY"))), 2)
-          .as("dep-delay-max"),
-      
-      round(sum(col("CANCELLED")) /
-          count("*") * 100, 2)
-          .as("cancellation-rate")
+    round(avg(when(col("CANCELLED") == 0,
+      col("DEP_DELAY"))), 2).as("mean"),
+    round(min(when(col("CANCELLED") == 0,
+      col("DEP_DELAY"))), 2).as("min"),
+    round(max(when(col("CANCELLED") == 0,
+      col("DEP_DELAY"))), 2).as("max"),
+    round(sum(col("CANCELLED")) /
+      count("*") * 100, 2).as("cancel_rate")
   )
   .withColumnRenamed("MONTH", "month")
-  .withColumnRenamed("OP_UNIQUE_CARRIER",
-      "airline")
-            \end{alltt}
+  .withColumnRenamed("OP_UNIQUE_CARRIER", "airline")
+            \end{dataframecodebox}
         \end{column}
 
-        \hfill
-
-        % COLONNA 2: SPARK SQL
-        \begin{column}{0.48\textwidth}
-            \textbf{\footnotesize Paradigm 3: Spark SQL}
-            \vspace{0.1cm}
-            
-            \begin{alltt}\fontsize{5.5pt}{6.5pt}\selectfont
+        % COLONNA 2: SPARK SQL (Usa sqlcodebox)
+        \begin{column}{0.49\textwidth}
+            \begin{sqlcodebox}{Paradigm 3: Spark SQL}
 SELECT 
   MONTH             AS month, 
   OP_UNIQUE_CARRIER AS airline,
   
-    ROUND(AVG(CASE WHEN CANCELLED == 0 
-        THEN DEP_DELAY END), 2) 
-        AS \textquotesingle dep-delay-mean\textquotesingle,
-    ROUND(MIN(CASE WHEN CANCELLED == 0 
-        THEN DEP_DELAY END), 2) 
-        AS \textquotesingle dep-delay-min\textquotesingle,
-    ROUND(MAX(CASE WHEN CANCELLED == 0 
-        THEN DEP_DELAY END), 2) 
-        AS \textquotesingle dep-delay-max\textquotesingle,
+  ROUND(AVG(CASE WHEN CANCELLED == 0 
+    THEN DEP_DELAY END), 2) AS 'mean',
+  ROUND(MIN(CASE WHEN CANCELLED == 0 
+    THEN DEP_DELAY END), 2) AS 'min',
+  ROUND(MAX(CASE WHEN CANCELLED == 0 
+    THEN DEP_DELAY END), 2) AS 'max',
   
-    ROUND((SUM(CANCELLED) / COUNT(*)) 
-        * 100, 2) AS \textquotesingle cancellation-rate\textquotesingle
+  ROUND((SUM(CANCELLED) / COUNT(*)) 
+    * 100, 2) AS 'cancel_rate'
 
 FROM flights
 GROUP BY MONTH, OP_UNIQUE_CARRIER
-            \end{alltt}
+            \end{sqlcodebox}
         \end{column}
 
     \end{columns}
