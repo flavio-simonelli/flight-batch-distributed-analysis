@@ -133,7 +133,7 @@ L'obiettivo primario di SAE è fornire una piattaforma che non si limiti ad esse
 Il caso d'uso affrontato in questo progetto si focalizza sull'analisi dei dati storici relativi ai ritardi dei voli commerciali negli Stati Uniti nel periodo Gennaio-Aprile 2025, forniti dal Bureau of Transportation Statistics.
 Questo dominio applicativo offre una notevole complessità strutturale (come presenza di valori nulli, anomalie statistiche, dipendenze temporali) e rappresenta un banco di prova ideale per l'implementazione di una pipeline di batch processing in ambito Big Data.
 
-Nelle sezioni successive, esploreremo in dettaglio come la modularità implementata a livello di codice sorgente, attraverso l'utilizzo di variabili nei vari framework e l'uso estensivo del pattern GoF Factory e interfacce astratte in Java per Spark, si rifletta coerentemente nella modularità dell'infrastruttura di deployment.
+Nelle sezioni successive, esploreremo in dettaglio come la modularità implementata a livello di codice sorgente, attraverso l'utilizzo di variabili nei vari framework e l'uso estensivo dei pattern GoF e interfacce astratte in Java per Spark, si rifletta coerentemente nella modularità dell'infrastruttura di deployment.
 Questo design permette a SAE di operare con la medesima efficacia e senza alterazioni alla logica di business sia su un ambiente di sviluppo locale containerizzato tramite Docker Compose, sia su un cluster cloud di produzione basato su Amazon Web Services tramite i servizi di AWS EMR e/o EC2.
 
 % ------------------------------
@@ -143,15 +143,16 @@ L'architettura di Sky Analytics Engine è stata concepita seguendo i rigidi prin
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.43\textwidth]{../graphs/BigDataStack}
+    \includegraphics[width=0.45\textwidth]{../Report/graphs/BigDataStack}
     \caption{Big Data Stack di Sky Analytics Engine: rappresentazione dei livelli logici e delle tecnologie integrate.}
     \label{fig:big_data_stack}
 \end{figure}
 
 Il sistema evita l'approccio monolitico, configurandosi come un'aggregazione di servizi distribuiti coordinati che comunicano esclusivamente attraverso interfacce standardizzate.
 
-L'infrastruttura è organizzata in macro-livelli gerarchici indipendenti, come illustrato nel Big Data Stack di riferimento (Fig.~\ref{fig:big_data_stack}).
-Questa netta separazione assicura che il sistema sia "future-proof": è possibile scalare o sostituire qualsiasi componente senza impattare gli altri livelli\@.
+% TODO: si può rimuovere per mettere il paragrafo su AI generativa
+% L'infrastruttura è organizzata in macro-livelli gerarchici indipendenti, come illustrato nel Big Data Stack di riferimento (Fig.~\ref{fig:big_data_stack}).
+% Questa netta separazione assicura che il sistema sia "future-proof": è possibile scalare o sostituire qualsiasi componente senza impattare gli altri livelli\@.
 
 % I livelli principali sono:
 % \begin{enumerate}
@@ -181,7 +182,6 @@ Successivamente, Airflow entra in uno stato di \textit{Sensor Polling}, consuman
 Quando NiFi completa l'ingestion, utilizza il JWT per autenticarsi contro le API REST di Airflow e aggiornare la variabile di stato, sbloccando il DAG e permettendo l'avvio della fase di processing\@.
 
 \subsubsection{DAG di Orchestrazione e Benchmarking}
-L'orchestrazione dei flussi di lavoro è demandata a una suite di tre DAG.
 Ciascun workflow è ingegnerizzato per eseguire specifiche fasi del ciclo di vita del dato o per automatizzare le sessioni di validazione sperimentale:
 
 \begin{itemize}
@@ -195,7 +195,7 @@ Ciascun workflow è ingegnerizzato per eseguire specifiche fasi del ciclo di vit
     \vspace{0.1cm}
 
     \item[\textbf{2)}] \textbf{Benchmark Standalone:} Progettato specificamente per la raccolta sistematica dei dati di telemetria in ambienti locali o su istanze AWS EC2 standard.
-    Al fine di garantire l'assoluta affidabilità dei benchmark analitici, questo DAG genera dinamicamente le task dependency tramite un costrutto ciclico in Python, forzando un'esecuzione puramente sequenziale di tutte le combinazioni possibili tra le 4 query target e i 3 backend.
+    Al fine di garantire l'assoluta affidabilità dei benchmark analitici, questo DAG genera dinamicamente le task dependency tramite un costrutto ciclico in Python, forzando un'esecuzione puramente sequenziale di tutte le combinazioni possibili tra le query e i backend.
     Tale isolamento temporale impedisce la sovrapposizione computazionale e l'interferenza sull'I/O di rete o sul disco, restituendo metriche pulite.
     \vspace{0.1cm}
 
@@ -209,7 +209,7 @@ Apache NiFi è la spina dorsale del livello di acquisizione dati.
 La sua architettura basata sul paradigma Flow-Based Programming garantisce un controllo visivo e transazionale sui flussi di dati, garantendo anche la Data Provenance\@.
 
 \subsubsection{Pipeline di Trasformazione}
-Il flusso \texttt{SAE\_Ingestion\_Pipeline} implementa un sofisticato processo di \textit{Extract-Load-Transform} (ELT) articolato nelle seguenti fasi:
+Il flusso \texttt{SAE\_Ingestion\_Pipeline} implementa un sofisticato processo di \textit{Extract-Load-Transform} articolato nelle seguenti fasi:
 \begin{itemize}
     \item \textbf{Orchestrazione e Metadati:} Il processore \texttt{EvaluateJsonPath} estrae dal payload di trigger inviato da Apache Airflow le configurazioni dinamiche e i parametri di attivazione della pipeline.
     \item \textbf{Fetch, Validazione e Unzip:} Tramite \texttt{InvokeHTTP} viene effettuato il download del pacchetto compresso dal server sorgente.
@@ -223,8 +223,15 @@ Il flusso \texttt{SAE\_Ingestion\_Pipeline} implementa un sofisticato processo d
 \end{itemize}
 
 \subsubsection{Formato dei Dati}
-La scelta di Parquet è strategica: la sua struttura a blocchi con dizionari integrati abilita il \textit{predicate pushdown} nel motore Catalyst di Spark.
-Se una query analizza solo American Airlines, Spark legge dai dischi HDFS/S3 esclusivamente i blocchi Parquet contenenti tale compagnia, riducendo l'I/O di rete di ordini di grandezza rispetto alla scansione lineare di un file CSV\@.
+La scelta di convertire i dati nel formato colonnare Parquet costituisce il fondamento per massimizzare le performance.
+Su questa base, il valore aggiunto del livello di ingestion è la capacità di NiFi di configurare dinamicamente a runtime la strategia di persistenza fisica dei file, in base ai parametri di orchestrazione ricevuti.
+Il sistema permette infatti di selezionare due diverse tecniche per l'ottimizzazione dell'I/O in fase di lettura:
+\begin{itemize}
+    \item \textbf{Predicate Pushdown}: Sfrutta l'architettura nativa del formato Parquet, che include metadati statistici e dizionari a livello di singolo blocco.
+    Il motore Catalyst di Spark utilizza queste informazioni per filtrare i dati direttamente in lettura, riducendo drasticamente il traffico di rete.
+    \item \textbf{Partition Pruning}: Prevede la strutturazione fisica del Data Lake in directory gerarchiche basate sui valori di specifiche chiavi dove NiFi instrada dinamicamente i record Parquet in base al contenuto.
+    Durante l'esecuzione delle query, Spark valuta i filtri per escludere a priori la lettura di intere directory non rilevanti.
+\end{itemize}
 
 \subsubsection{Pre-processing e Data Quality}
 La fase di ingestion non si limita alla mera conversione di formato, ma esegue un rigoroso controllo di qualità e pulizia del dato in streaming tramite processori NiFi dedicati.
@@ -233,7 +240,7 @@ I dati grezzi, infatti, presentano potenzialmente diverse inconsistenze, come va
 La pipeline implementa due logiche fondamentali per garantire l'integrità analitica a valle:
 \begin{itemize}
     \item \textbf{Normalizzazione e Gestione dei Ritardi:} Tramite script dedicati nel processore \texttt{UpdateRecord}, la pipeline neutralizza i ritardi negativi errati e gestisce i valori mancanti delle singole cause.
-    Nello specifico, i valori vengono mantenuti a \texttt{null} se il ritardo all'arrivo è inferiore a 15 minuti; in caso contrario, se è presente almeno una causa di ritardo diversa da zero, i restanti valori nulli vengono sovrascritti a 0.
+    Nello specifico, se è presente almeno una causa di ritardo diversa da zero, i restanti valori nulli vengono sovrascritti a 0.
     \item \textbf{Filtraggio delle Inconsistenze Logiche:} Attraverso l'uso di query SQL sul processore \texttt{QueryRecord}, vengono scartati i record anomali che presentano discrepanze non recuperabili, quali: assenza di campi temporali o identificativi della compagnia, voli contrassegnati come cancellati ma recanti un orario di partenza effettivo, voli non cancellati ma privi di orario di arrivo/partenza, oppure evidenti errori matematici (es. ritardo totale negativo a fronte di una somma delle cause di ritardo positiva).
 \end{itemize}
 
@@ -284,21 +291,22 @@ La pipeline implementa due logiche fondamentali per garantire l'integrità anali
 
 \subsection{Livello di Storage}\label{subsec:storage_layer_datalake}
 Il cuore della persistenza intermedia è rappresentato dal Data Lake, implementato tramite Hadoop HDFS o MinIO in ambienti on-premise e Amazon S3 in configurazioni cloud.
-Questo strato funge da \textit{Single Source of Truth}, sfruttando la capacità intrinseca del Data Lake di accogliere e centralizzare dati eterogenei (strutturati, semi-strutturati e grezzi) senza la necessità di un pre-processing o di uno schema rigido preventivo.
+Questo strato funge da \textit{Single Source of Truth}, sfruttando la capacità intrinseca del Data Lake di accogliere e centralizzare dati eterogenei.
+% senza la necessità di un pre-processing o di uno schema rigido preventivo.
 
 L'infrastruttura ospita sia i dataset grezzi originari acquisiti da NiFi, sia i dati successivamente raffinati e convertiti in formato Parquet.
 Nelle distribuzioni cloud basate su Amazon S3, questa architettura abilita un disaccoppiamento totale tra le risorse di storage e quelle di calcolo, garantendo una scalabilità indipendente.
-Inoltre, la strutturazione dei dati raffinati in formato Parquet permette a Spark di eseguire ottimizzazioni avanzate, come il \textit{predicate pushdown} e la \textit{column projection}, riducendo drasticamente l'I/O complessivo durante le fasi di analisi.
+% Inoltre, la strutturazione dei dati raffinati in formato Parquet permette a Spark di eseguire ottimizzazioni avanzate, come il \textit{predicate pushdown} e la \textit{column projection}, riducendo drasticamente l'I/O complessivo durante le fasi di analisi.
 
 \subsection{Livello di Processing}\label{subsec:processing_layer}
 Il cuore computazionale di SAE è l'applicazione Spark.
 
-La modularità del codice sorgente è stata ottenuta applicando rigorosamente i design pattern della programmazione orientata agli oggetti\@.
+% La modularità del codice sorgente è stata ottenuta applicando rigorosamente i design pattern della programmazione orientata agli oggetti\@.
 
 \subsubsection{Pattern Factory e Repository}
 Per astrarre l'accesso ai dati, SAE implementa il pattern Repository.
 L'interfaccia \texttt{FlightRepository} definisce metodi generici come \texttt{getFlights()} e \texttt{saveResults()}.
-Tramite la classe \texttt{FlightRepositoryFactory}, l'applicazione istanzia a runtime implementazioni specifiche basandosi su un file di configurazione YAML, gestiti attraverso la classe \texttt{ApplicationConfig}.
+Tramite la classe \texttt{FlightRepositoryFactory}, l'applicazione istanzia a runtime implementazioni specifiche basandosi su un file di configurazione YAML, gestito attraverso la classe \texttt{ApplicationConfig}.
 Questo significa che la logica di business analitica è completamente disaccoppiata dalla tecnologia di storage sottostante\@.
 
 \subsubsection{Astrazione delle Query}
@@ -330,14 +338,16 @@ Questo approccio permette di scorporare il "vero" tempo di calcolo sui dati dal 
 
 \subsection{Visualization Layer}\label{subsec:visualization_layer}
 Grafana rappresenta il punto di accesso finale per l'analisi visiva dei dati. 
-Configurato per interrogare sia CockroachDB (per i risultati di business) che Redis (per la telemetria tecnica tramit RediSearch), il sistema fornisce dashboard interattive progettate per presentare:
-\begin{itemize}
-    \item Benchmark prestazionali comparativi basati sulla telemetria distribuita.
-    \item Trend temporali dei ritardi suddivisi per vettore.
-    \item Andamento della distribuzione oraria calcolata sui percentili approssimati.
-    \item La disposizione geometrica dei cluster ML nello spazio delle feature principali.
-\end{itemize}
-Tale integrazione permette di correlare in un unico ambiente le performance infrastrutturali con gli insight analitici estratti dalla pipeline.
+Configurato per interrogare sia CockroachDB (per i risultati di business) che Redis (per la telemetria tecnica tramit RediSearch), il sistema fornisce dashboard interattive progettate per presentare in un unico ambiente le performance infrastrutturali con gli insight analitici estratti.
+
+% \begin{itemize}
+%     \item Benchmark prestazionali comparativi basati sulla telemetria distribuita.
+%     \item Trend temporali dei ritardi suddivisi per vettore.
+%     \item Andamento della distribuzione oraria calcolata sui percentili approssimati.
+%     \item La disposizione geometrica dei cluster ML nello spazio delle feature principali.
+% \end{itemize}
+
+% Tale integrazione permette di correlare in un unico ambiente le performance infrastrutturali con gli insight analitici estratti dalla pipeline.
 
 % ------------------------------
 
@@ -350,7 +360,8 @@ La struttura logica dell'esecuzione è visualizzabile nel DAG di Spark riportato
 
 L'implementazione basata su RDD si articola nelle seguenti fasi:
 \begin{itemize}
-    \item \textbf{Map-Side Aggregation con \texttt{aggregateByKey}:} Si è evitato l'uso dell'operatore \texttt{groupByKey}, un'operazione che può causare colli di bottiglia prestazionali a causa del trasferimento di dati sulla rete durante la fase di \textit{shuffle}. Al suo posto è stato utilizzato \texttt{aggregateByKey}, il quale combina i valori parzialmente all'interno di ogni singola partizione del nodo worker prima di trasferirli sulla rete, riducendo drasticamente il volume di dati movimentato nello shuffle.
+    \item \textbf{Map-Side Aggregation con \texttt{aggregateByKey}:} Si è evitato l'uso dell'operatore \texttt{groupByKey}, un'operazione che può causare colli di bottiglia prestazionali a causa del trasferimento di dati sulla rete durante la fase di \textit{shuffle}.
+    Al suo posto è stato utilizzato \texttt{aggregateByKey}, il quale combina i valori parzialmente all'interno di ogni singola partizione del nodo worker prima di trasferirli sulla rete, riducendo drasticamente il volume di dati movimentato nello shuffle.
     \item \textbf{Struttura dell'Accumulatore:} Viene impiegato un array di \texttt{double} come accumulatore compatto per ogni chiave \texttt{(Carrier, Month)}:
     \[
     \mathcal{A}_{Q1} = \langle \textstyle \sum D_{dep}, \max(D_{dep}), \min(D_{dep}), N_{vld}, N_{tot} \rangle
@@ -368,7 +379,7 @@ Al fine di rispondere correttamente al requisito di calcolare il \textbf{contrib
 Questa scelta metodologica è fondamentale per distinguere tra due possibili approcci analitici:
 \begin{itemize}
     \item \textbf{Analisi dell'Intensità:} Ignorando i valori nulli, il calcolo della media includerebbe solo i voli con ritardo conclamato.
-    Sebbene utile per misurare la severità di un problema quando si verifica, questo approccio distorcerebbe la visione d'insieme, sovrastimando l'impatto delle singole cause sull'operatività totale del vettore.
+    Sebbene utile per misurare la severità di un problema quando si verifica, questo approccio distorcerebbe la visione d'insieme, sovrastimando l'impatto delle singole cause sull'operatività totale.
     \item \textbf{Analisi del Contributo Medio :} Trattando i valori mancanti come zero, il denominatore della media è costituito dalla totalità dei voli non cancellati e non deviati della compagnia.
     In questo modo, il risultato esprime quanto mediamente ogni causa pesi su tutto il dataset dei voli considerati.
 \end{itemize}
@@ -435,7 +446,7 @@ L'implementazione in \texttt{AirlineClustering} costruisce una complessa pipelin
     \item \textbf{Standardization:} Applicazione di uno \texttt{StandardScaler}.
     Poiché il k-Means è sensibile alla scala delle feature (basandosi sulla distanza euclidea), è imperativo normalizzare i dati affinché abbiano media 0 e deviazione standard 1, evitando che feature con magnitudo maggiore dominino l'algoritmo.
     \item \textbf{Cluster Number Selection:} Il sistema non richiede di specificare a priori il parametro $K$, ovvero il numero di cluster.
-    Il sistema esegue un loop iterativo addestrando modelli da $K=2$ a $K=8$.
+    Il sistema esegue un loop iterativo addestrando modelli da $K=2$ a $K=5$.
     Per ogni modello, valuta la qualità del raggruppamento utilizzando il \textit{Silhouette Score}.
     Il punteggio di Silhouette misura la coesione intra-cluster rispetto alla separazione inter-cluster.
     SAE seleziona dinamicamente il $K$ che massimizza questo punteggio, garantendo un clustering statisticamente fondato.
@@ -452,7 +463,7 @@ Il primo macro-scenario simula un'infrastruttura di tipo locale o on-premise vir
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.43\textwidth]{../graphs/DeploymentView}
+    \includegraphics[width=0.47\textwidth]{../Report/graphs/DeploymentView-EC2}
     \caption{Diagramma di deployment di Sky Analytics Engine su AWS EC2: rappresentazione dei componenti distribuiti.}
     \label{fig:deployment_bigdata_diagrams}
 \end{figure}
@@ -492,48 +503,53 @@ I test sono stati orchestrati in modo sequenziale tramite il DAG \texttt{ec2\_be
 Le misurazioni prestazionali raccolte evidenziano trend marcati circa l'efficacia dei diversi backend di Apache Spark e l'impatto dell'infrastruttura di deployment.
 
 \subsubsection{Dispersione Statistica dei Backend}
-L'osservazione dei box plot in Appendice~\ref{sec:appendix_telemetry} rivela un comportamento duale dei backend computazionali, strettamente legato alla natura algoritmica della query eseguita.
+L'osservazione dei box plot in Appendice~\ref{sec:appendix_telemetry} rivela un comportamento dei backend computazionali strettamente legato non solo alla natura algoritmica della query, ma anche all'infrastruttura di esecuzione.
 
-Nello scenario di aggregazione massiva della Query 1, le API strutturate presentano mediane prestazionali generalmente inferiori rispetto all'approccio RDD, mostrando anche una dispersione statistica contratta.
-Questa notevole stabilità prestazionale è una conseguenza diretta del \textbf{Catalyst Optimizer} e del motore d'esecuzione \textbf{Tungsten}.
-% Catalyst esegue l'ottimizzazione logica del piano di esecuzione prima di compilare il bytecode Java, assicurando che la pipeline fisica sia lineare.
-% Dal canto suo, Tungsten memorizza i record in formato binario off-heap compresso, aggirando l'allocazione di oggetti sulla JVM. Ciò riduce a livelli trascurabili l'attività del Garbage Collector, neutralizzando una delle fonti principali di variabilità temporale nei sistemi distribuiti.
-% Al contrario, le esecuzioni basate su RDD per la Query 1 risentono del continuo passaggio di oggetti generici che carica pesantemente lo heap della JVM, innescando frequenti cicli di garbage collection che ampliano la dispersione del box plot.
+Negli scenari di aggregazione massiva e ordinamento (Query 1 e Query 2), indipendentemente dall'ambiente di esecuzione, le API strutturate presentano mediane prestazionali generalmente inferiori rispetto all'approccio RDD e mostrano una dispersione statistica decisamente più contratta.
+Questa notevole stabilità prestazionale è una conseguenza diretta delle ottimizzazioni logiche del \textit{Catalyst Optimizer}.
 
-Tuttavia, l'analisi delle metriche introduce un'interessante eccezione nelle Query 2 e 3 in ambiente standalone su AWS EC2. In questi specifici contesti, l'approccio RDD ha fatto registrare mediane del tempo di calcolo core inferiori e box plot più contratti rispetto alle controparti DataFrame e SQL. Questo comportamento è riconducibile al minor overhead di astrazione dell'API RDD quando applicata a computazioni fortemente atomiche o a pipeline non lineari.
-Di contro, i backend DataFrame e SQL mostrano in questi scenari una dispersione leggermente superiore e la presenza di outlier isolati nelle esecuzioni basate su Predicate Pushdown, sintomo di una latenza variabile introdotta dall'ispezione ricorsiva dei metadati dei file.
+L'analisi delle metriche introduce tuttavia un'interessante divergenza infrastrutturale nella Query 3.
+In ambiente standalone su AWS EC2 (osservando la strategia Partition Pruning), l'approccio RDD fa registrare un'eccezione: una mediana del tempo di calcolo inferiore ($\sim 15s$ contro i $\sim 18s$ dei backend strutturati) e un box plot più compatto.
+Questo comportamento su EC2 è riconducibile al minor overhead di astrazione dell'API RDD per computazioni non lineari: l'uso esplicito dell'operatore \texttt{combineByKey} per i buffer risulta localmente più efficiente del piano generato da Catalyst per la funzione \texttt{percentile\_approx}.
 
-\subsubsection{Impatto dell'Infrastruttura}
-Un aspetto cruciale che emerge dall'analisi comparativa è l'impatto dell'infrastruttura sul cosiddetto \textbf{Wall Clock Time} (il tempo totale reale percepito dall'utente per completare il job).
-Come evidenziato dai grafici posizionati in Appendice~\ref{sec:appendix_telemetry}, esiste un overhead di Wall Clock Time che si somma al tempo puro di calcolo degli executor Spark.
+Il paradigma si ribalta radicalmente traslando l'esecuzione sull'ambiente managed AWS EMR. In questo contesto, il vantaggio dell'API RDD per la Query 3 viene completamente azzerato: DataFrame e SQL riprendono il primato prestazionale ($\sim 8.0s$ contro gli $\sim 8.3s$ di RDD in Partition Pruning) ed esibiscono una dispersione statistica minima.
+% Questo scarto evidenzia l'impatto delle ottimizzazioni proprietarie dell'EMR Runtime per Apache Spark: l'engine managed di AWS è in grado di parallelizzare ed eseguire il piano logico di Catalyst con un'efficienza tale da superare le logiche custom RDD, penalizzando al contempo quest'ultimo a causa dei massicci volumi di Shuffle Read/Write indotti dalla serializzazione degli oggetti Java.
 
-Questo overhead della telemetria è causato da fattori estranei al processamento dei dati in senso stretto:
+\subsubsection{Impatto dell'Infrastruttura sul Wall Clock Time}
+Un aspetto cruciale che emerge dall'analisi comparativa è l'impatto dell'infrastruttura sul cosiddetto \textbf{Wall Clock Time}.
+Come evidenziato dalla telemetria (Appendice~\ref{sec:appendix_telemetry}), il tempo totale misurato dal Driver Spark all'interno della fase di esecuzione è sistematicamente superiore al tempo puro di calcolo distribuito.
+
+Questo overhead è generato da operazioni svolte localmente dalla JVM del Driver, al di fuori del ciclo di vita dei Job Spark, tra cui:
 \begin{itemize}
-    \item \textbf{Inizializzazione e allocazione delle risorse:} Il tempo speso dal Driver per comunicare con il Resource Manager per allocare i container degli executor.
-    \item \textbf{Compilazione del DAG:} La pianificazione logica e fisica eseguita da Catalyst a runtime.
-    \item \textbf{Negoziazione della rete ed I/O:} La serializzazione e la spedizione dei task compilati dal driver ai vari nodi di calcolo.
+    \item \textbf{Ottimizzazione Lazy:} Il tempo speso dal Driver per risolvere il piano logico, applicare le regole di ottimizzazione e compilare il piano fisico prima dell'effettiva sottomissione dei task.
+    \item \textbf{I/O Setup e Validazione:} L'interazione con il \textit{NameNode} per HDFS o le API REST di Amazon S3 per la risoluzione dei path.
+    \item \textbf{Consolidamento dell'Output:} Il tempo speso dal Driver al termine del job per rinominare e spostare i file temporanei generati dagli executor nelle directory di destinazione finali.
 \end{itemize}
 
-L'infrastruttura gioca un ruolo determinante nel mitigare questo overhead.
-Il confronto tra i due ambienti evidenzia come la natura cloud-native ed elastica di AWS EMR riesca a contrarre sensibilmente la quota di Wall Clock Overhead rispetto al deployment standalone su AWS EC2. L'adozione di Amazon S3 e la gestione nativa delle chiamate riducono i tempi morti di negoziazione dei task e di bootstrap dell'applicazione, massimizzando il tempo in cui il cluster è effettivamente attivo nella computazione dei dati.
+L'infrastruttura sottostante e il target di persistenza giocano un ruolo determinante nel giustificare questo scarto temporale.
+Il confronto evidenzia come AWS EMR riesca a contrarre sensibilmente la quota di overhead rispetto al cluster standalone EC2.
+Nel deployment su EC2, il consolidamento finale dei risultati prevede la scrittura su un database.
+Questo approccio introduce latenze fisiologiche intrinseche: l'apertura e la gestione delle connessioni di rete da parte degli executor, la traduzione dei record e i tempi di attesa per il commit transazionale del motore di database.
+Al contrario, l'ambiente AWS EMR abbatte questi tempi morti sfruttando l'integrazione nativa e ottimizzata per la persistenza diretta tramite S3, mitigando drasticamente il costo architetturale dell'I/O in fase di salvataggio.
 
-\subsubsection{Confronto Tecniche di Ottimizzazione}
+\subsubsection{Confronto sulle Tecniche di Ottimizzazione dell'I/O}
 Un'analisi fondamentale condotta in questa fase riguarda il confronto tra le due principali strategie di ottimizzazione dell'I/O: \textbf{Partition Pruning} e \textbf{Predicate Pushdown}.
 
-L'osservazione dei tempi di esecuzione globali evidenzia come, a parità di query e di motore computazionale, le due tecniche garantiscano spesso un tempo di calcolo complessivo molto simile.
-Tuttavia, l'analisi approfondita delle metriche di basso livello rivela differenze radicali nel comportamento del cluster, in particolare per quanto concerne i volumi di I/O e la pressione computazionale sui nodi worker.
+L'osservazione dei tempi di esecuzione globali evidenzia come, a parità di query e di motore computazionale, le due tecniche garantiscano un tempo di calcolo complessivo molto simile.
+Tuttavia, un'indagine approfondita della telemetria di basso livello rivela differenze architetturali radicali, in particolare per quanto concerne i volumi di I/O e la distribuzione della pressione computazionale sui nodi worker.
 
-Il \textbf{Partition Pruning} si dimostra l'approccio più efficiente dal punto di vista infrastrutturale.
-Escludendo a monte le partizioni non necessarie a livello di file system, Spark evita del tutto l'apertura e la scansione dei file irrilevanti.
+Il \textbf{Partition Pruning} si dimostra l'approccio nettamente più efficiente dal punto di vista infrastrutturale.
+Escludendo a priori le partizioni non necessarie a livello di file system, Spark evita del tutto l'apertura e la scansione dei file irrilevanti.
 Questo si traduce in un sensibile abbattimento dei byte complessivamente letti e, fattore ancora più critico, in un'ottimale ripartizione del lavoro tra i worker.
-L'analisi della \textit{Executor Workload Skewness} dimostra infatti che, con l'utilizzo del pruning, il volume medio di dati assegnato ai nodi si allinea in modo omogeneo al picco massimo effettivamente elaborato dal singolo esecutore.
-Questo parallelismo ben bilanciato garantisce l'assenza di nodi sovraccarichi.
+L'analisi della metrica \textit{Executor Workload Skewness} dimostra infatti che, con l'utilizzo del pruning, il volume medio di dati assegnato ai nodi si sovrappone in modo quasi perfetto al picco massimo elaborato dal singolo esecutore.
+Questo parallelismo ben bilanciato garantisce l'assenza di colli di bottiglia e un utilizzo omogeneo delle risorse.
 
-Al contrario, il \textbf{Predicate Pushdown} richiede comunque che Spark acceda ai metadati del file Parquet per valutarne le statistiche.
-Sebbene questa tecnica si confermi efficace nel ridurre i record effettivamente passati alle fasi successive della pipeline, essa genera un volume di lettura fisicamente molto più elevato sull'infrastruttura di storage e introduce un forte sbilanciamento del carico.
-Come evidenziato dalla telemetria, il divario tra la media teorica e il picco massimo di byte letti risulta marcato: le dinamiche di partizionamento dei task portano tendenzialmente un singolo nodo a farsi carico della quasi totalità della scansione iniziale, trasformandolo in un temporaneo collo di bottiglia.
+Al contrario, il \textbf{Predicate Pushdown} impone a Spark l'accesso sistematico ai metadati interni dei file Parquet per valutarne le statistiche prima del filtraggio.
+Sebbene questa tecnica si confermi efficace nel ridurre i record effettivamente passati alle fasi successive della pipeline, essa genera un volume di lettura fisicamente molto più elevato sull'infrastruttura di storage e introduce un grave sbilanciamento del carico.
+Come evidenziato in modo inequivocabile dalla telemetria, il picco massimo di byte letti risulta essere esattamente il triplo della media teorica.
+Considerando l'architettura a tre nodi worker del cluster, questo dato dimostra che le dinamiche di partizionamento dei task portano un singolo esecutore a farsi carico del 100\% della scansione iniziale, lasciando gli altri inattivi e trasformando il nodo in un temporaneo collo di bottiglia.
 
-Questo divario nell'efficienza di lettura e nel bilanciamento dei task è particolarmente evidente nell'analisi dei percentili orari, dove il Partition Pruning riesce a contenere l'I/O overhead garantendo al contempo una sottomissione dei task lineare ed equa sui nodi, mitigando lo stress infrastrutturale sia in ambiente AWS EC2 che nella controparte elastica AWS EMR\@.
+Questo divario nell'efficienza di lettura e nel bilanciamento dei task è particolarmente palese nell'analisi dei percentili orari, dove il Partition Pruning riesce a contenere l'I/O overhead garantendo al contempo una sottomissione dei task lineare ed equa sui nodi, mitigando lo stress infrastrutturale in modo speculare sia in ambiente standalone AWS EC2 che nella controparte elastica AWS EMR\@.
 
 \subsection{Discussione dei Risultati Analitici}\label{subsec:analytical_results_discussion}
 
@@ -543,43 +559,41 @@ L'obiettivo di questa fase non è fornire un'indagine esaustiva sul dominio aero
 L'analisi del quadrimestre evidenzia comportamenti diametralmente opposti tra American Airlines (AA) e Delta Air Lines (DL) (Fig.~\ref{fig:results_q1_average_delay_trend} in Appendice~\ref{sec:appendix_results}). A gennaio entrambe registrano il proprio picco di cancellazioni (AA: $3,65\%$, DL: $2,67\%$), ma nei mesi successivi le efficienze divergono:
 \begin{itemize}
     \item \textbf{Delta Air Lines:} Mostra un miglioramento costante.
-    Il ritardo medio alla partenza scende da $12,8$ minuti a gennaio fino a $8,7$ minuti ad aprile, con un tasso di cancellazioni che si stabilizza virtuosamente sotto lo $0,50\%$.
+    Il ritardo medio alla partenza scende da $12,8$ minuti a gennaio fino a $8,7$ minuti ad aprile, con un tasso di cancellazioni che si stabilizza sotto lo $0,50\%$.
     \item \textbf{American Airlines:} Subisce un degrado progressivo.
     Il ritardo medio sale da $12,9$ a $16,0$ minuti, mantenendo un tasso di cancellazione fisso e più elevato, attorno all'$1,40\%$.
 \end{itemize}
 
 \subsubsection{Query 2: Decomposizione delle Cause di Ritardo}
 La classifica dei top 10 vettori per ritardo all'arrivo (Fig.~\ref{fig:results_q2_top10_arrival_delay} in Appendice~\ref{sec:appendix_results}) evidenzia dinamiche strutturali diverse.
-\textbf{PSA Airlines (OH)} risulta il vettore in assoluto più inefficiente ($17,16$ minuti di ritardo medio), penalizzato in modo massiccio dal \textit{late aircraft delay}.
+\textbf{PSA Airlines (OH)} risulta in assoluto più inefficiente ($17,16$ minuti di ritardo medio), penalizzato in modo massiccio dal \textit{late aircraft delay}.
 Questo indica una forte incapacità di assorbire i ritardi pregressi, che finiscono per propagarsi a cascata sui voli successivi.
-Al contrario, \textbf{United Airlines (UA)} mantiene il ritardo all'arrivo più basso tra i grandi vettori ($2,46$ minuti) e un'ottima gestione interna, ma subisce il forte impatto del \textit{NAS delay} (ritardi legati al controllo del traffico aereo), a dimostrazione di una maggiore esposizione alla congestione fisiologica degli scali.
+Al contrario, \textbf{United Airlines (UA)} mantiene il ritardo all'arrivo più basso ($2,46$ minuti) e un'ottima gestione interna, ma subisce il forte impatto del \textit{NAS delay} (ritardi legati al controllo del traffico aereo), a dimostrazione di una maggiore esposizione alla congestione fisiologica degli scali.
 
 \subsubsection{Query 3: Distribuzione Oraria dei Percentili di Ritardo}
-L'analisi oraria (riportata in Appendice~\ref{sec:appendix_results}) conferma un deterioramento fisiologico delle performance con il passare delle ore, ma con impatti molto diversi tra i vettori.
+L'analisi oraria (riportata in Appendice~\ref{sec:appendix_results}) conferma un deterioramento fisiologico delle performance con il passare delle ore, ma con impatti molto diversi tra le compagnie.
 Il 90° percentile di American Airlines, ad esempio, schizza oltre i $70$ minuti nella fascia serale, evidenziando una severa incapacità di smaltire la congestione diurna.
-Delta Air Lines, di contro, mantiene una curva di crescita molto più dolce e controllata.
+Delta Air Lines, di contro, mantiene una curva di crescita più dolce e controllata.
 
 Un aspetto metodologico cruciale per SAE emerge dal confronto diretto degli algoritmi nei grafici risultanti: l'applicazione dei differenti metodi di approssimazione ha portato a risultati pressoché molto simili sull'intero asse temporale.
 Sebbene il T-Digest mostri un comportamento leggermente meno lineare sulla mediana rispetto alla maggiore precisione teorica del KLL, il divario numerico reale è del tutto trascurabile.
 Considerando il dominio specifico del problema, in cui l'obiettivo è intercettare i trend macroscopici e la magnitudo dei ritardi orari, questa forte convergenza dei dati fa preferire l'utilizzo di un algoritmo più snello e performante come il T-Digest.
 
 \subsubsection{Query 4: Clustering delle Compagnie Aeree}
-L'applicazione dell'algoritmo K-Means con selezione automatica del modello tramite Silhouette Score ha identificato $K=3$ come il numero ottimale di raggruppamenti statistici per descrivere i vettori (Fig.~\ref{fig:results_q4_cluster_distribution} in Appendice~\ref{sec:appendix_results}).
-Per scopi di visualizzazione bidimensionale, è stata utilizzata una \textbf{Principal Component Analysis} per proiettare i centroidi e l'appartenenza dei vettori (Fig.~\ref{fig:results_q4_cluster_distribution}). Tuttavia, è fondamentale sottolineare che tale proiezione spaziale a due sole componenti principali offre una rappresentazione semplificata e parzialmente approssimata, comportando una fisiologica perdita di varianza.
+L'applicazione dell'algoritmo K-Means con selezione automatica del modello tramite Silhouette Score ha identificato $K=3$ come il numero ottimale di raggruppamenti statistici per descrivere le compagnie (Fig.~\ref{fig:results_q4_cluster_distribution} in Appendice~\ref{sec:appendix_results}).
+Per scopi di visualizzazione bidimensionale, è stata utilizzata una \textbf{Principal Component Analysis} per proiettare i centroidi e l'appartenenza dei vettori (Fig.~\ref{fig:results_q4_cluster_distribution}). Tuttavia, è fondamentale sottolineare che tale proiezione spaziale a due sole componenti principali offre una rappresentazione semplificata e parzialmente approssimata, comportando una fisiologica perdita di precisione.
 L'algoritmo di clustering, al contrario, ha operato addestrandosi sull'intero spazio ad alta dimensionalità delle feature originali.
 
 L'analisi congiunta di questa proiezione e della matrice di classificazione (i cui valori medi normalizzati per cluster sono riportati in Fig.~\ref{fig:results_q4_cluster_center} in Appendice~\ref{sec:appendix_results}, mentre la Tabella~\ref{tab:results_q4_metrics} ne riporta i corrispondenti valori operativi reali) delinea tre cluster operativi ben definiti:
 
 \begin{itemize}
-    \item \textbf{Cluster 0 - Inefficienza Operativa e Propagazione:} Comprende \texttt{AA}, \texttt{B6}, \texttt{F9}, \texttt{OH}, \texttt{OO}.
-    È il raggruppamento che presenta le criticità maggiori.
+    \item \textbf{Cluster 0 - Inefficienza Operativa e Propagazione:} È il raggruppamento che presenta le criticità maggiori.
     Vettori come \texttt{OH} e \texttt{F9} guidano il cluster con ritardi all'arrivo elevatissimi, causati da un forte effetto di propagazione a catena.
     Nel caso estremo di \texttt{OH}, l'instabilità si traduce anche in un tasso di cancellazione critico, superiore al $6\%$.
     \item \textbf{Cluster 1 - Sensibilità Esterna:} Formato unicamente da \textbf{Allegiant Air (\texttt{G4})}.
-    Questo vettore delinea un profilo anomalo: subisce forti ritardi in partenza a causa di fattori esterni incontrollabili (ritardi meteorologici e di sicurezza, quest'ultimo con valori un ordine di grandezza sopra la media).
+    Questa compagnia delinea un profilo anomalo: subisce forti ritardi in partenza a causa di fattori esterni incontrollabili (ritardi meteorologici e di sicurezza).
     Tuttavia, registra un tasso di cancellazioni bassissimo ($0,6\%$), denotando una politica aziendale orientata a completare i voli programmati indipendentemente dalle avversità e dai ritardi accumulati.
-    \item \textbf{Cluster 2 - Alta Efficienza e Stabilità:} Include \texttt{UA}, \texttt{NK}, \texttt{DL}, \texttt{MQ}, \texttt{HA}, \texttt{YX}, \texttt{AS}, \texttt{WN}.
-    È il gruppo nettamente più virtuoso.
+    \item \textbf{Cluster 2 - Alta Efficienza e Stabilità:} È il gruppo nettamente più virtuoso.
     Questi vettori gestiscono il traffico con estrema regolarità, mostrando ritardi all'arrivo minimi (\texttt{YX} scende addirittura a una media di $0,69$ minuti) e una notevole flessibilità di rete.
     La loro caratteristica chiave è l'eccellente capacità di recuperare tempo in volo, evidenziata da valori di \textit{delay makeup} nettamente negativi, che in molti casi permettono di recuperare oltre $6$ minuti rispetto alla schedulazione originaria.
 \end{itemize}
@@ -587,7 +601,7 @@ L'analisi congiunta di questa proiezione e della matrice di classificazione (i c
 % ------------------------------
 
 \section{Conclusioni e Sviluppi Futuri}\label{sec:conclusions_future_work}
-Il progetto Sky Analytics Engine dimostra che l'implementazione rigorosa di pattern architetturali distribuiti e l'adozione strategica di formati dati ottimizzati rappresentano requisiti imprescindibili per dominare la complessità inerente ai Big Data.
+Sky Analytics Engine dimostra che l'implementazione rigorosa di pattern architetturali distribuiti e l'adozione strategica di formati dati ottimizzati rappresentano requisiti imprescindibili per dominare la complessità inerente ai Big Data.
 L'orchestrazione asincrona tra Apache Airflow e NiFi, combinata con la modularità dell'engine Spark, ha permesso di costruire un ecosistema robusto, scalabile ed enterprise-ready.
 
 I risultati sperimentali hanno confermato in modo inequivocabile la validità delle scelte ingegneristiche effettuate.
@@ -595,9 +609,9 @@ L'utilizzo combinato del formato colonnare Parquet e delle tecniche di Partition
 Inoltre, l'integrazione di tecniche algoritmiche avanzate, quali gli stimatori probabilistici Quantile Sketches e il Model Selection automatizzato tramite Silhouette Score, ha dotato SAE di capacità analitiche di altissimo livello, mantenendo al contempo rigidamente confinati i costi computazionali e infrastrutturali.
 
 Sotto il profilo del dominio applicativo, la piattaforma ha dimostrato sul campo la capacità di trasformare moli di dati grezzi in insight operativi di grande valore strategico.
-Il sistema è riuscito a decodificare dinamiche complesse, come la propagazione a catena dei ritardi aeronautici, arrivando a profilare con estrema precisione l'efficienza delle singole compagnie aeree attraverso l'applicazione di modelli di machine learning non supervisionato.
+Il sistema è riuscito a decodificare dinamiche complesse, come la propagazione a catena dei ritardi, arrivando a profilare l'efficienza delle singole compagnie aeree attraverso l'applicazione di modelli di machine learning non supervisionato.
 
-I potenziali sviluppi futuri della piattaforma includono la transizione da un paradigma puramente batch a un'architettura ibrida Lambda.
+I potenziali sviluppi futuri della piattaforma includono la transizione da un paradigma puramente batch a un'architettura ibrida.
 L'integrazione di un message broker come Apache Kafka e dell'engine Spark Structured Streaming permetterebbe a SAE di acquisire e processare la telemetria di volo in tempo reale, sfruttando i centroidi dei modelli ML precedentemente addestrati per classificare la stabilità della rete e prevedere ritardi anomali "on-the-fly"\@.
 
 \begin{thebibliography}{10}
@@ -668,9 +682,16 @@ In questa appendice viene riportato un diagramma dettagliato dell'architettura d
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../graphs/sequence_diagram}
+    \includegraphics[width=0.67\textwidth]{../Report/graphs/InteractionDiagram}
+    \caption{Il diagramma di interazione mostra le componenti chiave di SAE e le loro interazioni durante l'esecuzione di un job Spark, dall'ingestion dei dati alla persistenza dei risultati.}
+    \label{fig:interaction_diagram}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../Report/graphs/sequence_diagram}
     \caption{Il diagramma di sequenza illustra la coreografia temporale delle chiamate API, l'ingestion asincrona e il ciclo di vita del job Spark all'interno della piattaforma.}
-    \label{fig:architecture_diagram}
+    \label{fig:sequence_diagram}
 \end{figure}
 
 \clearpage
