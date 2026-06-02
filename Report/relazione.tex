@@ -572,7 +572,7 @@ Al contrario, \textbf{United Airlines (UA)} mantiene il ritardo all'arrivo più 
 
 \subsubsection{Query 3: Distribuzione Oraria dei Percentili di Ritardo}
 L'analisi oraria (riportata in Appendice~\ref{sec:appendix_results}) conferma un deterioramento fisiologico delle performance con il passare delle ore, ma con impatti molto diversi tra le compagnie.
-Il 90° percentile di American Airlines, ad esempio, schizza oltre i $70$ minuti nella fascia serale, evidenziando una severa incapacità di smaltire la congestione diurna.
+Il 90° percentile di American Airlines, ad esempio, arriva fino ai $70$ minuti nella fascia serale, evidenziando una severa incapacità di smaltire la congestione diurna.
 Delta Air Lines, di contro, mantiene una curva di crescita più dolce e controllata.
 
 Un aspetto metodologico cruciale per SAE emerge dal confronto diretto degli algoritmi nei grafici risultanti: l'applicazione dei differenti metodi di approssimazione ha portato a risultati pressoché molto simili sull'intero asse temporale.
@@ -676,6 +676,39 @@ L'integrazione di un message broker come Apache Kafka e dell'engine Spark Struct
 
 
 \appendices
+
+\section{Utilizzo di strumenti di Intelligenza Artificiale Generativa}\label{sec:appendix_ai_declaration}
+
+Durante lo svolgimento del progetto, gli strumenti di IA generativa sono stati impiegati principalmente come supporto per velocizzare la scrittura di codice boilerplate, parti ripetitive di configurazione e per il refactoring formale del testo della relazione e dei commenti.
+Il principale tool utilizzato è stato Gemini, sia nella versione chatbot online che tramite interfaccia CLI.
+
+Anche i refactoring volti a migliorare la leggibilità e la struttura del codice sono stati eseguiti con il supporto di questi strumenti, ma sono sempre stati guidati attraverso prompt specifici.
+In tali istruzioni veniva descritta in maniera estremamente dettagliata l'architettura finale desiderata per il codice, senza mai lasciare ai tool decisioni critiche o scelte volte a definire le componenti del software, le quali venivano sempre ideate in modo del tutto autonomo prima della generazione sintattica.
+
+L'intero design dell'architettura, la logica di business, il funzionamento dei vari framework e le scelte progettuali implementate non sono in alcun modo frutto di decisioni delegate all'AI, ma derivano esclusivamente da un lavoro di progettazione autonomo.
+Nessun concetto chiave riguardante la coreografia dei flussi su Apache Airflow, i meccanismi asincroni di ingestion su Apache NiFi, la strutturazione logica dei job di Apache Spark o la gestione della persistenza distribuita è stato impostato o risolto dai modelli generativi, la cui utilità si è limitata alla mera traduzione sintattica di direttive architetturali preventivamente definite.
+
+Nello specifico, abbiamo sfruttato questi strumenti per:
+
+\begin{itemize}
+    \item \textbf{Codice ripetitivo e boilerplate:} Generazione automatica di componenti software standardizzate che richiedono tempi prolungati di scrittura manuale senza apportare valore logico aggiunto, quali metodi getter/setter o lo sviluppo delle classi Java per la mappatura e il parsing dei file di configurazione YAML; la generazione di tali classi strutturate è avvenuta esclusivamente a valle di una definizione e stesura a priori dei file YAML stessi, le cui specifiche e parametri necessari al funzionamento del software sono stati stabiliti in totale autonomia senza alcun intervento dell'AI.
+    \item \textbf{File di configurazione e schemi:} Compilazione di sezioni sintattiche fisse e ripetitive all'interno delle configurazioni, con particolare riferimento alla strutturazione delle variabili d'ambiente.
+    \item \textbf{Refactoring e commenti del codice:} Ottimizzazione della leggibilità e della pulizia del codice sorgente attraverso la ristrutturazione formale di blocchi complessi e l'inserimento sistematico di commenti descrittivi strutturati in standard Javadoc, operando esclusivamente sulla forma e mai sulla logica algoritmica.
+    \item \textbf{Raffinamento linguistico della relazione:} Revisione stilistica e lessicale del testo della relazione.
+    L'intero documento è stato redatto integralmente a mano e, successivamente, sottoposto a una riformulazione tramite modelli di linguaggio al fine di elevare il registro formale e accademico, garantendo l'assoluta invarianza e fedeltà dei contenuti analitici ed espressivi originari.
+    \item \textbf{Infrastruttura di deployment:} Supporto nella stesura dei file di configurazione per AWS CloudFormation e dei relativi script di automazione per il deployment.
+    Una volta definita e testata manualmente l'architettura desiderata attraverso le interfacce web dei servizi cloud (procedura eseguita per convalidarne preliminarmente la struttura), l'ausilio dell'AI è stato finalizzato alla replicazione sistematica di tale topologia in codice CloudFormation.
+    I modelli sono stati guidati fornendo le specifiche esatte dell'infrastruttura già verificata, automatizzando così la scrittura sintattica delle componenti standard e ripetitive necessarie alla creazione delle risorse.
+\end{itemize}
+
+La fase di debugging generale dell'intero progetto ha visto un ricorso sporadico e a bassa frequenza agli strumenti di IA generativa.
+Tale supporto si è rivelato utile esclusivamente nei casi in cui le informazioni di tracciamento o gli output degli errori forniti dai framework distribuiti risultavano poco dettagliati, non consentendo una rapida localizzazione del problema.
+Attraverso l'interrogazione dei modelli, è stato possibile analizzare più a fondo le cause radice di tali anomalie sintattiche o sistemistiche, procedendo poi all'ideazione e all'implementazione puramente manuale della soluzione logica necessaria a risolverle e a prevenirne la successiva ricomparsa.
+
+Ogni singolo blocco di codice, configurazione o direttiva infrastrutturale derivante da tutte queste attività è stato comunque analizzato riga per riga, verificato nella sintassi, integrato manualmente all'interno del sistema e validato sperimentalmente per assicurarne l'assoluta correttezza, l'efficienza e la totale aderenza ai requisiti del progetto.
+
+\clearpage
+
 
 \section{Rappresentazione grafica dell'Architettura}\label{sec:appendix_architecture}
 In questa appendice viene riportato un diagramma dettagliato dell'architettura di Sky Analytics Engine, evidenziando i componenti principali, le loro interconnessioni e i flussi di lavoro tra i vari moduli.
