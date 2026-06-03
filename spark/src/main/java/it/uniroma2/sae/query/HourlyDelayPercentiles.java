@@ -184,7 +184,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
 
         Dataset<Row> hourlyStats = flights
                 .filter(col("CANCELLED").equalTo(0))
-                .withColumn("hour", col("CRS_DEP_TIME").divide(100).cast("int"))
+                .withColumn("hour", col("CRS_DEP_TIME").divide(100).cast("int").mod(24))
                 .groupBy("OP_UNIQUE_CARRIER", "hour")
                 .agg(
                     round(expr("percentile_approx(DEP_DELAY, 0.25)"), 2).as("p25"),
@@ -195,6 +195,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
                 .withColumnRenamed("OP_UNIQUE_CARRIER", "airline");
 
         Dataset<Row> globalMinMax = flights
+                .filter(col("CANCELLED").equalTo(0))
                 .groupBy("OP_UNIQUE_CARRIER")
                 .agg(
                     min("DEP_DELAY").as("min_delay"),
@@ -220,7 +221,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
         
         flights.createOrReplaceTempView("flights");
 
-        String hourlyStatsSql = "SELECT OP_UNIQUE_CARRIER as airline, CAST(CRS_DEP_TIME / 100 AS INT) AS hour, " +
+        String hourlyStatsSql = "SELECT OP_UNIQUE_CARRIER as airline, CAST(CRS_DEP_TIME / 100 AS INT) % 24 AS hour, " +
                                 "ROUND(percentile_approx(DEP_DELAY, 0.25), 2) AS p25, " +
                                 "ROUND(percentile_approx(DEP_DELAY, 0.50), 2) AS p50, " +
                                 "ROUND(percentile_approx(DEP_DELAY, 0.75), 2) AS p75, " +
@@ -233,6 +234,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
 
         String globalMinMaxSql =    "SELECT OP_UNIQUE_CARRIER as airline, MIN(DEP_DELAY) AS min_delay, MAX(DEP_DELAY) AS max_delay " +
                                     "FROM flights " +
+                                    "WHERE CANCELLED = 0 " +
                                     "GROUP BY OP_UNIQUE_CARRIER";
         
         Dataset<Row> globalMinMax = spark.sql(globalMinMaxSql);

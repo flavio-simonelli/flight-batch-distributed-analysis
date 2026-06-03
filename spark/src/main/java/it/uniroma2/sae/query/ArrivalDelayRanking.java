@@ -140,7 +140,7 @@ public class ArrivalDelayRanking extends BaseQuery {
         // In this specific case, implementing a complex distributed top-N (local sorts followed by
         // global sort) would add unnecessary complexity without providing measurable performance gains,
         // as the shuffle volume for 14 records is negligible.
-        JavaRDD<Row> sortedRDD = processedRDD.sortBy(r -> r.getDouble(avgCarrierIdx), false, processedRDD.getNumPartitions());
+        JavaRDD<Row> sortedRDD = processedRDD.sortBy(r -> r.getDouble(avgArrDelayIdx + 1), false, processedRDD.getNumPartitions());
         JavaRDD<Row> top10RDD = sortedRDD.zipWithIndex()
                 .filter(tuple -> tuple._2 < 10)
                 .map(tuple -> tuple._1)

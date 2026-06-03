@@ -147,10 +147,10 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         Dataset<Row> result = flights
                 .groupBy("MONTH", "OP_UNIQUE_CARRIER")
                 .agg(
-                    round(avg(when(col("CANCELLED").equalTo(0.0), col("DEP_DELAY"))), 2).as("dep-delay-mean"),
-                    round(min(when(col("CANCELLED").equalTo(0.0), col("DEP_DELAY"))), 2).as("dep-delay-min"),
-                    round(max(when(col("CANCELLED").equalTo(0.0), col("DEP_DELAY"))), 2).as("dep-delay-max"),
-                    round(sum(col("CANCELLED")).divide(count("*")).multiply(100), 2).as("cancellation-rate")
+                        round(avg(when(col("CANCELLED").equalTo(0.0), coalesce(col("DEP_DELAY"), lit(0.0)))), 2).as("dep-delay-mean"),
+                        round(min(when(col("CANCELLED").equalTo(0.0), coalesce(col("DEP_DELAY"), lit(0.0)))), 2).as("dep-delay-min"),
+                        round(max(when(col("CANCELLED").equalTo(0.0), coalesce(col("DEP_DELAY"), lit(0.0)))), 2).as("dep-delay-max"),
+                        round(sum(col("CANCELLED")).divide(count("*")).multiply(100), 2).as("cancellation-rate")
                 )
                 .withColumnRenamed("MONTH", "month")
                 .withColumnRenamed("OP_UNIQUE_CARRIER", "airline");
@@ -173,9 +173,9 @@ public class MonthlyPerformanceAnalyzer extends BaseQuery {
         flights.createOrReplaceTempView("flights");
 
         String sqlQuery =   "SELECT MONTH as month, OP_UNIQUE_CARRIER as airline, " +
-                            "ROUND(AVG(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-mean`, " +
-                            "ROUND(MIN(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-min`, " +
-                            "ROUND(MAX(CASE WHEN CANCELLED = 0.0 THEN DEP_DELAY END), 2) AS `dep-delay-max`, " +
+                            "ROUND(AVG(CASE WHEN CANCELLED = 0.0 THEN COALESCE(DEP_DELAY, 0.0) END), 2) AS `dep-delay-mean`, " +
+                            "ROUND(MIN(CASE WHEN CANCELLED = 0.0 THEN COALESCE(DEP_DELAY, 0.0) END), 2) AS `dep-delay-min`, " +
+                            "ROUND(MAX(CASE WHEN CANCELLED = 0.0 THEN COALESCE(DEP_DELAY, 0.0) END), 2) AS `dep-delay-max`, " +
                             "ROUND((SUM(CANCELLED) / COUNT(*)) * 100, 2) AS `cancellation-rate` " +
                             "FROM flights " +
                             "GROUP BY MONTH, OP_UNIQUE_CARRIER ";
