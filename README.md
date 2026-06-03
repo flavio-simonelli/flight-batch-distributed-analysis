@@ -140,7 +140,6 @@ flowchart TD
 ## Modalità di Deployment e Requisiti
 
 ### 1. Prerequisiti di Sistema
-Prima di iniziare, assicurati di avere installato e configurato i seguenti strumenti:
 * **Docker & Docker Compose** (versione 2.20+)
 * **Java Development Kit (JDK) 11**
 * **Apache Maven 3.8+**
