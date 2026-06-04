@@ -578,7 +578,7 @@ Delta Air Lines, di contro, mantiene una curva di crescita più dolce e controll
 Il confronto sperimentale tra gli algoritmi evidenzia un netto trade-off tra memoria e potenza di calcolo senza decretare un vincitore assoluto. Da un lato, l'algoritmo KLL richiede un maggiore impiego di memoria per preservare la sua struttura a piramide dei livelli, un costo spaziale chiaramente visibile nei grafici di shuffle read. Dall'altro lato, il T-Digest risulta più efficiente in termini di spazio, poiché memorizza solo i centroidi, ma sconta una maggiore lentezza computazionale dovuta ai calcoli continui della funzione di scala necessari per l'aggiornamento dei cluster stessi. Siccome i risultati analitici di entrambe le euristiche sono molto simili, la scelta tra i due metodi dipende quindi dai vincoli infrastrutturali a disposizione (Appendice~\ref{sec:appendix_spark_dags}).
 \subsubsection{Query 4: Clustering delle Compagnie Aeree}
 L'applicazione dell'algoritmo K-Means con selezione automatica del modello tramite Silhouette Score ha identificato $K=3$ come il numero ottimale di raggruppamenti statistici per descrivere le compagnie (Fig.~\ref{fig:results_q4_cluster_distribution} in Appendice~\ref{sec:appendix_results}).
-Per scopi di visualizzazione bidimensionale, è stata utilizzata una \textbf{Principal Component Analysis} per proiettare i centroidi e l'appartenenza dei vettori (Fig.~\ref{fig:results_q4_cluster_distribution}). Tuttavia, è fondamentale sottolineare che tale proiezione spaziale a due sole componenti principali offre una rappresentazione semplificata e parzialmente approssimata, comportando una fisiologica perdita di precisione.
+Per scopi di visualizzazione bidimensionale, è stata utilizzata una \textbf{Principal Component Analysis} per proiettare i centroidi e l'appartenenza dei vettori (Fig.~\ref{fig:results_q4_cluster_distribution}). Tuttavia, è fondamentale sottolineare che tale proiezione spaziale offre una rappresentazione semplificata e parzialmente approssimata, comportando una fisiologica perdita di precisione.
 L'algoritmo di clustering, al contrario, ha operato addestrandosi sull'intero spazio ad alta dimensionalità delle feature originali.
 
 L'analisi congiunta di questa proiezione e della matrice di classificazione (i cui valori medi normalizzati per cluster sono riportati in Fig.~\ref{fig:results_q4_cluster_center} in Appendice~\ref{sec:appendix_results}, mentre la Tabella~\ref{tab:results_q4_metrics} ne riporta i corrispondenti valori operativi reali) delinea tre cluster operativi ben definiti:
@@ -600,14 +600,11 @@ L'analisi congiunta di questa proiezione e della matrice di classificazione (i c
 \section{Conclusioni e Sviluppi Futuri}\label{sec:conclusions_future_work}
 Sky Analytics Engine dimostra che l'implementazione rigorosa di pattern architetturali distribuiti e l'adozione strategica di formati dati ottimizzati rappresentano requisiti imprescindibili per dominare la complessità inerente ai Big Data.
 L'orchestrazione asincrona tra Apache Airflow e NiFi, combinata con la modularità dell'engine Spark, ha permesso di costruire un ecosistema robusto, scalabile ed enterprise-ready.
-
 I risultati sperimentali hanno validato le scelte ingegneristiche effettuate.
 L'utilizzo combinato del formato colonnare Parquet e delle tecniche di Partition Pruning ha consentito di abbattere l'I/O overhead sul file system distribuito.
-Inoltre, l'integrazione di tecniche algoritmiche, quali gli stimatori probabilistici Quantile Sketches e il Model Selection automatizzato tramite Silhouette Score, ha dotato SAE di capacità analitiche di altissimo livello, mantenendo al contempo rigidamente confinati i costi computazionali e infrastrutturali.
-
+Inoltre, l'integrazione di tecniche algoritmiche, quali gli stimatori probabilistici Quantile Sketches e il Model Selection automatizzato tramite Silhouette Score, ha dotato SAE di capacità analitiche di alto livello, mantenendo al contempo rigidamente confinati i costi computazionali e infrastrutturali.
 Il sistema è riuscito a decodificare dinamiche complesse, come la propagazione a catena dei ritardi, arrivando a profilare l'efficienza delle singole compagnie aeree attraverso l'applicazione di modelli di machine learning non supervisionato.
 
-I potenziali sviluppi futuri della piattaforma includono la transizione da un paradigma puramente batch a un'architettura ibrida.
 L'integrazione di un message broker come Apache Kafka e dell'engine Spark Structured Streaming permetterebbe a SAE di acquisire e processare la telemetria di volo in tempo reale, sfruttando i centroidi dei modelli ML precedentemente addestrati per classificare la stabilità della rete e prevedere ritardi anomali "on-the-fly"\@.
 
 \begin{thebibliography}{10}
