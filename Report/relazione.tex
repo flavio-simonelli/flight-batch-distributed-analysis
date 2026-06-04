@@ -505,14 +505,13 @@ Le misurazioni prestazionali raccolte evidenziano trend marcati circa l'efficaci
 \subsubsection{Dispersione Statistica dei Backend}
 L'osservazione dei box plot in Appendice~\ref{sec:appendix_telemetry} rivela un comportamento dei backend computazionali strettamente legato non solo alla natura algoritmica della query, ma anche all'infrastruttura di esecuzione.
 
-Negli scenari di aggregazione massiva e ordinamento (Query 1 e Query 2), indipendentemente dall'ambiente di esecuzione, le API strutturate presentano mediane prestazionali generalmente inferiori rispetto all'approccio RDD e mostrano una dispersione statistica decisamente più contratta.
-Questa notevole stabilità prestazionale è una conseguenza diretta delle ottimizzazioni logiche del \textit{Catalyst Optimizer}.
+Negli scenari di aggregazione massiva e ordinamento (Query 1 e Query 2), indipendentemente dall'ambiente di esecuzione, le API strutturate presentano mediane prestazionali generalmente inferiori rispetto all'approccio RDD e mostrano una dispersione statistica più contratta.
 
 L'analisi delle metriche introduce tuttavia un'interessante divergenza infrastrutturale nella Query 3.
-In ambiente standalone su AWS EC2 (osservando la strategia Partition Pruning), l'approccio RDD fa registrare un'eccezione: una mediana del tempo di calcolo inferiore ($\sim 15s$ contro i $\sim 20s$ dei backend strutturati) e un box plot più compatto.
-Questo comportamento su EC2 è riconducibile al minor overhead di astrazione dell'API RDD per computazioni non lineari: l'uso esplicito dell'operatore \texttt{combineByKey} applicato all'algoritmo KLL risulta localmente più efficiente del piano generato da Catalyst per la funzione \texttt{percentile\_approx}.
+In ambiente standalone su AWS EC2 (osservando la strategia Partition Pruning), l'approccio RDD fa registrare un'eccezione: una mediana del tempo di calcolo inferiore ($\sim 15s$ contro i $\sim 20s$ dei backend strutturati) e un box plot compatto.
+Questo comportamento su EC2 è riconducibile al minor overhead di astrazione dell'API RDD: l'uso esplicito dell'operatore \texttt{combineByKey} applicato all'algoritmo KLL risulta localmente più efficiente del piano generato da Catalyst per la funzione \texttt{percentile\_approx} su questa architettura.
 
-Il paradigma si ribalta radicalmente traslando l'esecuzione sull'ambiente managed AWS EMR. In questo contesto, il vantaggio dell'API RDD per la Query 3 viene completamente azzerato: DataFrame riprende il primato prestazionale ($\sim 7.8s$ contro gli $\sim 8.7s$ di RDD in Partition Pruning con KLL) ed esibisce una dispersione statistica minima.
+Il paradigma si ribalta radicalmente traslando l'esecuzione sull'ambiente managed AWS EMR. In questo contesto, il vantaggio dell'API RDD per la Query 3 viene completamente azzerato: DataFrame riprende il primato prestazionale ($\sim 7.8s$ contro gli $\sim 8.7s$ di RDD in Partition Pruning con KLL) ed esibisce una bassa dispersione statistica.
 % Questo scarto evidenzia l'impatto delle ottimizzazioni proprietarie dell'EMR Runtime per Apache Spark: l'engine managed di AWS è in grado di parallelizzare ed eseguire il piano logico di Catalyst con un'efficienza tale da superare le logiche custom RDD, penalizzando al contempo quest'ultimo a causa dei massicci volumi di Shuffle Read/Write indotti dalla serializzazione degli oggetti Java.
 
 \subsubsection{Impatto dell'Infrastruttura sul Wall Clock Time}
@@ -534,7 +533,6 @@ Al contrario, l'ambiente AWS EMR abbatte questi tempi morti sfruttando l'integra
 
 \subsubsection{Confronto sulle Tecniche di Ottimizzazione dell'I/O}
 Un'analisi fondamentale condotta in questa fase riguarda il confronto tra le due principali strategie di ottimizzazione dell'I/O: \textbf{Partition Pruning} e \textbf{Predicate Pushdown}.
-
 L'osservazione dei tempi di esecuzione globali evidenzia come, a parità di query e di motore computazionale, le due tecniche garantiscano un tempo di calcolo complessivo molto simile.
 Tuttavia, un'indagine approfondita della telemetria di basso livello rivela differenze architetturali radicali, in particolare per quanto concerne i volumi di I/O e la distribuzione della pressione computazionale sui nodi worker.
 
@@ -542,12 +540,11 @@ Il \textbf{Partition Pruning} si dimostra l'approccio nettamente più efficiente
 Escludendo a priori le partizioni non necessarie a livello di file system, Spark evita del tutto l'apertura e la scansione dei file irrilevanti.
 Questo si traduce in un sensibile abbattimento dei byte complessivamente letti e, fattore ancora più critico, in un'ottimale ripartizione del lavoro tra i worker.
 L'analisi della metrica \textit{Executor Workload Skewness} dimostra infatti che, con l'utilizzo del pruning, il volume medio di dati assegnato ai nodi si sovrappone in modo quasi perfetto al picco massimo elaborato dal singolo esecutore.
-Questo parallelismo ben bilanciato garantisce l'assenza di colli di bottiglia e un utilizzo omogeneo delle risorse.
 
-Al contrario, il \textbf{Predicate Pushdown} impone a Spark l'accesso sistematico ai metadati interni dei file Parquet per valutarne le statistiche prima del filtraggio.
+Al contrario, il \textbf{Predicate Pushdown} impone a Spark l'accesso sistematico ai metadati interni del file Parquet per valutarne le statistiche prima del filtraggio.
 Sebbene questa tecnica si confermi efficace nel ridurre i record effettivamente passati alle fasi successive della pipeline, essa genera un volume di lettura fisicamente molto più elevato sull'infrastruttura di storage e introduce un grave sbilanciamento del carico.
-Come evidenziato in modo inequivocabile dalla telemetria, il picco massimo di byte letti risulta essere esattamente il triplo della media teorica.
-Considerando l'architettura a tre nodi worker del cluster, questo dato dimostra che le dinamiche di partizionamento dei task portano un singolo esecutore a farsi carico del 100\% della scansione iniziale, lasciando gli altri inattivi e trasformando il nodo in un temporaneo collo di bottiglia.
+Come evidenziato dalla telemetria, il picco massimo di dati letti da un singolo worker coincide quasi con l'intero volume del dataset.
+Questo netto sbilanciamento dimostra che le dinamiche di partizionamento dei task concentrano il 100\% della scansione iniziale su un unico esecutore, lasciando gli altri nodi inattivi e trasformando il worker in un collo di bottiglia temporaneo.
 
 Questo divario nell'efficienza di lettura e nel bilanciamento dei task è particolarmente palese nell'analisi dei percentili orari, dove il Partition Pruning riesce a contenere l'I/O overhead garantendo al contempo una sottomissione dei task lineare ed equa sui nodi, mitigando lo stress infrastrutturale in modo speculare sia in ambiente standalone AWS EC2 che nella controparte elastica AWS EMR\@.
 
