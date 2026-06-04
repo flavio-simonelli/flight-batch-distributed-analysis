@@ -1,6 +1,7 @@
 # Application configuration for Flight Analysis on EMR
 appName: Flight Analysis
 appBackend: dataframe
+percentileAlgorithm: kll
 
 # --- STORAGE LAYER ---
 inputs:

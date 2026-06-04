@@ -30,7 +30,7 @@ Parameters:
     Description: Subnet ID where the cluster will be launched
   LogUri:
     Type: String
-    Default: s3://logs/emr-logs/
+    Default: s3://spark-flight-analysis/logs/emr-logs/
     Description: S3 bucket path to save EMR and Spark logs
   ServiceRole:
     Type: String

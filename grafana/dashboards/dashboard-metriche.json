@@ -2,17 +2,17 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "ad4zp54",
+    "name": "adqgq86",
     "namespace": "default",
-    "uid": "ae879e3b-3adc-4936-98e6-47dc8bf53e65",
-    "resourceVersion": "1779543739801982",
+    "uid": "d9df6044-9555-4f2a-a48d-06be2990d511",
+    "resourceVersion": "1780546191321985",
     "generation": 1,
-    "creationTimestamp": "2026-05-23T13:42:19Z",
+    "creationTimestamp": "2026-06-04T04:09:51Z",
     "labels": {
-      "grafana.app/deprecatedInternalID": "36706771865600"
+      "grafana.app/deprecatedInternalID": "4241293193105408"
     },
     "annotations": {
-      "grafana.app/createdBy": "user:ffmw4shy3ah34a",
+      "grafana.app/createdBy": "user:afo32vdnlwe0wf",
       "grafana.app/folder": "",
       "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f)"
     }
@@ -223,7 +223,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "barchart",
-            "version": "13.0.1",
+            "version": "13.0.1+security-01",
             "spec": {
               "options": {
                 "barRadius": 0,
@@ -489,7 +489,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "barchart",
-            "version": "13.0.1",
+            "version": "13.0.1+security-01",
             "spec": {
               "options": {
                 "barRadius": 0,
@@ -781,7 +781,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "barchart",
-            "version": "13.0.1",
+            "version": "13.0.1+security-01",
             "spec": {
               "options": {
                 "barRadius": 0,
@@ -1048,7 +1048,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "barchart",
-            "version": "13.0.1",
+            "version": "13.0.1+security-01",
             "spec": {
               "options": {
                 "barRadius": 0,
@@ -1311,7 +1311,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "barchart",
-            "version": "13.0.1",
+            "version": "13.0.1+security-01",
             "spec": {
               "options": {
                 "barRadius": 0,
@@ -1573,7 +1573,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "barchart",
-            "version": "13.0.1",
+            "version": "13.0.1+security-01",
             "spec": {
               "options": {
                 "barRadius": 0,
@@ -1835,7 +1835,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "barchart",
-            "version": "13.0.1",
+            "version": "13.0.1+security-01",
             "spec": {
               "options": {
                 "barRadius": 0,
@@ -2108,7 +2108,7 @@
                   "key": "",
                   "plugin": "AMap.Scale,AMap.ToolBar"
                 },
-                "getOption": "// 1. Recupera la serie di dati da Grafana\nconst series = context.panel.data.series[0];\nif (!series || !series.fields) return {};\n\n// 2. Trova le colonne basandoti sulle trasformazioni\nconst backendField = series.fields.find(f => f.name === 'approach');\nconst durationField = series.fields.find(f => f.name === 'spark-duration');\n\nif (!backendField || !durationField) {\n  return { title: { text: \"Errore: Colonne 'approach' o 'spark-duration' non trovate.\", left: \"center\" } };\n}\n\nconst backendTypes = backendField.values.buffer || backendField.values;\nconst durationValues = durationField.values.buffer || durationField.values;\n\nconst rddValues = [];\nconst dataframeValues = [];\nconst sqlValues = [];\n\n// Smista i tempi nei tre gruppi numerici\nfor (let i = 0; i < backendTypes.length; i++) {\n  const type = String(backendTypes[i]).toUpperCase().trim();\n  const duration = parseInt(durationValues[i], 10);\n\n  if (isNaN(duration)) continue;\n\n  if (type === 'RDD') rddValues.push(duration);\n  else if (type === 'DATAFRAME') dataframeValues.push(duration);\n  else if (type === 'SQL') sqlValues.push(duration);\n}\n\n// Funzione per calcolare Min, Q1, Mediana, Q3, Max e Outliers\nfunction getBoxplotStats(data) {\n  if (data.length === 0) return { box: [], outliers: [] };\n  const sorted = [...data].sort((a, b) => a - b);\n  const min = sorted[0];\n  const max = sorted[sorted.length - 1];\n\n  const getPercentile = (p) => {\n    const idx = (sorted.length - 1) * p;\n    const base = Math.floor(idx);\n    const rest = idx - base;\n    if (sorted[base + 1] !== undefined) {\n      return sorted[base] + rest * (sorted[base + 1] - sorted[base]);\n    }\n    return sorted[base];\n  };\n\n  const q1 = getPercentile(0.25);\n  const median = getPercentile(0.5);\n  const q3 = getPercentile(0.75);\n\n  const iqr = q3 - q1;\n  const lowerBound = q1 - 1.5 * iqr;\n  const upperBound = q3 + 1.5 * iqr;\n\n  const outliers = [];\n  const cleanData = [];\n\n  sorted.forEach(v => {\n    if (v < lowerBound || v > upperBound) {\n      outliers.push(v);\n    } else {\n      cleanData.push(v);\n    }\n  });\n\n  const finalMin = cleanData.length ? cleanData[0] : min;\n  const finalMax = cleanData.length ? cleanData[cleanData.length - 1] : max;\n\n  return {\n    box: [finalMin, q1, median, q3, finalMax],\n    outliers: outliers\n  };\n}\n\nconst rddStats = getBoxplotStats(rddValues);\nconst dfStats = getBoxplotStats(dataframeValues);\nconst sqlStats = getBoxplotStats(sqlValues);\n\nconst allOutliers = [\n  ...rddStats.outliers.map(v => [0, v]),\n  ...dfStats.outliers.map(v => [1, v]),\n  ...sqlStats.outliers.map(v => [2, v])\n];\n\n// 5. Configurazione Grafica Renderizzata\nreturn {\n  title: {\n    // text: 'Spark vs Wall Clock Execution Time',\n    // left: 'center',\n    // textStyle: { color: '#e0e0e0', fontSize: 16, fontWeight: 'bold' }\n  },\n  backgroundColor: 'transparent',\n  tooltip: {\n    trigger: 'item',\n    axisPointer: { type: 'shadow' },\n    backgroundColor: 'rgba(30, 30, 30, 0.9)',\n    borderColor: '#569cd6',\n    textStyle: { color: '#fff' }\n  },\n  grid: {\n    left: '8%',\n    right: '8%',\n    bottom: '12%',\n    top: '18%',\n    containLabel: true\n  },\n  xAxis: {\n    type: 'category',\n    data: ['RDD', 'DATAFRAME', 'SQL'],\n    axisLine: { lineStyle: { color: '#555', width: 2 } },\n    axisLabel: { textStyle: { color: '#aaa', fontSize: 13 }, margin: 15 }\n  },\n  yAxis: {\n    type: 'value',\n    name: 'Durata (ms)',\n    nameTextStyle: { color: '#ccc', fontSize: 12, pad: 10 },\n    scale: true,\n    splitLine: { show: true, lineStyle: { color: '#2c2c2c', type: 'dashed' } },\n    axisLine: { show: true, lineStyle: { color: '#555' } },\n    axisLabel: { textStyle: { color: '#aaa' } }\n  },\n  series: [\n    {\n      name: 'Distribuzione',\n      type: 'boxplot',\n      // Allarga la dimensione delle candele riducendo lo spazio vuoto tra le colonne\n      barCategoryGap: '25%',\n      // Configurazione delle singole candele con colori dedicati e mediana evidenziata in rosso rosso\n      data: [\n        {\n          value: rddStats.box,\n          itemStyle: {\n            color: 'rgba(230, 126, 34, 0.2)',\n            borderColor: '#e67e22',\n            borderWidth: 2\n          }\n        },\n        {\n          value: dfStats.box,\n          itemStyle: {\n            color: 'rgba(46, 204, 113, 0.2)',\n            borderColor: '#2ecc71',\n            borderWidth: 2\n          }\n        },\n        {\n          value: sqlStats.box,\n          itemStyle: {\n            color: 'rgba(155, 89, 182, 0.2)',\n            borderColor: '#9b59b6',\n            borderWidth: 2\n          }\n        }\n      ],\n      // Stile globale applicato alle linee di controllo interne\n      medianStyle: {\n        color: '#ff3333', // Colore differente (Rosso vivo) per la linea interna della mediana\n        width: 3\n      },\n      tooltip: {\n        formatter: function (param) {\n          if (!param.data) return '';\n          // Estrae i parametri sia se l'oggetto è avvolto da dizionario itemStyle che da array nativo\n          const dataValues = param.data.value || param.data;\n          return [\n            '<b>Backend: ' + param.name + '</b><hr style=\"border-color:#555; margin: 5px 0;\">',\n            'Massimo: ' + Math.round(dataValues[5]) + ' ms',\n            'Q3 (75%): ' + Math.round(dataValues[4]) + ' ms',\n            'Mediana (Linea Rossa): ' + Math.round(dataValues[3]) + ' ms',\n            'Q1 (25%): ' + Math.round(dataValues[2]) + ' ms',\n            'Minimo: ' + Math.round(dataValues[1]) + ' ms'\n          ].join('<br/>');\n        }\n      }\n    },\n    {\n      name: 'Outliers',\n      type: 'scatter',\n      data: allOutliers,\n      symbolSize: 8,\n      itemStyle: {\n        color: '#ff5c5c',\n        shadowBlur: 4,\n        shadowColor: '#ff5c5c'\n      },\n      tooltip: {\n        formatter: function (param) {\n          return '<b>Outlier Anomalie:</b> ' + param.data[1] + ' ms';\n        }\n      }\n    }\n  ]\n};",
+                "getOption": "// 1. Recupera la serie di dati da Grafana\nconst series = context.panel.data.series[0];\nif (!series || !series.fields) return {};\n\n// 2. Trova le colonne basandoti sulle trasformazioni\nconst backendField = series.fields.find(f => f.name === 'approach');\nconst durationField = series.fields.find(f => f.name === 'spark-duration');\n\nif (!backendField || !durationField) {\n  return { title: { text: \"Errore: Colonne 'approach' o 'spark-duration' non trovate.\", left: \"center\" } };\n}\n\nconst backendTypes = backendField.values.buffer || backendField.values;\nconst durationValues = durationField.values.buffer || durationField.values;\n\n// Usiamo una mappa per raggruppare i tempi dinamicamente in base a cosa c'è nei dati\nconst groupedData = {};\n\nfor (let i = 0; i < backendTypes.length; i++) {\n  const type = String(backendTypes[i]).toUpperCase().trim();\n  const duration = parseInt(durationValues[i], 10);\n\n  if (isNaN(duration)) continue;\n\n  if (!groupedData[type]) {\n    groupedData[type] = [];\n  }\n  groupedData[type].push(duration);\n}\n\n// Funzione per il calcolo statistico completo\nfunction getBoxplotStats(data) {\n  if (!data || data.length === 0) return null;\n\n  const sorted = [...data].sort((a, b) => a - b);\n  const min = sorted[0];\n  const max = sorted[sorted.length - 1];\n\n  if (sorted.length < 3) {\n    const median = sorted.length === 2 ? (sorted[0] + sorted[1]) / 2 : sorted[0];\n    return [min, min, median, max, max];\n  }\n\n  const getPercentile = (p) => {\n    const idx = (sorted.length - 1) * p;\n    const base = Math.floor(idx);\n    const rest = idx - base;\n    if (sorted[base + 1] !== undefined) {\n      return sorted[base] + rest * (sorted[base + 1] - sorted[base]);\n    }\n    return sorted[base];\n  };\n\n  const q1 = getPercentile(0.25);\n  const median = getPercentile(0.5);\n  const q3 = getPercentile(0.75);\n\n  return [min, q1, median, q3, max];\n}\n\n// Mappa dei colori predefiniti per mantenere la coerenza visiva\nconst colorPalette = {\n  'RDD': { color: 'rgba(230, 126, 34, 0.2)', border: '#e67e22' },\n  'DATAFRAME': { color: 'rgba(46, 204, 113, 0.2)', border: '#2ecc71' },\n  'SQL': { color: 'rgba(155, 89, 182, 0.2)', border: '#9b59b6' },\n  'DEFAULT': { color: 'rgba(86, 156, 214, 0.2)', border: '#569cd6' }\n};\n\n// 3. Costruiamo gli array finali SOLO con gli approcci che hanno effettivamente dei dati\nconst activeCategories = [];\nconst boxplotData = [];\n\n// Definiamo l'ordine di preferenza visiva sull'asse X se presenti contemporaneamente\nconst order = ['RDD', 'DATAFRAME', 'SQL'];\nconst availableTypes = Object.keys(groupedData);\n\n// Ordiniamo le categorie attive in base all'ordine standard, aggiungendo eventuali tipi imprevisti\nconst sortedCategories = order.filter(t => availableTypes.includes(t))\n  .concat(availableTypes.filter(t => !order.includes(t)));\n\nsortedCategories.forEach(type => {\n  const stats = getBoxplotStats(groupedData[type]);\n  if (stats) {\n    activeCategories.push(type);\n\n    // Assegna il colore specifico o usa quello di default se l'approccio ha un nome strano\n    const style = colorPalette[type] || colorPalette['DEFAULT'];\n\n    boxplotData.push({\n      value: stats,\n      itemStyle: {\n        color: style.color,\n        borderColor: style.border,\n        borderWidth: 2\n      }\n    });\n  }\n});\n\n// Se non ci sono dati attivi dopo il filtraggio, mostra una schermata vuota pulita\nif (activeCategories.length === 0) {\n  return { title: { text: \"Nessun dato temporale valido disponibile\", left: \"center\", textStyle: { color: '#aaa' } } };\n}\n\n// 4. Configurazione Grafica Finale Dinamica\nreturn {\n  backgroundColor: 'transparent',\n  tooltip: {\n    trigger: 'item',\n    axisPointer: { type: 'shadow' },\n    backgroundColor: 'rgba(30, 30, 30, 0.9)',\n    borderColor: '#569cd6',\n    textStyle: { color: '#fff' }\n  },\n  grid: {\n    left: '8%',\n    right: '8%',\n    bottom: '12%',\n    top: '18%',\n    containLabel: true\n  },\n  xAxis: {\n    type: 'category',\n    data: activeCategories, // 👈 DINAMICO: mostra solo 1, 2 o 3 colonne a seconda dei dati reali\n    axisLine: { lineStyle: { color: '#555', width: 2 } },\n    axisLabel: { textStyle: { color: '#aaa', fontSize: 13 }, margin: 15 },\n    boundaryGap: true\n  },\n  yAxis: {\n    type: 'value',\n    name: 'Durata (ms)',\n    nameTextStyle: { color: '#ccc', fontSize: 12, pad: 10 },\n    scale: true,\n    splitLine: { show: true, lineStyle: { color: '#2c2c2c', type: 'dashed' } },\n    axisLine: { show: true, lineStyle: { color: '#555' } },\n    axisLabel: { textStyle: { color: '#aaa' } }\n  },\n  series: [\n    {\n      name: 'Distribuzione',\n      type: 'boxplot',\n      // Se c'è solo una colonna allarga la candela, altrimenti mantiene una proporzione equilibrata\n      barMaxWidth: activeCategories.length === 1 ? '20%' : '35%',\n      data: boxplotData, // 👈 DINAMICO\n      medianStyle: {\n        color: '#ff3333',\n        width: 3\n      },\n      tooltip: {\n        formatter: function (param) {\n          if (!param.data) return '';\n          const dataValues = param.data.value || param.data;\n\n          const hasCategoryIndex = dataValues.length > 5;\n          const minVal = hasCategoryIndex ? dataValues[1] : dataValues[0];\n          const q1Val = hasCategoryIndex ? dataValues[2] : dataValues[1];\n          const medVal = hasCategoryIndex ? dataValues[3] : dataValues[2];\n          const q3Val = hasCategoryIndex ? dataValues[4] : dataValues[3];\n          const maxVal = hasCategoryIndex ? dataValues[5] : dataValues[4];\n\n          return [\n            '<b>Backend: ' + param.name + '</b><hr style=\"border-color:#555; margin: 5px 0;\">',\n            'Massimo: ' + Math.round(maxVal) + ' ms',\n            'Q3 (75%): ' + Math.round(q3Val) + ' ms',\n            'Mediana (Linea Rossa): ' + Math.round(medVal) + ' ms',\n            'Q1 (25%): ' + Math.round(q1Val) + ' ms',\n            'Minimo: ' + Math.round(minVal) + ' ms'\n          ].join('<br/>');\n        }\n      }\n    }\n  ]\n};",
                 "google": {
                   "callback": "gmapReady",
                   "key": ""
