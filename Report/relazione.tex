@@ -133,7 +133,7 @@ L'obiettivo primario di SAE è fornire una piattaforma che non si limiti ad esse
 Il caso d'uso affrontato in questo progetto si focalizza sull'analisi dei dati storici relativi ai ritardi dei voli commerciali negli Stati Uniti nel periodo Gennaio-Aprile 2025, forniti dal Bureau of Transportation Statistics.
 Questo dominio applicativo offre una notevole complessità strutturale (come presenza di valori nulli, anomalie statistiche, dipendenze temporali) e rappresenta un banco di prova ideale per l'implementazione di una pipeline di batch processing in ambito Big Data.
 
-Nelle sezioni successive, esploreremo in dettaglio come la modularità implementata a livello di codice sorgente, attraverso l'utilizzo di variabili nei vari framework e l'uso estensivo dei pattern GoF e interfacce astratte in Java per Spark, si rifletta coerentemente nella modularità dell'infrastruttura di deployment.
+Nelle sezioni successive, sarà esplorato in dettaglio come la modularità implementata a livello di codice sorgente, attraverso l'utilizzo di variabili nei vari framework e l'uso estensivo dei pattern GoF e interfacce astratte in Java per Spark, si rifletta coerentemente nella modularità dell'infrastruttura di deployment.
 Questo design permette a SAE di operare con la medesima efficacia e senza alterazioni alla logica di business sia su un ambiente di sviluppo locale containerizzato tramite Docker Compose, sia su un cluster cloud di produzione basato su Amazon Web Services tramite i servizi di AWS EMR e/o EC2.
 
 % ------------------------------
@@ -186,7 +186,7 @@ Ciascun workflow è ingegnerizzato per eseguire specifiche fasi del ciclo di vit
 
 \begin{itemize}
     \item[\textbf{1)}] \textbf{Workflow Principale:} Coordina l'interazione end-to-end tra il livello di ingestion e quello di calcolo.
-    Al fine di massimizzare la flessibilità operativa, il DAG supporta la parametrizzazione a runtime, abilitando tre diverse modalità di esecuzione:
+    Al fine di massimizzare la flessibilità operativa, il DAG supporta la parametrizzazione a runtime, potendo utilizzare tre diverse modalità di esecuzione:
     \begin{itemize}
         \item \textit{Both:} Esegue la pipeline completa, dall'ingestion iniziale al processamento distribuito.
         \item \textit{Ingest Only:} Arresta il flusso subito dopo la conversione dei record in Parquet e il caricamento nel Data Lake.
@@ -209,16 +209,16 @@ Apache NiFi è la spina dorsale del livello di acquisizione dati.
 La sua architettura basata sul paradigma Flow-Based Programming garantisce un controllo visivo e transazionale sui flussi di dati, garantendo anche la Data Provenance\@.
 
 \subsubsection{Pipeline di Trasformazione}
-Il flusso \texttt{SAE\_Ingestion\_Pipeline} implementa un sofisticato processo di \textit{Extract-Load-Transform} articolato nelle seguenti fasi:
+Il flusso \texttt{SAE\_Ingestion\_Pipeline} implementa un processo articolato nelle seguenti fasi:
 \begin{itemize}
     \item \textbf{Orchestrazione e Metadati:} Il processore \texttt{EvaluateJsonPath} estrae dal payload di trigger inviato da Apache Airflow le configurazioni dinamiche e i parametri di attivazione della pipeline.
     \item \textbf{Fetch, Validazione e Unzip:} Tramite \texttt{InvokeHTTP} viene effettuato il download del pacchetto compresso dal server sorgente.
-    Un processore calcola l'hash SHA-1 confrontandolo con la firma attesa per garantire l'integrità e il \textit{non-ripudio} del dato.
+    Un processore calcola l'hash SHA-1 confrontandolo con la firma attesa per garantirne l'integrità.
     Successivamente, il flusso esegue la decompressione dello zip, isolando i file CSV d'interesse e scartando i contenuti superflui.
     \item \textbf{Staging del Dato Grezzo:} I file CSV risultanti vengono immediatamente persistiti all'interno del Data Lake nella loro forma originaria, garantendo la presenza di uno storico del dato grezzo.
     \item \textbf{Normalizzazione e Conversione Colonnare:} Questa fase rappresenta il core computazionale del flusso.
     Attraverso il processore \texttt{ConvertRecord}, guidato da uno schema Avro fortemente tipizzato, NiFi preleva i CSV, ne normalizza la struttura e li converte nel formato colonnare Parquet.
-    \item \textbf{Persistenza Finale e Notifica:} I file Parquet ottimizzati vengono salvati nel Data Lake.
+    \item \textbf{Persistenza Finale e Notifica:} I file Parquet ottimizzati vengono salvati nello storage intermedio.
     Al completamento delle operazioni di scrittura, NiFi invia una notifica di successo ad Airflow per segnalare la terminazione della pipeline e consentire l'avanzamento dei DAG successivi.
 \end{itemize}
 
@@ -229,18 +229,18 @@ Il sistema permette infatti di selezionare due diverse tecniche per l'ottimizzaz
 \begin{itemize}
     \item \textbf{Predicate Pushdown}: Sfrutta l'architettura nativa del formato Parquet, che include metadati statistici e dizionari a livello di singolo blocco.
     Il motore Catalyst di Spark utilizza queste informazioni per filtrare i dati direttamente in lettura, riducendo drasticamente il traffico di rete.
-    \item \textbf{Partition Pruning}: Prevede la strutturazione fisica del Data Lake in directory gerarchiche basate sui valori di specifiche chiavi dove NiFi instrada dinamicamente i record Parquet in base al contenuto.
+    \item \textbf{Partition Pruning}: Prevede la strutturazione fisica del Data Lake in directory gerarchiche basate sui valori di specifiche chiavi (anno, mese, carrier) dove NiFi instrada dinamicamente i record Parquet in base al contenuto.
     Durante l'esecuzione delle query, Spark valuta i filtri per escludere a priori la lettura di intere directory non rilevanti.
 \end{itemize}
 
 \subsubsection{Pre-processing e Data Quality}
 La fase di ingestion non si limita alla mera conversione di formato, ma esegue un rigoroso controllo di qualità e pulizia del dato in streaming tramite processori NiFi dedicati.
-I dati grezzi, infatti, presentano potenzialmente diverse inconsistenze, come valori di ritardo negativi sporchi, campi chiave mancanti e stati logici contraddittori.
+I dati grezzi, infatti, possono presentare potenzialmente diverse inconsistenze, come valori di ritardo negativi sporchi, campi chiave mancanti e stati logici contraddittori.
 
 La pipeline implementa due logiche fondamentali per garantire l'integrità analitica a valle:
 \begin{itemize}
-    \item \textbf{Normalizzazione e Gestione dei Ritardi:} Tramite script dedicati nel processore \texttt{UpdateRecord}, la pipeline neutralizza i ritardi negativi errati e gestisce i valori mancanti delle singole cause.
-    Nello specifico, se è presente almeno una causa di ritardo diversa da zero, i restanti valori nulli vengono sovrascritti a 0.
+    \item \textbf{Normalizzazione e Gestione dei Ritardi:} Tramite script dedicati nel processore \texttt{ScriptedTransformRecord}, la pipeline neutralizza le componenti di ritardo negative e gestisce i valori mancanti delle singole cause.
+    Nello specifico, se è presente almeno una causa di ritardo diversa da zero, i restanti valori nulli vengono sovrascritti a 0, altrimenti vengono lasciati invariati.
     \item \textbf{Filtraggio delle Inconsistenze Logiche:} Attraverso l'uso di query SQL sul processore \texttt{QueryRecord}, vengono scartati i record anomali che presentano discrepanze non recuperabili, quali: assenza di campi temporali o identificativi della compagnia, voli contrassegnati come cancellati ma recanti un orario di partenza effettivo, voli non cancellati ma privi di orario di arrivo/partenza, oppure evidenti errori matematici (es. ritardo totale negativo a fronte di una somma delle cause di ritardo positiva).
 \end{itemize}
 
@@ -291,7 +291,7 @@ La pipeline implementa due logiche fondamentali per garantire l'integrità anali
 
 \subsection{Livello di Storage}\label{subsec:storage_layer_datalake}
 Il cuore della persistenza intermedia è rappresentato dal Data Lake, implementato tramite Hadoop HDFS o MinIO in ambienti on-premise e Amazon S3 in configurazioni cloud.
-Questo strato funge da \textit{Single Source of Truth}, sfruttando la capacità intrinseca del Data Lake di accogliere e centralizzare dati eterogenei.
+Questo strato funge da \textit{Single Source of Truth}, sfruttando la capacità intrinseca dello storage di accogliere e centralizzare dati eterogenei.
 % senza la necessità di un pre-processing o di uno schema rigido preventivo.
 
 L'infrastruttura ospita sia i dataset grezzi originari acquisiti da NiFi, sia i dati successivamente raffinati e convertiti in formato Parquet.
@@ -334,7 +334,7 @@ Per alimentare questo layer, SAE implementa la classe \texttt{JobTimerListener},
 
 Il Listener intercetta eventi cruciali (come \texttt{onJobStart}, \texttt{onStageCompleted} e \texttt{onTaskEnd}), registrando metriche relative alle tempistiche impiegate e al volume di dati letti e scritti.
 Alla fine del ciclo di vita dell'applicazione, il sistema aggrega questi dati e, sfruttando Redis, persiste i record di telemetria.
-Questo approccio permette di scorporare il "vero" tempo di calcolo sui dati dal tempo fisiologico speso da Spark per negoziare le risorse con YARN o allocare i container, garantendo un'analisi dei benchmark estremamente accurata.
+Questo approccio permette di scorporare il "vero" tempo di calcolo sui dati dal tempo fisiologico speso da Spark per negoziare le risorse con il manager, garantendo un'analisi dei benchmark estremamente accurata.
 
 \subsection{Visualization Layer}\label{subsec:visualization_layer}
 Grafana rappresenta il punto di accesso finale per l'analisi visiva dei dati. 
@@ -352,7 +352,7 @@ Configurato per interrogare sia CockroachDB (per i risultati di business) che Re
 % ------------------------------
 
 \section{Implementazioni delle Analisi Distribuite}\label{sec:implementation_details}
-Le quattro query richieste dal progetto sono state implementate in modo da testare diverse astrazioni di Spark e valutare i trade-off tra controllo a basso livello ed engine ottimizzati.
+Le quattro query richieste sono state implementate in modo da testare diverse astrazioni di Spark e valutare i trade-off tra controllo a basso livello ed engine ottimizzati.
 
 \subsection{Query 1: Statistiche Mensili}
 La \textit{Query 1} richiede il calcolo di statistiche mensili (media, min, max, tasso di cancellazione) per specifiche compagnie.
@@ -361,12 +361,12 @@ La struttura logica dell'esecuzione è visualizzabile nel DAG di Spark riportato
 L'implementazione basata su RDD si articola nelle seguenti fasi:
 \begin{itemize}
     \item \textbf{Map-Side Aggregation con \texttt{aggregateByKey}:} Si è evitato l'uso dell'operatore \texttt{groupByKey}, un'operazione che può causare colli di bottiglia prestazionali a causa del trasferimento di dati sulla rete durante la fase di \textit{shuffle}.
-    Al suo posto è stato utilizzato \texttt{aggregateByKey}, il quale combina i valori parzialmente all'interno di ogni singola partizione del nodo worker prima di trasferirli sulla rete, riducendo drasticamente il volume di dati movimentato nello shuffle.
+    Al suo posto è stato utilizzato \texttt{aggregateByKey}, il quale combina i valori parzialmente all'interno di ogni singola partizione del nodo worker prima di trasferirli sulla rete tramite combiner, riducendo drasticamente il volume di dati movimentato nello shuffle.
     \item \textbf{Struttura dell'Accumulatore:} Viene impiegato un array di \texttt{double} come accumulatore compatto per ogni chiave \texttt{(Carrier, Month)}:
     \[
     \mathcal{A}_{Q1} = \langle \textstyle \sum D_{dep}, \max(D_{dep}), \min(D_{dep}), N_{vld}, N_{tot} \rangle
     \]
-    dove $D_{dep}$ è il ritardo, $N_{vld}$ i voli validi e $N_{tot}$ i totali.
+    dove $D_{dep}$ è il ritardo, $N_{vld}$ i voli non cancellati e $N_{tot}$ i totali.
     \item \textbf{Trasformazione Finale:} Un'operazione di \texttt{map} elabora i valori dell'accumulatore per calcolare le medie definitive ($ \sum D_{dep} / N_{valid} $) e i tassi di cancellazione ($ (N_{tot} - N_{valid}) / N_{tot} $), restituendo il formato finale richiesto per la persistenza.
 \end{itemize}
 
@@ -575,7 +575,7 @@ L'analisi oraria (riportata in Appendice~\ref{sec:appendix_results}) conferma un
 Il 90° percentile di American Airlines, ad esempio, arriva fino ai $70$ minuti nella fascia serale, evidenziando una severa incapacità di smaltire la congestione diurna.
 Delta Air Lines, di contro, mantiene una curva di crescita più dolce e controllata.
 
-Un aspetto metodologico cruciale per SAE emerge dal confronto diretto degli algoritmi nei grafici risultanti: Il confronto sperimentale tra gli algoritmi all'interno del contesto SAE ha confermato le aspettative teoriche, evidenziando un netto trade-off tra memoria e potenza di calcolo senza decretare un vincitore assoluto. Da un lato, l'algoritmo KLL richiede un maggiore impiego di memoria per preservare la sua struttura a piramide dei livelli, un costo spaziale chiaramente visibile nei grafici di shuffle read. Dall'altro lato, il T-Digest risulta estremamente efficiente in termini di spazio, poiché memorizza solo i centroidi, ma sconta una maggiore lentezza computazionale dovuta ai calcoli continui della funzione di scala necessari per l'aggiornamento dei cluster stessi. La scelta tra i due metodi dipende quindi dai vincoli infrastrutturali a disposizione (Appendice~\ref{sec:appendix_spark_dags}).
+Un aspetto metodologico cruciale per SAE emerge dal confronto diretto degli algoritmi nei grafici risultanti: Il confronto sperimentale tra gli algoritmi all'interno del contesto SAE ha confermato le aspettative teoriche, evidenziando un netto trade-off tra memoria e potenza di calcolo senza decretare un vincitore assoluto. Da un lato, l'algoritmo KLL richiede un maggiore impiego di memoria per preservare la sua struttura a piramide dei livelli, un costo spaziale chiaramente visibile nei grafici di shuffle read. Dall'altro lato, il T-Digest risulta più efficiente in termini di spazio, poiché memorizza solo i centroidi, ma sconta una maggiore lentezza computazionale dovuta ai calcoli continui della funzione di scala necessari per l'aggiornamento dei cluster stessi. Siccome i risultati analitici di entrambe le euristiche sono molto simili, la scelta tra i due metodi dipende quindi dai vincoli infrastrutturali a disposizione (Appendice~\ref{sec:appendix_spark_dags}).
 \subsubsection{Query 4: Clustering delle Compagnie Aeree}
 L'applicazione dell'algoritmo K-Means con selezione automatica del modello tramite Silhouette Score ha identificato $K=3$ come il numero ottimale di raggruppamenti statistici per descrivere le compagnie (Fig.~\ref{fig:results_q4_cluster_distribution} in Appendice~\ref{sec:appendix_results}).
 Per scopi di visualizzazione bidimensionale, è stata utilizzata una \textbf{Principal Component Analysis} per proiettare i centroidi e l'appartenenza dei vettori (Fig.~\ref{fig:results_q4_cluster_distribution}). Tuttavia, è fondamentale sottolineare che tale proiezione spaziale a due sole componenti principali offre una rappresentazione semplificata e parzialmente approssimata, comportando una fisiologica perdita di precisione.
