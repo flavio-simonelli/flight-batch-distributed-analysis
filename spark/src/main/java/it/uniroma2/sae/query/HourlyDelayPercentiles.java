@@ -29,6 +29,11 @@ import static org.apache.spark.sql.functions.*;
  */
 public class HourlyDelayPercentiles extends BaseQuery {
 
+    /**
+     * Enable caching of intermediate datasets shared by multiple pipelines.
+     */
+    private static final boolean CACHE_ENABLED = false;
+
     @Override
     protected Dataset<Row> loadData(FlightRepository repository, ApplicationConfig config) {
         // Return raw Dataset<Row> with only needed columns
@@ -62,10 +67,14 @@ public class HourlyDelayPercentiles extends BaseQuery {
         // Load the dataset for specific airlines
         JavaRDD<Row> flights = dataset.javaRDD();
 
-        // Single non-cancelled filter shared by both pipelines (cached to avoid double scan).
+        // Single non-cancelled filter shared by both pipelines.
         JavaRDD<Row> validFlights = flights.filter(f ->
                 f.getDouble(CANCELLED_IDX) == 0.0 && !f.isNullAt(DEP_DELAY_IDX)
-        ).cache();
+        );
+
+        if (CACHE_ENABLED) {
+            validFlights.cache();
+        }
 
         // --------------------------------------
         // --- Pipeline 1: hourly percentiles ---
@@ -180,10 +189,14 @@ public class HourlyDelayPercentiles extends BaseQuery {
      */
     @Override
     protected List<Dataset<Row>> runQueryDataFrame(Dataset<Row> flights, ApplicationConfig config) {
-        flights.cache();
 
-        Dataset<Row> hourlyStats = flights
-                .filter(col("CANCELLED").equalTo(0))
+        Dataset<Row> validFlights = flights.filter(col("CANCELLED").equalTo(0));
+
+        if (CACHE_ENABLED) {
+            validFlights.cache();
+        }
+
+        Dataset<Row> hourlyStats = validFlights
                 .withColumn("hour", col("CRS_DEP_TIME").divide(100).cast("int").mod(24))
                 .groupBy("OP_UNIQUE_CARRIER", "hour")
                 .agg(
@@ -194,8 +207,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
                 )
                 .withColumnRenamed("OP_UNIQUE_CARRIER", "airline");
 
-        Dataset<Row> globalMinMax = flights
-                .filter(col("CANCELLED").equalTo(0))
+        Dataset<Row> globalMinMax = validFlights
                 .groupBy("OP_UNIQUE_CARRIER")
                 .agg(
                     min("DEP_DELAY").as("min_delay"),
@@ -217,9 +229,14 @@ public class HourlyDelayPercentiles extends BaseQuery {
      */
     @Override
     protected List<Dataset<Row>> runQuerySQL(Dataset<Row> flights, ApplicationConfig config, SparkSession spark) {
-        flights.cache();
+
+        Dataset<Row> validFlights = flights.filter("CANCELLED = 0");
+
+        if (CACHE_ENABLED) {
+            validFlights.cache();
+        }
         
-        flights.createOrReplaceTempView("flights");
+        validFlights.createOrReplaceTempView("flights");
 
         String hourlyStatsSql = "SELECT OP_UNIQUE_CARRIER as airline, CAST(CRS_DEP_TIME / 100 AS INT) % 24 AS hour, " +
                                 "ROUND(percentile_approx(DEP_DELAY, 0.25), 2) AS p25, " +
@@ -227,14 +244,12 @@ public class HourlyDelayPercentiles extends BaseQuery {
                                 "ROUND(percentile_approx(DEP_DELAY, 0.75), 2) AS p75, " +
                                 "ROUND(percentile_approx(DEP_DELAY, 0.90), 2) AS p90 " +
                                 "FROM flights " +
-                                "WHERE CANCELLED = 0 " +
                                 "GROUP BY OP_UNIQUE_CARRIER, hour";
         
         Dataset<Row> hourlyStats = spark.sql(hourlyStatsSql);
 
         String globalMinMaxSql =    "SELECT OP_UNIQUE_CARRIER as airline, MIN(DEP_DELAY) AS min_delay, MAX(DEP_DELAY) AS max_delay " +
                                     "FROM flights " +
-                                    "WHERE CANCELLED = 0 " +
                                     "GROUP BY OP_UNIQUE_CARRIER";
         
         Dataset<Row> globalMinMax = spark.sql(globalMinMaxSql);
