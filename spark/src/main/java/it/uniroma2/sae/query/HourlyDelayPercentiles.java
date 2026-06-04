@@ -32,7 +32,7 @@ public class HourlyDelayPercentiles extends BaseQuery {
     /**
      * Enable caching of intermediate datasets shared by multiple pipelines.
      */
-    private static final boolean CACHE_ENABLED = false;
+    private static final boolean CACHE_ENABLED = true;
 
     @Override
     protected Dataset<Row> loadData(FlightRepository repository, ApplicationConfig config) {
