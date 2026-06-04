@@ -104,8 +104,8 @@ Il presente documento descrive in dettaglio la progettazione, lo sviluppo e la v
 SAE integra componenti quali Apache Airflow per l'orchestrazione, Apache NiFi per l'ingestion asincrona e Apache Spark per il processamento distribuito.
 L'architettura proposta si distingue per la sua estrema modularità, implementata attraverso un piano di persistenza flessibile e multi-motore e una netta separazione tra i piani di controllo e di esecuzione.
 Il sistema è in grado di gestire dataset massivi, spaziando dall'esecuzione di semplici query distribuite all'applicazione di tecniche avanzate di approssimazione algoritmica per il calcolo dei percentili, fino a modelli di machine learning non supervisionato per estrarre insight operativi.
-I risultati sperimentali confermano la superiorità delle API strutturate di Spark rispetto all'approccio a basso livello e dimostrano l'efficacia del formato colonnare Parquet.
-In particolare, lo studio evidenzia come l'adozione strategica di tecniche di Partition Pruning e Predicate Pushdown permetta di abbattere drasticamente l'I/O overhead in ambienti distribuiti, garantendo performance ottimali sia in implementazioni on-premise su AWS EC2 che in scenari cloud-native elastici su AWS EMR.
+I risultati sperimentali dimostrano il trade-off tra le API strutturate di Spark rispetto all'approccio a basso livello.
+Inoltre, lo studio evidenzia i pro e i contro legati all'adozione strategica di tecniche di Partition Pruning o Predicate Pushdown permettendo in entrambi i casi di abbattere drasticamente l'I/O overhead in ambienti distribuiti. La sperimentazione mostra inoltre le differenze fra due approcci di deployment: on-premise su AWS EC2 e cloud-native elastici su AWS EMR.
 \end{abstract}
 
 % ------------------------------
