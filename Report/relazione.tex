@@ -509,10 +509,10 @@ Negli scenari di aggregazione massiva e ordinamento (Query 1 e Query 2), indipen
 Questa notevole stabilità prestazionale è una conseguenza diretta delle ottimizzazioni logiche del \textit{Catalyst Optimizer}.
 
 L'analisi delle metriche introduce tuttavia un'interessante divergenza infrastrutturale nella Query 3.
-In ambiente standalone su AWS EC2 (osservando la strategia Partition Pruning), l'approccio RDD fa registrare un'eccezione: una mediana del tempo di calcolo inferiore ($\sim 15s$ contro i $\sim 18s$ dei backend strutturati) e un box plot più compatto.
+In ambiente standalone su AWS EC2 (osservando la strategia Partition Pruning), l'approccio RDD fa registrare un'eccezione: una mediana del tempo di calcolo inferiore ($\sim 15s$ contro i $\sim 20s$ dei backend strutturati) e un box plot più compatto.
 Questo comportamento su EC2 è riconducibile al minor overhead di astrazione dell'API RDD per computazioni non lineari: l'uso esplicito dell'operatore \texttt{combineByKey} applicato all'algoritmo KLL risulta localmente più efficiente del piano generato da Catalyst per la funzione \texttt{percentile\_approx}.
 
-Il paradigma si ribalta radicalmente traslando l'esecuzione sull'ambiente managed AWS EMR. In questo contesto, il vantaggio dell'API RDD per la Query 3 viene completamente azzerato: DataFrame e SQL riprendono il primato prestazionale ($\sim 8.0s$ contro gli $\sim 8.3s$ di RDD in Partition Pruning) ed esibiscono una dispersione statistica minima.
+Il paradigma si ribalta radicalmente traslando l'esecuzione sull'ambiente managed AWS EMR. In questo contesto, il vantaggio dell'API RDD per la Query 3 viene completamente azzerato: DataFrame riprende il primato prestazionale ($\sim 7.8s$ contro gli $\sim 8.7s$ di RDD in Partition Pruning con KLL) ed esibisce una dispersione statistica minima.
 % Questo scarto evidenzia l'impatto delle ottimizzazioni proprietarie dell'EMR Runtime per Apache Spark: l'engine managed di AWS è in grado di parallelizzare ed eseguire il piano logico di Catalyst con un'efficienza tale da superare le logiche custom RDD, penalizzando al contempo quest'ultimo a causa dei massicci volumi di Shuffle Read/Write indotti dalla serializzazione degli oggetti Java.
 
 \subsubsection{Impatto dell'Infrastruttura sul Wall Clock Time}
@@ -835,26 +835,52 @@ Ogni pannello all'interno della plancia di monitoraggio è posizionato in modo d
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/part_prun/metrics_ec2_hourly_delay_percentiles_part_prun_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/part_prun/metrics_ec2_hourly_delay_percentiles_kll_part_prun_cropped}
 
     \vspace{1cm}
 
-    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/pred_push/metrics_ec2_hourly_delay_percentiles_pred_push_cropped}
-    \caption{Telemetria Query 3 su AWS EC2: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
-    \label{fig:telemetry_q3_ec2}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/pred_push/metrics_ec2_hourly_delay_percentiles_kll_pred_push_cropped}
+    \caption{Telemetria Query 3 su AWS EC2 con algoritmo KLL: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
+    \label{fig:telemetry_q3_kll_ec2}
 \end{figure}
 
 \clearpage
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/part_prun/metrics_emr_hourly_delay_percentiles_part_prun_cropped}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/part_prun/metrics_ec2_hourly_delay_percentiles_tdigest_part_prun_cropped}
 
     \vspace{1cm}
 
-    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/pred_push/metrics_emr_hourly_delay_percentiles_pred_push_cropped}
-    \caption{Telemetria Query 3 su AWS EMR: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
-    \label{fig:telemetry_q3_emr}
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/ec2/pred_push/metrics_ec2_hourly_delay_percentiles_tdigest_pred_push_cropped}
+    \caption{Telemetria Query 3 su AWS EC2 con algoritmo T-Digest: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
+    \label{fig:telemetry_q3_tdigest_ec2}
+\end{figure}
+
+\clearpage
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/part_prun/metrics_emr_hourly_delay_percentiles_kll_part_prun_cropped}
+
+    \vspace{1cm}
+
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/pred_push/metrics_emr_hourly_delay_percentiles_kll_pred_push_cropped}
+    \caption{Telemetria Query 3 su AWS EMR con algoritmo KLL: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
+    \label{fig:telemetry_q3_kll_emr}
+\end{figure}
+
+\clearpage
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/part_prun/metrics_emr_hourly_delay_percentiles_tdigest_part_prun_cropped}
+
+    \vspace{1cm}
+
+    \includegraphics[width=1\textwidth]{../Results/charts/telemetry/emr/pred_push/metrics_emr_hourly_delay_percentiles_tdigest_pred_push_cropped}
+    \caption{Telemetria Query 3 su AWS EMR con algoritmo T-Digest: Partition Pruning (sopra) vs Predicate Pushdown (sotto).}
+    \label{fig:telemetry_q3_tdigest_emr}
 \end{figure}
 
 \clearpage
