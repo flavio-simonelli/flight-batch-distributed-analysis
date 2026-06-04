@@ -60,8 +60,8 @@ public class ArrivalDelayRanking extends BaseQuery {
 
         // Discard flights that were either cancelled or diverted
         JavaRDD<Row> validFlights = flights.filter(flight -> {
-            boolean isCancelled = getDoubleSafe(flight, CANCELLED_IDX) > 0.0;
-            boolean isDiverted = getDoubleSafe(flight, DIVERTED_IDX) > 0.0;
+            boolean isCancelled = getDoubleSafe(flight, CANCELLED_IDX) != 0.0;
+            boolean isDiverted = getDoubleSafe(flight, DIVERTED_IDX) != 0.0;
             return !isCancelled && !isDiverted;
         });
 
