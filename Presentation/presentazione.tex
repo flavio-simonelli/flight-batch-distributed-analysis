@@ -208,17 +208,34 @@
     \begin{columns}[c]
         \begin{column}{0.48\textwidth}
             \centering
-            \includegraphics[width=\linewidth,height=0.7\textheight,keepaspectratio]{../Report/graphs/BigDataStack}
+            \includegraphics[width=\linewidth,height=0.65\textheight,keepaspectratio]{../Report/graphs/BigDataStack}
             \vskip 0.2cm
-            \small \textbf{Vista Statica}: Componenti del Big Data Stack
+            \small Componenti del Big Data Stack
         \end{column}
 
         \begin{column}{0.48\textwidth}
             \centering
-            \includegraphics[width=\linewidth,height=0.7\textheight,keepaspectratio]{../Report/graphs/InteractionDiagram}
+            \includegraphics[width=\linewidth,height=\textheight,keepaspectratio]{../Report/graphs/InteractionDiagram}
             \vskip 0.2cm
-            \small \textbf{Vista Dinamica}: Flusso di interazione dei componenti
+            \small Flusso di interazione dei componenti
         \end{column}
+    \end{columns}
+\end{frame}
+
+% Deployment
+\begin{frame}{Deployment}
+    \begin{columns}[c]
+        \column{0.48\textwidth}
+        \centering
+        \textbf{EC2 Deployment}
+        \vfill
+        \includegraphics[width=\linewidth,height=0.8\textheight,keepaspectratio]{../Report/graphs/DeploymentView-EC2}
+
+        \column{0.48\textwidth}
+        \centering
+        \textbf{EMR Deployment}
+        \vfill
+        \includegraphics[width=\linewidth,height=0.9\textheight,keepaspectratio]{../Report/graphs/DeploymentView-EMR}
     \end{columns}
 \end{frame}
 
@@ -228,8 +245,8 @@
 %     \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../Report/graphs/sequence_diagram}
 % \end{frame}
 
-% Extraction & Ingestion Layer
-\section{Extraction \& Ingestion Layer}\label{sec:extraction_and_ingestion_layer}
+% Extraction e Ingestion Layer
+\section{Extraction e Ingestion Layer}\label{sec:extraction_and_ingestion_layer}
 
 \begin{frame}[fragile]{NiFi Ingestion Pipeline: REST Trigger}
     \begin{columns}[c]
@@ -237,16 +254,16 @@
             \begin{itemize}
                 \item \textbf{Design Data-Driven}: Pipeline stateless configurata dinamicamente in base al payload JSON iniettato all'avvio da Airflow.
 
-                \item \textbf{Ingestion \& Validazione}:
+                \item \textbf{Avvio della Pipeline}:
                 \begin{itemize}
                     \item \texttt{HandleHttpRequest}: espone l'endpoint REST per intercettare l'avvio.
                     \item \texttt{ValidateJson}: esegue il controllo strutturale rigoroso tramite JSON Schema.
                 \end{itemize}
 
-                \item \textbf{Propagazione del Dato}:
+                \item \textbf{Propagazione della Configurazione}:
                 \begin{itemize}
                     \item \texttt{EvaluateJsonPath}: estrae e mappa le chiavi JSON in Attributi del FlowFile.
-                    \item I metadati nativi guidano il routing successivo in logica completamente stateless.
+                    \item I metadati guidano le decisioni successive del processamento.
                 \end{itemize}
             \end{itemize}
         \end{column}
@@ -307,7 +324,7 @@
                     \item Ispezione e routing selettivo dei soli CSV d'interesse.
                 \end{itemize}
 
-                \item \textbf{Gateway \& Biforcazione}:
+                \item \textbf{Routing dei File}:
                 \begin{itemize}
                     \item \textbf{Ramo Raw}: Salvataggio as-is per garanzia del dato originale.
                     \item \textbf{Ramo Preprocessing}: Inoltro dei file d'interesse alla trasformazione.
@@ -331,23 +348,23 @@
 \end{frame}
 
 % Slide senza diagramma logico
-\begin{frame}{NiFi Ingestion Pipeline: Preprocessing, Ottimizzazione e Handover}
+\begin{frame}{NiFi Ingestion Pipeline: Preprocessing}
 
     % Primo blocco: Allineato in alto [T] per mantenere il testo ordinato
     \begin{columns}[T]
         \begin{column}{0.79\textwidth}
             \begin{itemize}
-                \item \textbf{Imputazione e Sanitizzazione} - \texttt{ScriptedTransformRecord}:
+                \item \textbf{Sanitizzazione} - \texttt{ScriptedTransformRecord}:
                 \begin{itemize}
-                    \item Imputazione condizionale a zero dei valori nulli sulle cause di ritardo.
-                    \item Correzione e normalizzazione dei valori negativi sporchi.
+                    \item Se esiste una causa di ritardo positiva, imposta le altre nulle a 0.
+                    \item Normalizzazione a 0 delle componenti di ritardo negative.
                 \end{itemize}
 
-                \item \textbf{Data Quality \& Filtraggio Selettivo} - \texttt{QueryRecord}:
+                \item \textbf{Data Cleaning} - \texttt{QueryRecord}:
                 \begin{itemize}
-                    \item Scarto dei record con chiavi primarie nulle o dati temporali mancanti.
-                    \item Isolamento dei voli cancellati con orario di partenza presente.
-                    \item Eliminazione dei record con anomalie logiche sulle metriche di ritardo.
+                    \item Taglio dei record con chiavi primarie nulle o dati temporali mancanti.
+                    \item Eliminazione dei voli cancellati con orario di partenza presente.
+                    \item Scarto dei record con delay negativo e componenti di ritardo positive.
                 \end{itemize}
             \end{itemize}
         \end{column}
@@ -364,15 +381,15 @@
     \begin{columns}[c]
         \begin{column}{0.60\textwidth}
             \begin{itemize}
-                \item \textbf{Strategie di Conversione e Ottimizzazione}:
+                \item \textbf{Strategie di Conversione}:
                 \begin{itemize}
-                    \item \textbf{Partition Pruning}: Il processore \texttt{PartitionRecord} converte in Parquet partizionando per chiavi temporali e carrier, permettendo a Spark l'esclusione di intere directory in lettura.
-                    \item \textbf{Predicate Pushdown}: Il modulo \texttt{MergeRecord} compatta e converte in un singolo file Parquet per consentire a Spark il filtraggio diretto a livello di storage.
+                    \item \textbf{Partition Pruning}: \texttt{PartitionRecord} converte in Parquet partizionando per chiavi temporali e carrier.
+                    \item \textbf{Predicate Pushdown}: \texttt{MergeRecord} compatta e converte in un singolo file Parquet.
                 \end{itemize}
             \end{itemize}
         \end{column}
 
-        \begin{column}{0.38\textwidth}
+        \begin{column}{0.4\textwidth}
             \centering
             \includegraphics[width=\linewidth, keepaspectratio]{../Report/graphs/Nifi-Convert}
         \end{column}
@@ -380,11 +397,11 @@
 
 \end{frame}
 
-\begin{frame}[fragile]{NiFi Ingestion Pipeline: Storage Finale e Handover ad Airflow}
+\begin{frame}[fragile]{NiFi Ingestion Pipeline: Storage Finale e Callback ad Airflow}
     \begin{columns}[T]
         \begin{column}{0.71\textwidth}
             \begin{itemize}
-                \item \textbf{Storage Distribuito}: Scrittura dei file Parquet ottimizzati in HDFS o S3 a seconda della configurazione.
+                \item \textbf{Storage Distribuito}: Scrittura dei file Parquet ottimizzati in HDFS o S3.
                 \item \textbf{Notifica di Completamento}:
                 \begin{itemize}
                     \item Chiamata HTTP PATCH via \texttt{InvokeHTTP} alle API di Airflow.
@@ -901,22 +918,22 @@ Dataset<Row> finalOutput = appendPcaColumns(
 %
 % \end{frame}
 
-\begin{frame}[fragile]{Misurazione delle Metriche}
+\begin{frame}[fragile]{Spark: Misurazione delle Metriche}
     \begin{columns}[c]
 
         \begin{column}{0.50\textwidth}
 
             \textbf{Event-Driven Listening}
             \begin{itemize}
-                \item \texttt{JobTimerListener} estende \texttt{SparkListener} e si aggancia direttamente al core di Spark.
-                \item L'intercettazione asincrona non sporca né rallenta la logica algoritmica delle query.
+                \item \texttt{JobTimerListener} estende \texttt{SparkListener}.
+                \item Intercettazione asincrona degli eventi del ciclo di esecuzione di Spark.
             \end{itemize}
 
             \textbf{Tracciamento Granulare}
             \begin{itemize}
-                \item \textbf{Job \& Stage Level}: Isolamento delle durate pure dei singoli stage e job.
-                \item \textbf{I/O \& Network Balance}: Misurazione dei dati letti/scritti localmente e del carico di rete durante le fasi di Shuffle.
-                \item \textbf{Worker Profiling}: Misurazione per singolo Executor per individuare fenomeni di \textbf{Data Skew}.
+                \item \textbf{Job e Stage Level}: Isolamento delle durate pure dei singoli stage e job.
+                \item \textbf{I/O e Network Balance}: Misurazione sia dei dati di I/O che dei dati scambiati durante le fasi di Shuffle.
+                \item \textbf{Worker Profiling}: Misurazione per singolo Executor per individuare fenomeni di Data Skew.
             \end{itemize}
         \end{column}
 
@@ -957,20 +974,20 @@ public void onTaskEnd(SparkListenerTaskEnd te) {
 
 \begin{frame}[fragile]{Orchestrazione End-to-End: \texttt{flight\_analysis}}
     \begin{columns}[c]
-        \begin{column}{0.87\textwidth}
+        \begin{column}{0.80\textwidth}
 
             \begin{itemize}
-                \item \textbf{Obiettivo del Workflow}: Coordinare l'intero ciclo di elaborazione in maniera totalmente parametrica, assicurando la corretta sincronizzazione e il passaggio dei metadati tra la fase di Ingestione e la fase di Computazione.
+                \item \textbf{Obiettivo del Workflow}: Eseguire l'intera pipeline, dalla fase di Ingestion a quella di Processamento.
 
                 \vspace{0.3cm}
 
                 \item \textbf{Workflow Operativo}:
                 \begin{itemize}
-                    \item \texttt{route\_start}: Valutazione dinamica della modalità operativa per il branching del flusso: \textit{Ingest}, \textit{Execution}, \textit{Both}.
+                    \item \texttt{route\_start}: Valutazione della modalità operativa per il branching del flusso: \textit{Ingest}, \textit{Execution}, \textit{Both}.
                     \item \texttt{trigger\_nifi\_backend}: Generazione del payload JSON e iniezione dei metadati via chiamata REST a NiFi.
-                    \item \texttt{wait\_nifi\_done}: Sincronizzazione asincrona tramite \textbf{Sensor} (polling su variabile aggiornata da NiFi via callback).
+                    \item \texttt{wait\_nifi\_done}: Sincronizzazione asincrona tramite Sensor (polling su variabile aggiornata da NiFi via callback).
                     \item \texttt{prepare\_spark\_args}: Mapping dei parametri del DAG in argomenti CLI per il job Spark.
-                    \item \texttt{spark\_execution}: Sottomissione del job Spark tramite \textbf{LivyOperator} con monitoraggio integrato.
+                    \item \texttt{spark\_execution}: Sottomissione del job Spark tramite LivyOperator in modalità client.
                 \end{itemize}
             \end{itemize}
 
@@ -978,7 +995,7 @@ public void onTaskEnd(SparkListenerTaskEnd te) {
 
         \hfill
 
-        \begin{column}{0.22\textwidth}
+        \begin{column}{0.29\textwidth}
             \centering
             \includegraphics[width=\linewidth, height=\textheight, keepaspectratio]{../Presentation/graphs/flight_analysis-graph-ver}
         \end{column}
@@ -990,8 +1007,8 @@ public void onTaskEnd(SparkListenerTaskEnd te) {
 
         \begin{column}{0.48\textwidth}
             \begin{itemize}
-                \item \textbf{Obiettivo}: Valutazione sistematica di tutte le combinazioni.
-                \item Loop nidificati per la creazione dinamica di una pipeline sequenziale, garantendo l'isolamento delle risorse per ogni job Spark.
+                \item \textbf{Obiettivo}: Valutazione sistematica di tutte le combinazioni sugli ambienti di deployment.
+                \item Creazione dinamica di una pipeline sequenziale, garantendo l'isolamento delle risorse per ogni job Spark.
             \end{itemize}
 
             % \vspace{0.2cm}
@@ -1052,23 +1069,6 @@ watch_step = EmrStepSensor(
 
 
 \section{Valutazione Sperimentale}\label{sec:experimental_evaluation}
-
-% Deployment
-\begin{frame}{Deployment}
-    \begin{columns}[c]
-        \column{0.48\textwidth}
-        \centering
-        \textbf{EC2 Deployment}
-        \vfill
-        \includegraphics[width=\linewidth,height=0.8\textheight,keepaspectratio]{../Report/graphs/DeploymentView-EC2}
-
-        \column{0.48\textwidth}
-        \centering
-        \textbf{EMR Deployment}
-        \vfill
-        \includegraphics[width=\linewidth,height=0.9\textheight,keepaspectratio]{../Report/graphs/DeploymentView-EMR}
-    \end{columns}
-\end{frame}
 
 \begin{frame}{Metodologia di Benchmarking}
     \begin{itemize}
@@ -1170,8 +1170,8 @@ watch_step = EmrStepSensor(
 
     \textbf{Conclusioni}
     \begin{itemize}
-        \item \textbf{Ecosistema Enterprise-Ready}: L'orchestrazione asincrona con Airflow e NiFi combinata alla modularità di Spark garantisce scalabilità e robustezza.
-        \item \textbf{Ottimizzazione dell'I/O}: L'uso congiunto del formato colonnare Parquet e del Partition Pruning diminuisce l'overhead sul file system distribuito.
+        \item \textbf{Ecosistema Enterprise-Ready}: L'orchestrazione asincrona con Airflow combinata alla modularità di Spark e NiFi garantisce scalabilità e robustezza.
+        \item \textbf{Ottimizzazione dell'I/O}: L'uso congiunto del formato colonnare Parquet e del Partition Pruning diminuisce l'overhead di lettura sul file system distribuito.
         \item \textbf{Analitica Avanzata e Sostenibile}: L'integrazione di Quantile Sketches e Model Selection automatizzato decodifica dinamiche complesse mantenendo costi computazionali accettabili.
     \end{itemize}
 
