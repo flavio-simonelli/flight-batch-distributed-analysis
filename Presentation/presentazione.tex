@@ -112,6 +112,17 @@
     keywordstyle=[2]\color{sqlFunction}\bfseries
 }
 
+\lstdefinestyle{TerminalStyle}{
+    language=bash,
+    basicstyle=\ttfamily\scriptsize\color{white}, 
+    keywordstyle=\color{white},                   
+    stringstyle=\color{white},
+    commentstyle=\color{gray},
+    breaklines=true,                              
+    extendedchars=true,
+    literate={textdollar}{{\$}}1               
+}
+
 % 1. Box per SPARK SQL (Tema Azzurro)
 \newtcblisting{sqlcodebox}[1]{
     listing only,
@@ -174,6 +185,22 @@
     top=0pt, bottom=0pt, left=6pt, right=6pt,
     toptitle=4pt, bottomtitle=4pt
 }
+
+\newtcblisting{terminalbox}[1]{
+    listing only,
+    listing options={style=TerminalStyle, aboveskip=0pt, belowskip=0pt},
+    arc=5pt,
+    boxrule=0.5pt,
+    colframe=black!80,
+    colback=black!85,           
+    title={#1},
+    coltitle=white,        
+    colbacktitle=black!70,                   
+    fonttitle=\scriptsize\bfseries\sffamily,
+    top=2pt, bottom=2pt, left=2pt, right=2pt, 
+    toptitle=4pt, bottomtitle=4pt
+}
+
 
 % Informazioni sul Titolo
 \title[Sky Analytics Engine]{Sky Analytics Engine}
@@ -442,36 +469,37 @@
 %Computation Layer
 \section{Computation Layer}\label{sec:computation_layer}
 
-\begin{frame}{Configurazione a Start-Time \& Design Pattern Java}
+\begin{frame}[fragile]{Configurazione a Start-Time e Design Pattern Java}
 
-    \begin{columns}[T]
+    \begin{columns}[c]
 
-        \begin{column}{0.71\textwidth}
-            \begin{itemize}
-                \item \textbf{Parametrizzazione a Start-Time}:
+        \begin{column}{0.60\textwidth}
+            \textbf{Parametrizzazione a Start-Time}:
                 \begin{itemize}
                     \item \textbf{Configurazione senza ricompilazione}: Gestione via YAML tramite \texttt{ApplicationConfig} con override da CLI.
-                    \item \textbf{Selezione del Backend}: Scelta a runtime del paradigma di esecuzione (\textit{RDD, DataFrame, SQL}), del partizionamento e delle strategie di calcolo (KLL vs T-Digest).
-                    \item \textbf{Storage Agnostic}: Disaccoppiamento totale dell'I/O su HDFS, S3, Local FS, PostgreSQL, CockroachDB, Redis e HBase.
+                    \item \textbf{Selezione del Backend}: Scelta a runtime dell'astrazione (\textit{RDD, DataFrame, SQL}) e delle strategie di calcolo (KLL o T-Digest).
                 \end{itemize}
-
-                %\vspace{0.2cm}
-
-                \item \textbf{Design Pattern Java}:
+            \textbf{Design Pattern Java}:
                 \begin{itemize}
-                    \item \textbf{Template Method}: \texttt{BaseQuery.execute()} standardizza e unifica l'intero ciclo di vita del job Spark.
-                    \item \textbf{Factory \& Repository}: \texttt{FlightRepositoryFactory} gestisce il polimorfismo, astraendo le connessioni ai database.
-                    \item \textbf{Strategy}: Switch dinamico degli algoritmi di calcolo (\texttt{PercentileSketch}) e delle modalità di esecuzione.
+                    \item \textbf{Template Method}: \texttt{BaseQuery} standardizza e unifica l'intero ciclo di vita del job Spark.
+                    \item \textbf{Factory e Repository}: \texttt{FlightRepositoryFactory} gestisce il polimorfismo, astraendo le connessioni ai database.
                     \item \textbf{Singleton}: \texttt{PerformanceMetrics} come punto unico e centralizzato di raccolta delle metriche di esecuzione.
                 \end{itemize}
-            \end{itemize}
         \end{column}
 
-        \hfill
-
-        \begin{column}{0.27\textwidth}
-            \centering
-            % \includegraphics[width=\linewidth, keepaspectratio]{percorso/tua-immagine}
+        \begin{column}{0.4\textwidth}
+            \begin{terminalbox}{Terminale - Spark Submit}
+spark-submit
+    --master <SPARK_URI>
+    --class FlightAnalysisApp
+    <HDFS_URI>/<HDFS_JAR_PATH>
+    --query "<SELECTED_QUERY>"
+    --backend "<SPARK_BACKEND>"
+    --config "<CONFIG_FILE>"
+    --input-type "<IN_TYPE>"
+    --output-type "<OUT_TYPE>"
+    --metrics-type "<M_TYPE>"
+            \end{terminalbox}
         \end{column}
 
     \end{columns}
