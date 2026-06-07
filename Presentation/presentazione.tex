@@ -1091,37 +1091,188 @@ watch_step = EmrStepSensor(
     \end{itemize}
 \end{frame}
 
+
+
 \begin{frame}{Confronto API: RDD vs DataFrame vs SQL}
-    \begin{itemize}
-        \item \textbf{DataFrame/SQL}: Massima stabilità e minori tempi di esecuzione nelle query di aggregazione (es. Q1) grazie all'ottimizzatore \textit{Catalyst} e alla gestione binaria off-heap di \textit{Tungsten}.
-        \item \textbf{RDD}: Più performante in task atomici e logiche distribuite custom (Q2 e Q3), nonostante il maggior overhead di serializzazione JVM.
-    \end{itemize}
-    \vfill
-    \centering
-    \includegraphics[width=0.9\textwidth,height=0.55\textheight,keepaspectratio]{../Results/charts/telemetry/ec2/part_prun/metrics_ec2_monthly_performance_part_prun_cropped.png}
+
+    \begin{columns}[T]
+
+        \begin{column}{0.48\textwidth}
+            \textbf{Aggregazioni Massive: Q1 e Q2}
+            \begin{itemize}
+                \footnotesize
+                \item DataFrame e SQL mostrano mediane temporali inferiori e una dispersione contratta in ogni ambiente.
+            \end{itemize}
+
+            \vspace{0.15cm}
+
+            \centering
+            \includegraphics[width=0.8\textwidth]{../Results/charts/telemetry/emr/part_prun/panel_emr_q1_boxplot_part_prun}
+            \vskip -0.1cm
+            {\tiny Distribuzione tempi Q1 con partition pruning su EMR}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.8\textwidth]{../Results/charts/telemetry/emr/part_prun/panel_emr_q2_boxplot_part_prun}
+            \vskip -0.1cm
+            {\tiny Distribuzione tempi Q2 con partition pruning su EMR}
+        \end{column}
+
+        \begin{column}{0.50\textwidth}
+            \textbf{Approssimazione Percentili: Q3}
+            \begin{itemize}
+                \footnotesize
+                \item \textbf{Self-Hosted EC2}: RDD con KLL risulta mediamente più veloce.
+                \item \textbf{Managed su EMR}: EMR azzera il vantaggio di RDD e DataFrame riprende il primato.
+            \end{itemize}
+
+            \vspace{0.15cm}
+
+            \centering
+            \includegraphics[width=0.74\textwidth]{../Results/charts/telemetry/ec2/part_prun/panel_ec2_q3_kll_boxplot_part_prun}
+            \vskip -0.1cm
+            {\tiny Distribuzione tempi Q3 con partition pruning e KLL su EC2}
+
+            \vspace{0.2cm}
+
+            \includegraphics[width=0.74\textwidth]{../Results/charts/telemetry/emr/part_prun/panel_emr_q3_kll_boxplot_part_prun}
+            \vskip -0.1cm
+            {\tiny Distribuzione tempi Q3 con partition pruning e KLL su EMR}
+
+        \end{column}
+    \end{columns}
+
 \end{frame}
 
 \begin{frame}{Ottimizzazione I/O: Pruning vs Pushdown}
-    \begin{itemize}
-        \item \textbf{Partition Pruning}: Strategia ottimale. Esclude i dati a livello di file system, garantendo un I/O bilanciato e l'assenza di \textit{Workload Skew} sui nodi.
-        \item \textbf{Predicate Pushdown}: Richiede la scansione dei metadati Parquet. Genera un volume di lettura superiore e tende a sovraccaricare singoli nodi (colli di bottiglia in fase di scansione).
-    \end{itemize}
-    \vfill
-    \centering
-    \includegraphics[width=0.9\textwidth,height=0.55\textheight,keepaspectratio]{../Results/charts/telemetry/ec2/pred_push/metrics_ec2_monthly_performance_pred_push_cropped.png}
+
+    \begin{columns}[T]
+
+        \begin{column}{0.49\textwidth}
+            \begin{itemize}
+                \item \textbf{Predicate Pushdown}: Genera un volume di lettura superiore e tende a sovraccaricare singoli nodi.
+            \end{itemize}
+
+            \vspace{0.2cm}
+
+            \centering
+            \includegraphics[width=0.74\textwidth]{../Results/charts/telemetry/ec2/pred_push/panel_ec2_q1_skew_pred_push}
+            \vskip -0.1cm
+            {\tiny Sbilanciamento I/O con predicate pushdown su EC2 nella Q1}
+
+            \vspace{0.2cm}
+
+            \includegraphics[width=0.74\textwidth]{../Results/charts/telemetry/ec2/pred_push/panel_ec2_q2_skew_pred_push}
+            \vskip -0.1cm
+            {\tiny Sbilanciamento I/O con predicate pushdown su EC2 nella Q2}
+        \end{column}
+
+        \begin{column}{0.49\textwidth}
+            \begin{itemize}
+                \item \textbf{Partition Pruning}: Esclude i file a livello di file system, diminuendo il \textit{Read Skew} fra i nodi.
+            \end{itemize}
+
+            \vspace{0.2cm}
+
+            \centering
+            \includegraphics[width=0.74\textwidth]{../Results/charts/telemetry/ec2/part_prun/panel_ec2_q1_skew_part_prun}
+            \vskip -0.1cm
+                {\tiny Sbilanciamento I/O con partition pruning su EC2 nella Q1}
+
+            \vspace{0.2cm}
+
+            \includegraphics[width=0.74\textwidth]{../Results/charts/telemetry/ec2/part_prun/panel_ec2_q2_skew_part_prun}
+            \vskip -0.1cm
+                {\tiny Sbilanciamento I/O con partition pruning su EC2 nella Q2}
+        \end{column}
+    \end{columns}
+
 \end{frame}
 
 \begin{frame}{Overhead Infrastrutturale: EC2 vs EMR}
+
     \begin{itemize}
-        \item \textbf{Standalone (EC2)}: Overhead di \textit{Wall Clock Time} significativo dovuto ai tempi di negoziazione delle risorse, bootstrap del cluster e latenze di rete HDFS.
-        \item \textbf{Managed (EMR)}: L'integrazione nativa con S3 e la gestione elastica delle istanze contraggono sensibilmente i "tempi morti", massimizzando l'efficienza temporale del job.
+        \item EMR riduce sensibilmente l'overhead di sistema, con un rapporto di \textit{Execution Time} vs \textit{Wall-Clock Time} più favorevole rispetto a EC2.
     \end{itemize}
-    \vfill
-    \centering
-    \includegraphics[width=0.9\textwidth,height=0.55\textheight,keepaspectratio]{../Results/charts/telemetry/emr/part_prun/metrics_emr_monthly_performance_part_prun_cropped.png}
+
+    \begin{columns}[T]
+
+        \begin{column}{0.49\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{../Results/charts/telemetry/ec2/pred_push/panel_ec2_q1_time_pred_push}
+            \vskip -0.1cm
+            {\tiny Overhead di sistema con predicate pushdown su EC2 nella Q1}
+        \end{column}
+
+        \begin{column}{0.49\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{../Results/charts/telemetry/emr/pred_push/panel_emr_q1_time_pred_push}
+            \vskip -0.1cm
+            {\tiny Overhead di sistema con predicate pushdown su EMR nella Q1}
+        \end{column}
+    \end{columns}
+
 \end{frame}
 
-\section{Risultati Analitici}
+\begin{frame}{Confronto Sketch: KLL vs T-Digest}
+
+    \begin{columns}[T, onlytextwidth]
+
+        \begin{column}{0.48\textwidth}
+            \textbf{KLL Sketch}
+            \begin{itemize}
+                \footnotesize
+                \item Richiede un maggiore impiego di memoria per preservare la struttura a piramide dei livelli.
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.48\textwidth}
+            \textbf{T-Digest}
+            \begin{itemize}
+                \footnotesize
+                \item Altamente compatto in termini di memoria, poiché memorizza unicamente i centroidi.
+            \end{itemize}
+        \end{column}
+
+    \end{columns}
+
+    \vfill
+
+    \begin{columns}[c, onlytextwidth]
+
+        \begin{column}{0.49\textwidth}
+            \centering
+            \includegraphics[height=0.28\textheight]{../Results/charts/telemetry/ec2/part_prun/panel_ec2_q3_kll_shuffle_part_prun_detailed}
+            \vskip -0.1cm
+            {\tiny Volume di Shuffle Read su EC2 per KLL con partition pruning}
+
+            \vspace{0.2cm}
+
+            \includegraphics[height=0.28\textheight]{../Results/charts/telemetry/ec2/part_prun/panel_ec2_q3_kll_boxplot_part_prun_detailed}
+            \vskip -0.1cm
+            {\tiny Tempo di esecuzione su EC2 per KLL con partition pruning}
+        \end{column}
+
+        \hfill
+
+        \begin{column}{0.49\textwidth}
+            \centering
+            \includegraphics[height=0.28\textheight]{../Results/charts/telemetry/ec2/part_prun/panel_ec2_q3_tdigest_shuffle_part_prun_detailed}
+            \vskip -0.1cm
+            {\tiny Volume di Shuffle Read su EC2 per T-Digest con partition pruning}
+
+            \vspace{0.2cm}
+
+            \includegraphics[height=0.28\textheight]{../Results/charts/telemetry/ec2/part_prun/panel_ec2_q3_tdigest_boxplot_part_prun_detailed}
+            \vskip -0.1cm
+            {\tiny Tempo di esecuzione su EC2 per T-Digest con partition pruning}
+        \end{column}
+
+    \end{columns}
+
+\end{frame}
+
+\section{Risultati Analitici}\label{sec:analytical_results}
 
 \begin{frame}{Risultati Analitici: Q3 - Percentili Orari}
 
@@ -1131,7 +1282,7 @@ watch_step = EmrStepSensor(
             \textbf{Dinamiche Operative}
             \begin{itemize}
                 \footnotesize
-                \item Le performance degradano sistematicamente nelle fasce serali a causa della propagazione a catena dei ritardi.
+                \item Le performance degradano sistematicamente nelle fasce serali probabilmente a causa della propagazione a catena dei ritardi.
             \end{itemize}
         \end{column}
 
@@ -1139,42 +1290,10 @@ watch_step = EmrStepSensor(
             \textbf{Confronto Algoritmico}
             \begin{itemize}
                 \footnotesize
-                \item \textbf{KLL}: Maggior footprint spaziale per preservare la struttura a livelli.
-                \item \textbf{T-Digest}: Altamente efficiente in spazio, ma sconta una maggiore latenza computazionale.
-            \end{itemize}
-        \end{column}
-
-    \end{columns}
-
-    \centering
-    \includegraphics[width=0.85\textwidth]{../Results/charts/result/Q3_percentiles_trend_AA}
-    \includegraphics[width=0.85\textwidth]{../Results/charts/result/Q3_median_distribution_detail_AA}
-
-\end{frame}
-
-\begin{frame}{Risultati Analitici: Q4 - Airline Clustering}
-
-    \begin{columns}[c]
-
-        \begin{column}{0.45\textwidth}
-            \textbf{Metodologia ML}
-            \begin{itemize}
-                \footnotesize
-                \item \textbf{Model Selection}: Algoritmo K-Means con ottimizzazione del \textit{Silhouette Score} (scelto $K=3$).
-                \item \textbf{Proiezione PCA}: Utilizzata a solo scopo visivo 2D; l'addestramento nativo del clustering opera nello spazio ad alta dimensionalità.
-            \end{itemize}
-        \end{column}
-
-        \begin{column}{0.53\textwidth}
-            \textbf{Profilazione delle Compagnie}
-            \begin{itemize}
-                \footnotesize
-                \item \textbf{C0 (Inefficienza)}: \texttt{OH, F9}.
-                Forte propagazione a catena dei ritardi e picchi di cancellazioni ($>6\%$).
-                \item \textbf{C1 (Resilienza)}: \texttt{G4}.
-                Forti ritardi per cause esterne, ma altissimo completamento voli (canc. $0.6\%$).
-                \item \textbf{C2 (Virtuosi)}: \texttt{DL, UA, WN}.
-                Stabilità massima e forte capacità di recupero tempo in volo.
+                % \item \textbf{KLL}: Maggior footprint spaziale per preservare la struttura a livelli.
+                % \item \textbf{T-Digest}: Altamente efficiente in spazio, ma sconta una maggiore latenza computazionale.
+                \item Convergenza analitica dei risultati tra le euristiche.
+                \item La selezione dipende dai vincoli non funzionali.
             \end{itemize}
         \end{column}
 
@@ -1183,8 +1302,38 @@ watch_step = EmrStepSensor(
     \vspace{0.25cm}
 
     \centering
-    \includegraphics[width=0.40\textwidth, height=0.45\textheight, keepaspectratio]{../Results/charts/result/Q4_cluster_distribution}
-    \includegraphics[width=0.58\textwidth, height=0.45\textheight, keepaspectratio]{../Results/charts/result/Q4_cluster_center}
+    \includegraphics[width=0.93\textwidth]{../Results/charts/result/Q3_percentiles_trend_AA}
+    \includegraphics[width=0.93\textwidth]{../Results/charts/result/Q3_median_distribution_detail_AA}
+
+\end{frame}
+
+\begin{frame}{Risultati Analitici: Q4 - Airline Clustering}
+
+    \begin{columns}[c]
+
+        \begin{column}{0.60\textwidth}
+            \textbf{Profilazione delle Compagnie}
+            \begin{itemize}
+                \footnotesize
+                \item \textbf{C0 - Inefficienza}: \texttt{AA, B6, OO, F9, OH}.
+                Forte propagazione a catena dei ritardi e picchi di cancellazioni ($>6\%$).
+                \item \textbf{C1 - Resilienza}: \texttt{G4}.
+                Forti ritardi per cause esterne, ma altissimo completamento voli (canc. $0.6\%$).
+                \item \textbf{C2 - Virtuosi}: \texttt{UA, NK, DL, MQ, HA, YX, AS, WS}.
+                Stabilità massima e forte capacità di recupero tempo in volo.
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.39\textwidth}
+            \includegraphics[width=\textwidth]{../Results/charts/result/Q4_cluster_distribution}
+        \end{column}
+
+    \end{columns}
+
+    \vspace{0.25cm}
+
+    \centering
+    \includegraphics[width=0.80\textwidth]{../Results/charts/result/Q4_cluster_center}
 
 \end{frame}
 
@@ -1198,7 +1347,7 @@ watch_step = EmrStepSensor(
                 \item \textbf{DL}: Miglioramento costante.
                 Il ritardo scende e le cancellazioni si stabilizzano sotto lo $0.5\%$.
                 \item \textbf{AA}: Degrado progressivo.
-                Il ritardo sale con un tasso di cancellazione cronico $\sim 1.4\%$.
+                Il ritardo sale con un tasso di cancellazione $\sim 1.4\%$.
             \end{itemize}
 
             % \vspace{0.15cm}
