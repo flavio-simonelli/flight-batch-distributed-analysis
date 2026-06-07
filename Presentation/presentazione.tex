@@ -186,7 +186,7 @@
 }
 \date[12 Giugno 2026]{12 Giugno 2026}
 
-\titlegraphic{\includegraphics[width=2cm]{logos/logo_tor_vergata.png}}
+\titlegraphic{\includegraphics[width=2cm]{logos/logo_tor_vergata}}
 
 \begin{document}
 
@@ -224,18 +224,28 @@
 
 % Deployment
 \begin{frame}{Deployment}
-    \begin{columns}[c]
-        \column{0.48\textwidth}
-        \centering
-        \textbf{EC2 Deployment}
-        \vfill
-        \includegraphics[width=\linewidth,height=0.8\textheight,keepaspectratio]{../Report/graphs/DeploymentView-EC2}
+    \begin{columns}[c, onlytextwidth]
 
-        \column{0.48\textwidth}
-        \centering
-        \textbf{EMR Deployment}
-        \vfill
-        \includegraphics[width=\linewidth,height=0.9\textheight,keepaspectratio]{../Report/graphs/DeploymentView-EMR}
+        \begin{column}{0.42\textwidth}
+            \centering
+            \textbf{EC2 Deployment}
+
+            \vspace{0.2cm}
+
+            \includegraphics[height=0.65\textheight, keepaspectratio]{../Report/graphs/DeploymentView-EC2}
+        \end{column}
+
+        \hfill
+
+        \begin{column}{0.54\textwidth}
+            \centering
+            \textbf{EMR Deployment}
+
+            \vspace{0.2cm}
+
+            \includegraphics[height=0.65\textheight, keepaspectratio]{../Report/graphs/DeploymentView-EMR}
+        \end{column}
+
     \end{columns}
 \end{frame}
 
@@ -1114,56 +1124,110 @@ watch_step = EmrStepSensor(
 
 \section{Risultati Analitici}
 
-\begin{frame}{Query 3: Scelta dell'Euristica e Approssimazione}
-    \begin{itemize}
-        \item \textbf{Problema}: Calcolo dei percentili esatti su RDD (\texttt{groupByKey}) causa \textit{Out Of Memory} e colli di bottiglia distribuiti.
-        \item \textbf{Soluzione}: Implementazione di algoritmi di \textbf{Quantile Sketching} (T-Digest e KLL).
-        \item \textbf{Analisi Comparativa}:
-        \begin{itemize}
-            \item \textbf{KLL Sketch}: Elevata precisione teorica, ma footprint di memoria superiore.
-            \item \textbf{T-Digest}: Ottimizzato per le "code" della distribuzione e più performante.
-        \end{itemize}
-        \item \textbf{Validazione}: Risultati pressoché identici sul dataset reale; la convergenza dei dati giustifica l'uso di algoritmi probabilistici.
-        \item \textbf{Scelta Finale}: \textbf{T-Digest} per il miglior rapporto performance/accuratezza nel dominio aeronautico.
-    \end{itemize}
-    \vfill
+\begin{frame}{Risultati Analitici: Q3 - Percentili Orari}
+
+    \begin{columns}[c]
+
+        \begin{column}{0.53\textwidth}
+            \textbf{Dinamiche Operative}
+            \begin{itemize}
+                \footnotesize
+                \item Le performance degradano sistematicamente nelle fasce serali a causa della propagazione a catena dei ritardi.
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.53\textwidth}
+            \textbf{Confronto Algoritmico}
+            \begin{itemize}
+                \footnotesize
+                \item \textbf{KLL}: Maggior footprint spaziale per preservare la struttura a livelli.
+                \item \textbf{T-Digest}: Altamente efficiente in spazio, ma sconta una maggiore latenza computazionale.
+            \end{itemize}
+        \end{column}
+
+    \end{columns}
+
     \centering
-    \includegraphics[width=0.9\textwidth,height=0.45\textheight,keepaspectratio]{../Results/charts/result/Q3_percentiles_trend_AA.png}
+    \includegraphics[width=0.85\textwidth]{../Results/charts/result/Q3_percentiles_trend_AA}
+    \includegraphics[width=0.85\textwidth]{../Results/charts/result/Q3_median_distribution_detail_AA}
+
 \end{frame}
 
-\begin{frame}{Risultati Analitici: Airline Clustering (Q4)}
-    \begin{itemize}
-        \item \textbf{Model Selection}: Identificazione di \textbf{$K=3$} come numero ottimale di cluster tramite \textit{Silhouette Score}.
-        \item \textbf{Profilazione dei Cluster}:
-        \begin{itemize}
-            \item \textbf{Cluster 0 (Inefficienza)}: \texttt{AA, OH, F9}. Elevata propagazione dei ritardi e instabilità operativa.
-            \item \textbf{Cluster 1 (Sensibilità Esterna)}: \texttt{G4}. Forti ritardi meteorologici ma bassissimo tasso di cancellazione.
-            \item \textbf{Cluster 2 (Virtuosi)}: \texttt{DL, UA, WN}. Alta capacità di recupero in volo (\textit{Delay Makeup}) e stabilità.
-        \end{itemize}
-        \item \textbf{Visualizzazione}: Proiezione PCA bidimensionale (perdita di varianza fisiologica rispetto al modello ad alta dimensionalità).
-    \end{itemize}
-    \vfill
+\begin{frame}{Risultati Analitici: Q4 - Airline Clustering}
+
+    \begin{columns}[c]
+
+        \begin{column}{0.45\textwidth}
+            \textbf{Metodologia ML}
+            \begin{itemize}
+                \footnotesize
+                \item \textbf{Model Selection}: Algoritmo K-Means con ottimizzazione del \textit{Silhouette Score} (scelto $K=3$).
+                \item \textbf{Proiezione PCA}: Utilizzata a solo scopo visivo 2D; l'addestramento nativo del clustering opera nello spazio ad alta dimensionalità.
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.53\textwidth}
+            \textbf{Profilazione delle Compagnie}
+            \begin{itemize}
+                \footnotesize
+                \item \textbf{C0 (Inefficienza)}: \texttt{OH, F9}.
+                Forte propagazione a catena dei ritardi e picchi di cancellazioni ($>6\%$).
+                \item \textbf{C1 (Resilienza)}: \texttt{G4}.
+                Forti ritardi per cause esterne, ma altissimo completamento voli (canc. $0.6\%$).
+                \item \textbf{C2 (Virtuosi)}: \texttt{DL, UA, WN}.
+                Stabilità massima e forte capacità di recupero tempo in volo.
+            \end{itemize}
+        \end{column}
+
+    \end{columns}
+
+    \vspace{0.25cm}
+
     \centering
-    \includegraphics[width=0.38\textwidth,keepaspectratio]{../Results/charts/result/Q4_cluster_distribution}
-    \hfill
-    \includegraphics[width=0.57\textwidth,keepaspectratio]{../Results/charts/result/Q4_cluster_center}
+    \includegraphics[width=0.40\textwidth, height=0.45\textheight, keepaspectratio]{../Results/charts/result/Q4_cluster_distribution}
+    \includegraphics[width=0.58\textwidth, height=0.45\textheight, keepaspectratio]{../Results/charts/result/Q4_cluster_center}
+
 \end{frame}
 
-\begin{frame}{Risultati Analitici: Query 1 e Query 2}
-    \begin{itemize}
-        \item \textbf{Query 1 (Trend)}: Divergenza tra \textbf{Delta} (miglioramento costante, ritardi $<10$ min) e \textbf{American Airlines} (degrado progressivo e maggiori cancellazioni).
-        \item \textbf{Query 2 (Ranking)}:
-        \begin{itemize}
-            \item \textbf{PSA Airlines (OH)}: Peggior vettore per ritardo all'arrivo ($17.16$ min), causato da forte propagazione (\textit{late aircraft delay}).
-            \item \textbf{United (UA)}: Più efficiente tra i grandi vettori, ma penalizzato da fattori esterni (\textit{NAS delay}).
-        \end{itemize}
-        \item \textbf{Insight}: SAE decodifica con precisione le inefficienze strutturali vs eventi esterni.
-    \end{itemize}
-    \vfill
-    \centering
-    \includegraphics[width=0.49\textwidth,height=0.45\textheight,keepaspectratio]{../Results/charts/result/Q1_average_delay_trend.png}
-    \hfill
-    \includegraphics[width=0.49\textwidth,height=0.45\textheight,keepaspectratio]{../Results/charts/result/Q2_top10_arrival_delay.png}
+\begin{frame}{Risultati Analitici: Q1 e Q2 - Performance e Cause}
+    \begin{columns}[T, onlytextwidth]
+
+        \begin{column}{0.48\textwidth}
+            \textbf{Q1: Performance Mensili}
+            \begin{itemize}
+                \footnotesize
+                \item \textbf{DL}: Miglioramento costante.
+                Il ritardo scende e le cancellazioni si stabilizzano sotto lo $0.5\%$.
+                \item \textbf{AA}: Degrado progressivo.
+                Il ritardo sale con un tasso di cancellazione cronico $\sim 1.4\%$.
+            \end{itemize}
+
+            % \vspace{0.15cm}
+            \centering
+            \includegraphics[width=\linewidth, height=0.26\textheight, keepaspectratio]{../Results/charts/result/Q1_average_delay_trend}
+
+            % \vspace{0.1cm}
+            \includegraphics[width=\linewidth, height=0.36\textheight, keepaspectratio]{../Results/charts/result/Q1_cancellation_rate_probabilty}
+        \end{column}
+
+        \begin{column}{0.48\textwidth}
+            \textbf{Q2: Decomposizione dei Ritardi}
+            \begin{itemize}
+                \footnotesize
+                \item \textbf{OH}: Peggior vettore per ritardo in arrivo.
+                Forte incapacità di assorbire i ritardi pregressi (\textit{Late Aircraft delay}).
+                \item \textbf{UA}: Altamente virtuoso, ma fortemente esposto alla congestione del traffico aereo (\textit{NAS delay}).
+            \end{itemize}
+
+            % \vspace{0.15cm}
+            \centering
+            \includegraphics[width=1.12\linewidth, height=0.32\textheight, keepaspectratio]{../Results/charts/result/Q2_top10_arrival_delay}
+
+            % \vspace{0.1cm}
+            \includegraphics[width=1.12\linewidth, height=0.32\textheight, keepaspectratio]{../Results/charts/result/Q2_delay_composition}
+        \end{column}
+
+    \end{columns}
 \end{frame}
 
 \begin{frame}{Conclusioni e Sviluppi Futuri}
