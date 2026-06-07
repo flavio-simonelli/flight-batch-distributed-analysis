@@ -51,8 +51,9 @@
 \definecolor{jvString}{RGB}{3, 47, 98}
 \definecolor{jvComment}{RGB}{106, 115, 125}
 
-\definecolor{sparkRddOperator}{RGB}{227, 98, 9}
-\definecolor{sparkDfOperator}{RGB}{128, 0, 128}
+\definecolor{sparkRddColor}{RGB}{227, 98, 9}
+\definecolor{sparkDfColor}{RGB}{128, 0, 128}
+\definecolor{sparkGenericColor}{RGB}{0, 102, 204}
 
 % --- CONFIGURAZIONE PER SQL CODE ---
 \definecolor{sqlKeyword}{RGB}{0, 51, 153}
@@ -92,16 +93,34 @@
     keywordstyle=[2]\color{pyOperator}\bfseries
 }
 
-% --- STILE JAVA CODE ---
-\lstdefinestyle{Java}{
+% --- STILI JAVA SPARK ---
+\lstdefinestyle{JavaBase}{
     language=Java,
     keywordstyle=\color{jvKeyword}\bfseries,
     stringstyle=\color{jvString},
     commentstyle=\color{jvComment}\itshape,
-    morekeywords=[2]{mapToPair, aggregateByKey, map},
-    keywordstyle=[2]\color{sparkRddOperator}\bfseries,
-    morekeywords=[3]{groupBy, agg, when, col, withColumnRenamed, as, filter, orderBy, limit, avg, min, max, sum, count},
-    keywordstyle=[3]\color{sparkDfOperator}\bfseries
+    morekeywords=[4]{JavaRDD, JavaPairRDD, Dataset, Row, SparkSession, SparkConf, JavaSparkContext, PCAModel, PCA, KMeans, KMeansModel, ClusteringEvaluator, TaskMetrics, SparkListener, SparkListenerStageCompleted, SparkListenerTaskEnd},
+    keywordstyle=[4]\color{sparkGenericColor}\bfseries
+}
+
+\lstdefinestyle{JavaRDD}{
+    style=JavaBase,
+    morekeywords=[2]{mapToPair, aggregateByKey, map, filter, flatMap, reduceByKey, groupByKey, combineByKey, collect, count, first, take, zipWithIndex, coalesce, repartition, cache},
+    keywordstyle=[2]\color{sparkRddColor}\bfseries
+}
+
+\lstdefinestyle{JavaDF}{
+    style=JavaBase,
+    morekeywords=[3]{groupBy, agg, when, col, withColumnRenamed, as, filter, equalTo, orderBy, limit, avg, min, max, sum, count, select, where, withColumn, drop, join, show, describe, alias, lit, otherwise, coalesce, expr, cache},
+    keywordstyle=[3]\color{sparkDfColor}\bfseries
+}
+
+\lstdefinestyle{JavaApp}{
+    style=JavaBase,
+    morekeywords=[2]{mapToPair, aggregateByKey, map, filter, flatMap, reduceByKey, groupByKey, combineByKey, collect, count, first, take, zipWithIndex, coalesce, repartition, cache},
+    keywordstyle=[2]\color{sparkRddColor}\bfseries,
+    morekeywords=[3]{groupBy, agg, when, col, withColumnRenamed, as, filter, orderBy, limit, avg, min, max, sum, count, select, where, withColumn, drop, join, show, describe, alias, lit, otherwise, coalesce, expr},
+    keywordstyle=[3]\color{sparkDfColor}\bfseries
 }
 
 % --- STILE SQL CODE ---
@@ -110,7 +129,7 @@
     keywordstyle=\color{sqlKeyword}\bfseries,
     stringstyle=\color{sqlString},
     commentstyle=\color{sqlComment}\itshape,
-    morekeywords=[2]{ROUND, AVG, MIN, MAX, SUM, COUNT, CASE, WHEN, THEN, END},
+    morekeywords=[2]{ROUND, AVG, MIN, MAX, SUM, COUNT, CASE, WHEN, THEN, END, COALESCE, CAST, AS},
     keywordstyle=[2]\color{sqlFunction}\bfseries
 }
 
@@ -121,91 +140,86 @@
     keywordstyle=\color{white},                   
     stringstyle=\color{white},
     commentstyle=\color{gray},
-    breaklines=true,                              
+    breaklines=true,
     extendedchars=true,
     literate={textdollar}{{\$}}1               
+}
+
+% --- CONFIGURAZIONE BASE BOX ---
+\tcbset{
+    codeboxbase/.style={
+        listing only,
+        arc=5pt,
+        boxrule=0.8pt,
+        fonttitle=\scriptsize\bfseries\sffamily,
+        top=8pt, bottom=1pt, left=1pt, right=1pt,
+        toptitle=3pt, bottomtitle=3pt, lefttitle=6pt, righttitle=6pt,
+        enhanced,
+        attach boxed title to top left={yshift=-2mm, xshift=2mm},
+        boxed title style={sharp corners, boxrule=0.5pt}
+    }
 }
 
 % --- BOX PERSONALIZZATI PER CODICE ---
 
 % Box per codice Python
 \newtcblisting{pythoncodebox}[1]{
-    listing only,
+    codeboxbase,
     listing options={style=Python, aboveskip=0pt, belowskip=0pt, extendedchars=true},
-    arc=5pt,
-    boxrule=0.5pt,
     colframe=black!25,
     colback=black!2,
     title={#1},
     coltitle=black!85,
     colbacktitle=black!8,
-    fonttitle=\scriptsize\bfseries\sffamily,
-    top=0pt, bottom=0pt, left=4pt, right=4pt,
-    toptitle=3pt, bottomtitle=3pt
+    boxed title style={sharp corners, boxrule=0.5pt, colframe=black!25}
 }
 
 % Box per SPARK SQL - Tema Azzurro
 \newtcblisting{sqlcodebox}{
-    listing only,
+    codeboxbase,
     listing options={style=Sql, aboveskip=0pt, belowskip=0pt},
-    arc=5pt,
-    boxrule=0.5pt,
-    colframe=black!15,
-    colback=black!3,
+    colframe=cyan!30!black!30,
+    colback=cyan!2,
     title=Spark SQL API,
-    coltitle=cyan!80!black,
-    colbacktitle=cyan!5,
-    fonttitle=\scriptsize\bfseries\sffamily,
-    top=0pt, bottom=0pt, left=1pt, right=1pt,
-    toptitle=3pt, bottomtitle=3pt, lefttitle=6pt, righttitle=6pt
+    coltitle=cyan!60!black,
+    colbacktitle=cyan!10,
+    boxed title style={sharp corners, boxrule=0.5pt, colframe=cyan!30!black!30}
 }
 
 % Box per DATAFRAME API - Tema Rosa/Viola
 \newtcblisting{dataframecodebox}{
-    listing only,
-    listing options={style=Java, aboveskip=0pt, belowskip=0pt},
-    arc=5pt,
-    boxrule=0.5pt,
-    colframe=black!15,
-    colback=black!3,
+    codeboxbase,
+    listing options={style=JavaDF, aboveskip=0pt, belowskip=0pt},
+    colframe=purple!30!black!30,
+    colback=purple!2,
     title=DataFrame API,
-    coltitle=purple!80!black,
-    colbacktitle=purple!5,
-    fonttitle=\scriptsize\bfseries\sffamily,
-    top=0pt, bottom=0pt, left=1pt, right=1pt,
-    toptitle=3pt, bottomtitle=3pt, lefttitle=6pt, righttitle=6pt
+    coltitle=purple!70!black,
+    colbacktitle=purple!10,
+    boxed title style={sharp corners, boxrule=0.5pt, colframe=purple!30!black!30}
 }
 
 % Box per RDD API - Tema Arancione/Terra
 \newtcblisting{rddcodebox}{
-    listing only,
-    listing options={style=Java, aboveskip=0pt, belowskip=0pt},
-    arc=5pt,
-    boxrule=0.5pt,
-    colframe=black!15,
-    colback=black!3,
+    codeboxbase,
+    listing options={style=JavaRDD, aboveskip=0pt, belowskip=0pt},
+    colframe=orange!30!black!30,
+    colback=orange!2,
     title=RDD API,
     coltitle=orange!80!black,
-    colbacktitle=orange!6,
-    fonttitle=\scriptsize\bfseries\sffamily,
-    top=0pt, bottom=0pt, left=1pt, right=1pt,
-    toptitle=3pt, bottomtitle=3pt, lefttitle=6pt, righttitle=6pt
+    colbacktitle=orange!12,
+    boxed title style={sharp corners, boxrule=0.5pt, colframe=orange!30!black!30}
 }
 
 % Box per codice Java generico - Tema Grigio/Neutro
 \newtcblisting{appcodebox}[1]{
-    listing only,
-    listing options={style=Java, aboveskip=0pt, belowskip=0pt},
-    arc=5pt,
-    boxrule=0.5pt,
-    colframe=black!25,
-    colback=black!3,
+    codeboxbase,
+    listing options={style=JavaApp, aboveskip=0pt, belowskip=0pt},
+    colframe=blue!20!gray!60,
+    colback=blue!2!white,
     title={#1},
-    coltitle=black!85,
-    colbacktitle=black!8,
-    fonttitle=\scriptsize\bfseries\sffamily,
-    top=0pt, bottom=0pt, left=1pt, right=1pt,
-    toptitle=3pt, bottomtitle=3pt, lefttitle=6pt, righttitle=6pt
+    coltitle=blue!40!black,
+    colbacktitle=blue!10!gray!10,
+    boxed title style={sharp corners, boxrule=0.5pt, colframe=blue!20!gray!60}
 }
 
 % Box per terminale - Tema Scuro con testo bianco
