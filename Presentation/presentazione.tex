@@ -698,10 +698,9 @@ globalRows = validFlights
         combiner: (acc, f) -> {
             double d = f.getDouble(DEP_DELAY);
             acc[0] = Math.min(acc[0], d); acc[1] = Math.max(acc[1], d);
-            return acc;},
-        reducer: (a1, a2) -> {
-            a1[0] = Math.min(a1[0], a2[0]); a1[1] = Math.max(a1[1], a2[1]);
-            return a1;})
+            return acc;
+        },
+        reducer: (a1, a2) -> { a1[0] = Math.min(a1[0], a2[0]); a1[1] = Math.max(a1[1], a2[1]); return a1;})
     .map(t -> RowFactory.create(t._1, t._2[0], t._2[1]))
     \end{rddcodebox}
 
