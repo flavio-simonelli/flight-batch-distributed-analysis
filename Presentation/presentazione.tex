@@ -223,31 +223,31 @@
 \end{frame}
 
 % Deployment
-\begin{frame}{Deployment}
-    \begin{columns}[c, onlytextwidth]
-
-        \begin{column}{0.42\textwidth}
-            \centering
-            \textbf{EC2 Deployment}
-
-            \vspace{0.2cm}
-
-            \includegraphics[height=0.65\textheight, keepaspectratio]{../Report/graphs/DeploymentView-EC2}
-        \end{column}
-
-        \hfill
-
-        \begin{column}{0.54\textwidth}
-            \centering
-            \textbf{EMR Deployment}
-
-            \vspace{0.2cm}
-
-            \includegraphics[height=0.65\textheight, keepaspectratio]{../Report/graphs/DeploymentView-EMR}
-        \end{column}
-
-    \end{columns}
-\end{frame}
+%\begin{frame}{Deployment}
+%    \begin{columns}[c, onlytextwidth]
+%
+%        \begin{column}{0.42\textwidth}
+%            \centering
+%            \textbf{EC2 Deployment}
+%
+%            \vspace{0.2cm}
+%
+%            \includegraphics[height=0.65\textheight, keepaspectratio]{../Report/graphs/DeploymentView-EC2}
+%        \end{column}
+%
+%        \hfill
+%
+%        \begin{column}{0.54\textwidth}
+%            \centering
+%            \textbf{EMR Deployment}
+%
+%            \vspace{0.2cm}
+%
+%            \includegraphics[height=0.65\textheight, keepaspectratio]{../Report/graphs/DeploymentView-EMR}
+%        \end{column}
+%
+%    \end{columns}
+%\end{frame}
 
 % Sequence diagram
 % \begin{frame}{Sequence Diagram}
@@ -450,7 +450,7 @@
             \begin{itemize}
                 \item \textbf{Parametrizzazione a Start-Time}:
                 \begin{itemize}
-                    \item \textbf{Configurazione senza ricompilazione}: Gestione via YAML (\texttt{ApplicationConfig}) con override da \textbf{CLI}.
+                    \item \textbf{Configurazione senza ricompilazione}: Gestione via YAML tramite \texttt{ApplicationConfig} con override da CLI.
                     \item \textbf{Selezione del Backend}: Scelta a runtime del paradigma di esecuzione (\textit{RDD, DataFrame, SQL}), del partizionamento e delle strategie di calcolo (KLL vs T-Digest).
                     \item \textbf{Storage Agnostic}: Disaccoppiamento totale dell'I/O su HDFS, S3, Local FS, PostgreSQL, CockroachDB, Redis e HBase.
                 \end{itemize}
@@ -901,32 +901,6 @@ Dataset<Row> finalOutput = appendPcaColumns(
 
 \end{frame}
 
-% \begin{frame}{Monitoraggio e Raccolta Metriche di Performance}
-%
-%     \begin{itemize}
-%         \item \textbf{Architettura Centralizzata (\texttt{PerformanceMetrics})}:
-%         \begin{itemize}
-%             \item \textbf{Design Pattern Singleton}: Istanza unica globalmente sincronizzata (\texttt{getInstance()}) per raccogliere metriche in modo thread-safe durante il ciclo di vita dell'app.
-%             \item \textbf{Struttura a Fasi}: Organizzazione temporale ordinata tramite \texttt{LinkedHashMap} per isolare i tempi dei macro-blocchi (\textit{LOADING, PROCESSING, SAVING}).
-%             \item \textbf{Dual-Clock Tracking}: Separazione netta tra il tempo reale percepito (\textit{Wall-Clock Time}) e il tempo computazionale effettivo speso sui nodi cluster (\textit{Spark Execution Time}).
-%         \end{itemize}
-%
-%         \vspace{0.4cm}
-%
-%         \item \textbf{Disaccoppiamento via Event-Driven Listening (\texttt{JobTimerListener})}:
-%         \begin{itemize}
-%             \item \textbf{Estensione del \texttt{SparkListener}}: Intercettazione nativa e asincrona del ciclo di esecuzione di Spark senza sporcare la logica algoritmica delle query.
-%             \item \textbf{Metriche Granulari}:
-%             \begin{itemize}
-%                 \item \textbf{Job \& Stage Level}: Tracciamento di ID, durate pure e tempi morti spesi nel garbage collector JVM (\textit{GC Time}).
-%                 \item \textbf{I/O \& Network Balance}: Misurazione al byte dei dati letti/scritti su file system e del carico di rete generato durante le fasi di \textit{Shuffle Read/Write}.
-%                 \item \textbf{Worker Profiling (\texttt{onTaskEnd})}: Profilazione distribuita per singolo Executor (CPU time, task count, deserializzazione) per individuare colli di bottiglia o fenomeni di \textit{Data Skew}.
-%             \end{itemize}
-%         \end{itemize}
-%     \end{itemize}
-%
-% \end{frame}
-
 \begin{frame}[fragile]{Spark: Misurazione delle Metriche}
     \begin{columns}[c]
 
@@ -1079,18 +1053,61 @@ watch_step = EmrStepSensor(
 
 \section{Valutazione Sperimentale}\label{sec:experimental_evaluation}
 
-\begin{frame}{Metodologia di Benchmarking}
-    \begin{itemize}
-        \item \textbf{Rigore Statistico}: Ogni combinazione (Query $\times$ Backend) è stata eseguita \textbf{5 volte} per garantire la stabilità delle misurazioni.
-        \item \textbf{Telemetria}: Utilizzo del \texttt{JobTimerListener} (SparkListener) per isolare il \textit{tempo netto di calcolo} dall'overhead di sistema.
-        \item \textbf{Hardware e Infrastruttura}:
-        \begin{itemize}
-            \item \textbf{EC2 (Self-Hosted)}: Master + Worker su istanze \texttt{t3.small}. Storage basato su HDFS.
-            \item \textbf{EMR (Cloud-Native)}: 1 Master + 3 Core su istanze \texttt{m6g.xlarge} (ARM64). Architettura \textit{Shared-Nothing} su Amazon S3 via \texttt{s3a://}.
-        \end{itemize}
-    \end{itemize}
+\begin{frame}{Metodologia di Benchmarking: EC2 Deployment}
+
+    Ogni combinazione (Query $\times$ Backend $\times$ Ottimizzazione I/O) è stata eseguita 5 volte per garantire la stabilità delle misurazioni.
+
+    \begin{columns}[c]
+
+        \begin{column}{0.48\textwidth}
+            \textbf{Deploy On-promise EC2}:
+                
+            \begin{itemize}
+                \item Airflow e Livy - (1x \texttt{t3.medium})
+                \item NiFi - 1x \texttt{t3.small}
+                \item Grafana e Redis Stack - 1x \texttt{t3.small}
+                \item Databases - 1x \texttt{t3.small}
+                \item Master (HDFS e Spark) - 1x \texttt{t3.small}
+                \item Workers (HDFS e Spark) - 3x \texttt{t3.small}
+            \end{itemize}
+
+        \end{column}
+
+        \begin{column}{0.48\textwidth}
+            \centering
+            \includegraphics[height=0.65\textheight, keepaspectratio]{../Report/graphs/DeploymentView-EC2}
+        \end{column}
+    \end{columns}
+
 \end{frame}
 
+\begin{frame}{Metodologia di Benchmarking: AWS EMR Deployment}
+
+    Ogni combinazione (Query $\times$ Backend $\times$ Ottimizzazione I/O) è stata eseguita 5 volte per garantire la stabilità delle misurazioni.
+
+    \begin{columns}[c]
+
+        \begin{column}{0.48\textwidth}
+            \textbf{Deploy Managed AWS EMR}:
+                
+            \begin{itemize}
+                \item Airflow e Livy - (1x \texttt{t3.medium})
+                \item NiFi - 1x \texttt{t3.small}
+                \item Grafana e Redis Stack - 1x \texttt{t3.small}
+                \item Databases - 1x \texttt{t3.small}
+                \item Master Node - 1x \texttt{m6g.xlarge}
+                \item Core Nodes - 3x \texttt{m6g.xlarge}
+            \end{itemize}
+
+        \end{column}
+
+        \begin{column}{0.48\textwidth}
+            \centering
+            \includegraphics[height=0.65\textheight, keepaspectratio]{../Report/graphs/DeploymentView-EMR}
+        \end{column}
+    \end{columns}
+
+\end{frame}
 
 
 \begin{frame}{Confronto API: RDD vs DataFrame vs SQL}
