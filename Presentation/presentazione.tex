@@ -38,6 +38,7 @@
 \usepackage{alltt}
 \usepackage[most]{tcolorbox}
 \tcbuselibrary{listings}
+\usepackage{mathtools}
 
 % --- CONFIGRUAZIONE PER PYTHON CODE ---
 \definecolor{pyKeyword}{RGB}{0,90,180}
@@ -50,11 +51,24 @@
 \definecolor{jvString}{RGB}{3, 47, 98}
 \definecolor{jvComment}{RGB}{106, 115, 125}
 
+\definecolor{sparkRddOperator}{RGB}{227, 98, 9}
+\definecolor{sparkDfOperator}{RGB}{128, 0, 128}
+
 % --- CONFIGURAZIONE PER SQL CODE ---
 \definecolor{sqlKeyword}{RGB}{0, 51, 153}
 \definecolor{sqlFunction}{RGB}{227, 98, 9}
 \definecolor{sqlString}{RGB}{3, 110, 10}
 \definecolor{sqlComment}{RGB}{106, 115, 125}
+
+% --- MACRO PER OBIETTIVI DELLE QUERY ---
+\newcommand{\queryobjective}[1]{
+    \vspace{-0.5cm}
+    \begin{exampleblock}{\footnotesize Obiettivo}
+    \scriptsize #1
+    \end{exampleblock}
+    % \vspace{-0.1cm}
+    \vfill
+}
 
 % --- IMPOSTAZIONI GLOBALI LISTINGS ---
 \lstset{
@@ -78,6 +92,42 @@
     keywordstyle=[2]\color{pyOperator}\bfseries
 }
 
+% --- STILE JAVA CODE ---
+\lstdefinestyle{Java}{
+    language=Java,
+    keywordstyle=\color{jvKeyword}\bfseries,
+    stringstyle=\color{jvString},
+    commentstyle=\color{jvComment}\itshape,
+    morekeywords=[2]{mapToPair, aggregateByKey, map},
+    keywordstyle=[2]\color{sparkRddOperator}\bfseries,
+    morekeywords=[3]{groupBy, agg, when, col, withColumnRenamed, as, filter, orderBy, limit, avg, min, max, sum, count},
+    keywordstyle=[3]\color{sparkDfOperator}\bfseries
+}
+
+% --- STILE SQL CODE ---
+\lstdefinestyle{Sql}{
+    language=SQL,
+    keywordstyle=\color{sqlKeyword}\bfseries,
+    stringstyle=\color{sqlString},
+    commentstyle=\color{sqlComment}\itshape,
+    morekeywords=[2]{ROUND, AVG, MIN, MAX, SUM, COUNT, CASE, WHEN, THEN, END},
+    keywordstyle=[2]\color{sqlFunction}\bfseries
+}
+
+% --- STILE PER TERMINALE ---
+\lstdefinestyle{Terminal}{
+    language=bash,
+    basicstyle=\ttfamily\scriptsize\color{white}, 
+    keywordstyle=\color{white},                   
+    stringstyle=\color{white},
+    commentstyle=\color{gray},
+    breaklines=true,                              
+    extendedchars=true,
+    literate={textdollar}{{\$}}1               
+}
+
+% --- BOX PERSONALIZZATI PER CODICE ---
+
 % Box per codice Python
 \newtcblisting{pythoncodebox}[1]{
     listing only,
@@ -94,83 +144,55 @@
     toptitle=3pt, bottomtitle=3pt
 }
 
-% --- STILE JAVA CODE ---
-\lstdefinestyle{Java}{
-    language=Java,
-    keywordstyle=\color{jvKeyword}\bfseries,
-    stringstyle=\color{jvString},
-    commentstyle=\color{jvComment}\itshape
-}
-
-% --- STILE SQL CODE ---
-\lstdefinestyle{Sql}{
-    language=SQL,
-    keywordstyle=\color{sqlKeyword}\bfseries,
-    stringstyle=\color{sqlString},
-    commentstyle=\color{sqlComment}\itshape,
-    morekeywords=[2]{ROUND, AVG, MIN, MAX, SUM, COUNT, CASE, WHEN, THEN, END},
-    keywordstyle=[2]\color{sqlFunction}\bfseries
-}
-
-\lstdefinestyle{TerminalStyle}{
-    language=bash,
-    basicstyle=\ttfamily\scriptsize\color{white}, 
-    keywordstyle=\color{white},                   
-    stringstyle=\color{white},
-    commentstyle=\color{gray},
-    breaklines=true,                              
-    extendedchars=true,
-    literate={textdollar}{{\$}}1               
-}
-
-% 1. Box per SPARK SQL (Tema Azzurro)
-\newtcblisting{sqlcodebox}[1]{
+% Box per SPARK SQL - Tema Azzurro
+\newtcblisting{sqlcodebox}{
     listing only,
     listing options={style=Sql, aboveskip=0pt, belowskip=0pt},
     arc=5pt,
     boxrule=0.5pt,
     colframe=black!15,
     colback=black!3,
-    title={#1},
+    title=Spark SQL API,
     coltitle=cyan!80!black,
     colbacktitle=cyan!5,
     fonttitle=\scriptsize\bfseries\sffamily,
-    top=0pt, bottom=0pt, left=6pt, right=6pt,
-    toptitle=4pt, bottomtitle=4pt
+    top=0pt, bottom=0pt, left=1pt, right=1pt,
+    toptitle=3pt, bottomtitle=3pt, lefttitle=6pt, righttitle=6pt
 }
 
-% 2. Box per DATAFRAME API (Tema Rosa/Viola)
-\newtcblisting{dataframecodebox}[1]{
+% Box per DATAFRAME API - Tema Rosa/Viola
+\newtcblisting{dataframecodebox}{
     listing only,
     listing options={style=Java, aboveskip=0pt, belowskip=0pt},
     arc=5pt,
     boxrule=0.5pt,
     colframe=black!15,
     colback=black!3,
-    title={#1},
+    title=DataFrame API,
     coltitle=purple!80!black,
     colbacktitle=purple!5,
     fonttitle=\scriptsize\bfseries\sffamily,
-    top=0pt, bottom=0pt, left=6pt, right=6pt,
-    toptitle=4pt, bottomtitle=4pt
+    top=0pt, bottom=0pt, left=1pt, right=1pt,
+    toptitle=3pt, bottomtitle=3pt, lefttitle=6pt, righttitle=6pt
 }
 
-% 3. Box per RDD API (Tema Arancione/Terra)
-\newtcblisting{rddcodebox}[1]{
+% Box per RDD API - Tema Arancione/Terra
+\newtcblisting{rddcodebox}{
     listing only,
     listing options={style=Java, aboveskip=0pt, belowskip=0pt},
     arc=5pt,
     boxrule=0.5pt,
     colframe=black!15,
     colback=black!3,
-    title={#1},
+    title=RDD API,
     coltitle=orange!80!black,
     colbacktitle=orange!6,
     fonttitle=\scriptsize\bfseries\sffamily,
-    top=0pt, bottom=0pt, left=6pt, right=6pt,
-    toptitle=4pt, bottomtitle=4pt
+    top=0pt, bottom=0pt, left=1pt, right=1pt,
+    toptitle=3pt, bottomtitle=3pt, lefttitle=6pt, righttitle=6pt
 }
 
+% Box per codice Java generico - Tema Grigio/Neutro
 \newtcblisting{appcodebox}[1]{
     listing only,
     listing options={style=Java, aboveskip=0pt, belowskip=0pt},
@@ -182,13 +204,14 @@
     coltitle=black!85,
     colbacktitle=black!8,
     fonttitle=\scriptsize\bfseries\sffamily,
-    top=0pt, bottom=0pt, left=6pt, right=6pt,
-    toptitle=4pt, bottomtitle=4pt
+    top=0pt, bottom=0pt, left=1pt, right=1pt,
+    toptitle=3pt, bottomtitle=3pt, lefttitle=6pt, righttitle=6pt
 }
 
+% Box per terminale - Tema Scuro con testo bianco
 \newtcblisting{terminalbox}[1]{
     listing only,
-    listing options={style=TerminalStyle, aboveskip=0pt, belowskip=0pt},
+    listing options={style=Terminal, aboveskip=0pt, belowskip=0pt},
     arc=5pt,
     boxrule=0.5pt,
     colframe=black!80,
@@ -201,6 +224,7 @@
     toptitle=4pt, bottomtitle=4pt
 }
 
+% ------
 
 % Informazioni sul Titolo
 \title[Sky Analytics Engine]{Sky Analytics Engine}
@@ -506,59 +530,49 @@ spark-submit
 
 \end{frame}
 
-\begin{frame}[fragile]{Query 1: Analisi Mensile Performance — RDD API}
+\begin{frame}[fragile, t]{Query 1 - Analisi Mensile Performance: RDD API}
 
-    \vspace{-0.3cm}
-    \begin{exampleblock}{\footnotesize Obiettivo}
-        \scriptsize Aggregare i voli 2025 (AA vs DL) su base mensile. Calcolare min, max, media di \textit{DEP\_DELAY} (solo voli non cancellati) e il \textit{CANCELLATION RATE}.
-    \end{exampleblock}
+    \queryobjective{Aggregare i voli 2025 di AA e DL su base mensile. Calcolare min, max, media di departure delay solo sui voli non cancellati e il tasso di cancellazione dei voli}
 
-    \vspace{-0.2cm}
-
-    % Usiamo il rddcodebox a tutta larghezza (senza colonne) visto che il codice è lungo
-    \begin{rddcodebox}{Paradigm 1: Low-Level RDD API}
-datasetVoli
-    .mapToPair(v -> ([v.airline, v.month], v))
+    \begin{rddcodebox}
+ flights.mapToPair(v -> ([v.airline, v.month], v))
     .aggregateByKey(
-        zeroValue: [sommaRitardi: 0, maxDelay: -inf, minDelay: +inf, nonCancellati: 0, totali: 0],
+        zeroValue: [sumDelay: 0, maxDelay: -inf, minDelay: +inf, notCancelled: 0, total: 0],
         combiner: (acc, v) -> {
-            acc.totali += 1
+            acc.total += 1
             if !v.cancelled then
-                acc.sommaRitardi += v.dep_delay
-                acc.maxDelay = MAX(acc.maxDelay, v.dep_delay)
-                acc.minDelay = MIN(acc.minDelay, v.dep_delay)
-                acc.nonCancellati += 1
-            return acc},
+                acc.sumDelay     += v.dep_delay
+                acc.maxDelay     = MAX(acc.maxDelay, v.dep_delay)
+                acc.minDelay     = MIN(acc.minDelay, v.dep_delay)
+                acc.notCancelled += 1
+            return acc
+        },
         reducer: (a1, a2) -> {
-            a1.sommaRitardi += a2.sommaRitardi
-            a1.maxDelay = MAX(a1.maxDelay, a2.maxDelay)
-            a1.minDelay = MIN(a1.minDelay, a2.minDelay)
-            a1.nonCancellati += a2.nonCancellati
-            a1.totali += a2.totali
-            return a1})
+            a1.sumDelay     += a2.sumDelay
+            a1.maxDelay     = MAX(a1.maxDelay, a2.maxDelay)
+            a1.minDelay     = MIN(a1.minDelay, a2.minDelay)
+            a1.notCancelled += a2.notCancelled
+            a1.total        += a2.total
+            return a1
+        })
     .map(tuple -> {
-        media = ROUND(tuple.sommaRitardi / tuple.nonCancellati, 2)
-        tasso_canc = ROUND((tuple.totali - tuple.nonCancellati) / tuple.totali * 100, 2)
-        return Row(tuple.month, tuple.airline, media, tuple.minDelay, tuple.maxDelay, tasso_canc)})
+        mean = tuple.sumDelay / tuple.notCancelled
+        cancRate = (tuple.total - tuple.notCancelled) / tuple.total * 100
+        return Row(tuple.month, tuple.airline, media, tuple.minDelay, tuple.maxDelay, cancRate)
+    })
     \end{rddcodebox}
 
 \end{frame}
 
-\begin{frame}[fragile]{Query 1: Analisi Mensile Performance — High-Level APIs}
+\begin{frame}[fragile, t]{Query 1 - Analisi Mensile Performance: High-Level API}
 
-    \vspace{-0.3cm}
-    \begin{exampleblock}{\footnotesize Obiettivo}
-        \scriptsize Aggregare i voli 2025 (AA vs DL) su base mensile. Calcolare min, max, media di \textit{DEP\_DELAY} e il \textit{CANCELLATION RATE}.
-    \end{exampleblock}
+    \queryobjective{Aggregare i voli 2025 di AA e DL su base mensile. Calcolare min, max, media di departure delay solo sui voli non cancellati e il tasso di cancellazione dei voli}
 
-    \vspace{0.2cm}
+    \begin{columns}[c]
 
-    \begin{columns}[T, totalwidth=\textwidth]
-
-        % COLONNA 1: DATAFRAME (Usa javacodebox)
-        \begin{column}{0.49\textwidth}
-            \begin{dataframecodebox}{Paradigm 2: DataFrame API (DSL)}
-datasetVoli
+        \begin{column}{0.53\textwidth}
+            \begin{dataframecodebox}
+flights
   .groupBy("MONTH", "OP_UNIQUE_CARRIER")
   .agg(
     avg(when(col("CANCELLED") == 0, col("DEP_DELAY"))).as("mean"),
@@ -571,19 +585,15 @@ datasetVoli
             \end{dataframecodebox}
         \end{column}
 
-        % COLONNA 2: SPARK SQL (Usa sqlcodebox)
-        \begin{column}{0.49\textwidth}
-            \begin{sqlcodebox}{Paradigm 3: Spark SQL}
+        \begin{column}{0.53\textwidth}
+            \begin{sqlcodebox}
 SELECT
   MONTH             AS month,
   OP_UNIQUE_CARRIER AS airline,
 
-  AVG(CASE WHEN CANCELLED == 0
-    THEN DEP_DELAY END) AS 'mean',
-  MIN(CASE WHEN CANCELLED == 0
-    THEN DEP_DELAY END) AS 'min',
-  MAX(CASE WHEN CANCELLED == 0
-    THEN DEP_DELAY END) AS 'max',
+  AVG(CASE WHEN CANCELLED == 0 THEN DEP_DELAY END) AS 'mean',
+  MIN(CASE WHEN CANCELLED == 0 THEN DEP_DELAY END) AS 'min',
+  MAX(CASE WHEN CANCELLED == 0 THEN DEP_DELAY END) AS 'max',
 
   (SUM(CANCELLED) / COUNT(*)) * 100 AS 'cancel_rate'
 
@@ -596,60 +606,48 @@ GROUP BY MONTH, OP_UNIQUE_CARRIER
 
 \end{frame}
 
-\begin{frame}[fragile]{Query 2: Top 10 Ritardi e Scomposizione Cause — RDD API}
+\begin{frame}[fragile, t]{Query 2 - Top 10 Ritardi e Scomposizione Cause: RDD API}
 
-    \vspace{-0.3cm}
-    \begin{exampleblock}{\footnotesize Obiettivo}
-        \scriptsize Classifica prime 10 compagnie per \textit{ARR\_DELAY} medio decrescente (voli non cancellati/deviati con conteggio $\ge$ 500), mostrando l'incidenza media di ciascuna causa di ritardo.
-    \end{exampleblock}
+    \queryobjective{Classifica delle prime 10 compagnie per ritardo medio all'arrivo decrescente, considerando solo i voli non cancellati/deviati e con conteggio maggiore o uguale a 500, mostrando anche l'incidenza media di ciascuna causa di ritardo.}
 
-    \vspace{-0.2cm}
-
-    % Usiamo il rddcodebox a tutta larghezza visto il volume del codice
-    \begin{rddcodebox}{Paradigm 1: Low-Level RDD API}
+    \begin{rddcodebox}
 validFlights = flights.filter(f -> getSafe(f, CANCELLED) == 0 && getSafe(f, DIVERTED) == 0)
-reducedRDD = validFlights
-    .mapToPair(f -> (f.getString(OP_UNIQUE_CARRIER), f))
+reducedRDD = validFlights.mapToPair(f -> (f.getString(OP_UNIQUE_CARRIER), f))
     .aggregateByKey(
         zeroValue: new double[7],  // [0: Count, 1: Arr, 2: Carrier, 3: Weather, 4: NAS, 5: Security, 6: Late]
         combiner: (acc, f) -> {
-            acc[0] += 1.0;                       acc[1] += getSafe(f, ARR_DELAY);
-            acc[2] += getSafe(f, CARRIER_DELAY);  acc[3] += getSafe(f, WEATHER_DELAY);
-            acc[4] += getSafe(f, NAS_DELAY);      acc[5] += getSafe(f, SECURITY_DELAY);
-            acc[6] += getSafe(f, LATE_AIRCRAFT_DELAY);
-            return acc;},
+            acc.count   += 1.0                             acc.arr         += getSafe(f, ARR_DELAY)
+            acc.carrier += getSafe(f, CARRIER_DELAY)       acc.weather     += getSafe(f, WEATHER_DELAY)
+            acc.nas     += getSafe(f, NAS_DELAY)           acc.security    += getSafe(f, SECURITY_DELAY)
+            acc.late    += getSafe(f, LATE_AIRCRAFT_DELAY)
+            return acc
+        },
         reducer: (acc1, acc2) -> {
-            for (int i=0; i<7; i++) acc1[i] += acc2[i];
-            return acc1;})
-processedRDD = reducedRDD
-    .filter(t -> t._2[0] >= 500.0)
+            for (int i=0; i<7; i++) acc1[i] += acc2[i]
+            return acc1
+        })
+processedRDD = reducedRDD.filter(t -> t.del.count >= 500.0)
     .map(t -> {
-        double c = t._2[0];
-        return RowFactory.create(t._1, (long)c, t._2[1]/c, t._2[2]/c, t._2[3]/c, t._2[4]/c, t._2[5]/c, t._2[6]/c);})
-// Ordinamento globale ed estrazione Top 10 (Volume trascurabile post-filtraggio)
-sortedRDD = processedRDD.sortBy(r -> r.getDouble(2), false, partitions)
-top10RDD  = sortedRDD.zipWithIndex().filter(t -> t._2 < 10).map(t -> t._1).coalesce(1)
+        double c = t.del.count
+        return Row(t.carrier, c, t.del.arr/c, t.del.carrier/c, t.del.weather/c, t.del.nas/c, t.del.security/c, t.del.late/c)
+    })
+sortedRDD = processedRDD.sortBy(r -> r.arrDelay, false, partitions)
+top10RDD  = sortedRDD.zipWithIndex().filter(t -> t.position < 10).map(t -> t.row).coalesce(1)
     \end{rddcodebox}
 
 \end{frame}
 
-\begin{frame}[fragile]{Query 2: Top 10 Ritardi e Scomposizione Cause — High-Level APIs}
+\begin{frame}[fragile, t]{Query 2 - Top 10 Ritardi e Scomposizione Cause: High-Level APIs}
 
-    \vspace{-0.3cm}
-    \begin{exampleblock}{\footnotesize Obiettivo}
-        \scriptsize Classifica prime 10 compagnie per \textit{ARR\_DELAY} medio decrescente (voli non cancellati/deviati con conteggio $\ge$ 500), mostrando l'incidenza media di ciascuna causa di ritardo.
-    \end{exampleblock}
+    \queryobjective{Classifica delle prime 10 compagnie per ritardo medio all'arrivo decrescente, considerando solo i voli non cancellati/deviati e con conteggio maggiore o uguale a 500, mostrando anche l'incidenza media di ciascuna causa di ritardo.}
 
-    \vspace{-0.2cm}
+    \begin{columns}[c]
 
-    \begin{columns}[T, totalwidth=\textwidth]
-
-        % COLONNA 1: DATAFRAME (Usa dataframecodebox)
-        \begin{column}{0.49\textwidth}
-            \begin{dataframecodebox}{Paradigm 2: DataFrame API (DSL)}
+        \begin{column}{0.53\textwidth}
+            \begin{dataframecodebox}
 flights
   .filter(col("CANCELLED").equalTo(0)
-    .and(col("DIVERTED").equalTo(0)))
+            .and(col("DIVERTED").equalTo(0)))
   .groupBy("OP_UNIQUE_CARRIER")
   .agg(
     count("*").as("num_flights"),
@@ -667,24 +665,25 @@ flights
             \end{dataframecodebox}
         \end{column}
 
-        \hfill
-
-        % COLONNA 2: SPARK SQL (Usa sqlcodebox)
-        \begin{column}{0.49\textwidth}
-            \begin{sqlcodebox}{Paradigm 3: Spark SQL}
+        \begin{column}{0.53\textwidth}
+            \begin{sqlcodebox}
 SELECT
   OP_UNIQUE_CARRIER AS carrier,
   COUNT(*)          AS num_flights,
-  AVG(COALESCE(ARR_DELAY, 0)) AS arrdelay_mean,
-  AVG(COALESCE(CARRIER_DELAY, 0)) AS carrier_delay_mean,
-  AVG(COALESCE(WEATHER_DELAY, 0)) AS weather_delay_mean,
-  AVG(COALESCE(NAS_DELAY, 0)) AS nas_delay_mean,
-  AVG(COALESCE(SECURITY_DELAY, 0)) AS security_delay_mean,
+
+  AVG(COALESCE(ARR_DELAY, 0))           AS arrdelay_mean,
+  AVG(COALESCE(CARRIER_DELAY, 0))       AS carrier_delay_mean,
+  AVG(COALESCE(WEATHER_DELAY, 0))       AS weather_delay_mean,
+  AVG(COALESCE(NAS_DELAY, 0))           AS nas_delay_mean,
+  AVG(COALESCE(SECURITY_DELAY, 0))      AS security_delay_mean,
   AVG(COALESCE(LATE_AIRCRAFT_DELAY, 0)) AS late_aircraft_delay_mean
+
 FROM flights
 WHERE CANCELLED = 0 AND DIVERTED = 0
+
 GROUP BY OP_UNIQUE_CARRIER
 HAVING num_flights >= 500
+
 ORDER BY arrdelay_mean DESC
 LIMIT 10
             \end{sqlcodebox}
@@ -694,64 +693,52 @@ LIMIT 10
 
 \end{frame}
 
-\begin{frame}[fragile]{Query 3: Percentili Orari e Min/Max Globali — RDD API}
+\begin{frame}[fragile, t]{Query 3 - Percentili Orari e Min/Max Globali: RDD API}
 
-    \vspace{-0.3cm}
-    \begin{exampleblock}{\footnotesize Obiettivo}
-        \scriptsize Calcolo dei percentili (25, 50, 75, 90) del \textit{DEP\_DELAY} per fascia oraria (24h) tramite algoritmi di sketch (\textit{KLL/t-digest}) e calcolo parallelo di min/max globali.
-    \end{exampleblock}
+    \queryobjective{Calcolo dei percentili 25, 50, 75 e 90 del departure delay per fascia oraria tramite algoritmi di sketch e calcolo di min/max globali.}
 
-    \vspace{-0.2cm}
-
-    % Box RDD a tutta larghezza con la nuova spaziatura ottimizzata
-    \begin{rddcodebox}{Paradigm 1: RDD API (Dual-Pipeline Architecture)}
-// Subset condiviso e mantenuto in memoria per evitare scansioni multiple
-validFlights = flights.filter(f -> f.getDouble(CANCELLED) == 0.0 && !f.isNullAt(DEP_DELAY)).cache()
+    \begin{rddcodebox}
+validFlights = flights.filter(f -> getSafe(f, CANCELLED) == 0 && !f.isNullAt(DEP_DELAY)).cache()
 // Pipeline 1: Calcolo Percentili Orari tramite Sketch distribuiti
 PercentileSketch sketch = PercentileSketch.from(config.getPercentileAlgorithm())
-hourlyRows = validFlights
-    .filter(f -> !f.isNullAt(CRS_DEP_TIME))
-    .mapToPair(f -> {
-        int hour = (f.getInt(CRS_DEP_TIME) / 100) % 24;
-        return new Tuple2<>(new Tuple2<>(f.getString(CARRIER), hour), f.getDouble(DEP_DELAY));})
+hourlyRows = validFlights.filter(f -> !f.isNullAt(CRS_DEP_TIME))
+    .mapToPair(f -> ( (f.getString(CARRIER), (f.getInt(CRS_DEP_TIME) / 100) % 24), getSafe(f, DEP_DELAY) ))
     .combineByKey(sketch::init, sketch::update, sketch::merge)
     .map(t -> {
-        double[] q = sketch.getQuantiles(t._2, 0.25, 0.50, 0.75, 0.90);
-        return RowFactory.create(t._1._1, t._1._2, round2(q[0]), round2(q[1]), round2(q[2]), round2(q[3]));})
+        double[] q = sketch.getQuantiles(t.percentile, 0.25, 0.50, 0.75, 0.90)
+        return Row(t.key.carrier, t.key.hour, q.p25, q.p50, q.p75, q.p90)
+    })
 // Pipeline 2: Aggregazione Globale Min/Max per Compagnia
-globalRows = validFlights
-    .mapToPair(f -> new Tuple2<>(f.getString(CARRIER), f))
+globalRows = validFlights.mapToPair(f -> (f.getString(CARRIER), f))
     .aggregateByKey(
-        zeroValue: new double[]{Double.MAX_VALUE, -Double.MAX_VALUE},
+        zeroValue: new double[]{+inf, -inf},  // [0: minDelay, 1: maxDelay]
         combiner: (acc, f) -> {
-            double d = f.getDouble(DEP_DELAY);
-            acc[0] = Math.min(acc[0], d); acc[1] = Math.max(acc[1], d);
-            return acc;
+            double d = getSafe(f, DEP_DELAY)
+            acc.min = MIN(acc[0], d)            acc.max = MAX(acc[1], d)
+            return acc
         },
-        reducer: (a1, a2) -> { a1[0] = Math.min(a1[0], a2[0]); a1[1] = Math.max(a1[1], a2[1]); return a1;})
-    .map(t -> RowFactory.create(t._1, t._2[0], t._2[1]))
+        reducer: (a1, a2) -> {
+            a1.min = MIN(a1.min, a2.min)              a1.max = MAX(a1.max, a2.max)
+            return a1
+        })
+    .map(t -> Row(t.carrier, t.res.min, t.res.max))
     \end{rddcodebox}
 
 \end{frame}
 
-\begin{frame}[fragile]{Query 3: Percentili Orari e Min/Max Globali — High-Level APIs}
+\begin{frame}[fragile, t]{Query 3 - Percentili Orari e Min/Max Globali: High-Level APIs}
 
-    \vspace{-0.3cm}
-    \begin{exampleblock}{\footnotesize Obiettivo}
-        \scriptsize Calcolo dei percentili (25, 50, 75, 90) del \textit{DEP\_DELAY} per fascia oraria (24h) tramite algoritmi di sketch integrati (\textit{KLL/t-digest}) e calcolo parallelo di min/max globali.
-    \end{exampleblock}
+    \queryobjective{Calcolo dei percentili 25, 50, 75 e 90 del departure delay per fascia oraria tramite algoritmi di sketch e calcolo di min/max globali.}
 
-    \vspace{-0.3cm}
+    \begin{columns}[c]
 
-    \begin{columns}[T, totalwidth=\textwidth]
+        \begin{column}{0.53\textwidth}
+            \begin{dataframecodebox}
+validFlights = flights.filter(col("CANCELLED").equalTo(0))
+                        .cache()
 
-        % COLONNA 1: DATAFRAME (Usa dataframecodebox)
-        \begin{column}{0.49\textwidth}
-            \begin{dataframecodebox}{Paradigm 2: DataFrame API (DSL)}
-flights.cache()
 // Pipeline 1: Percentili orari approssimati
-hourlyStats = flights
-  .filter(col("CANCELLED").equalTo(0))
+hourlyStats = validFlights
   .withColumn("hour",
     col("CRS_DEP_TIME").divide(100).cast("int"))
   .groupBy("OP_UNIQUE_CARRIER", "hour")
@@ -761,8 +748,9 @@ hourlyStats = flights
     expr("percentile_approx(DEP_DELAY, 0.75)").as("p75"),
     expr("percentile_approx(DEP_DELAY, 0.90)").as("p90"))
   .withColumnRenamed("OP_UNIQUE_CARRIER", "airline")
+
 // Pipeline 2: Min/Max assoluti
-globalMinMax = flights
+globalMinMax = validFlights
   .groupBy("OP_UNIQUE_CARRIER")
   .agg(
     min("DEP_DELAY").as("min_delay"),
@@ -773,10 +761,12 @@ globalMinMax = flights
 
         \hfill
 
-        % COLONNA 2: SPARK SQL (Usa sqlcodebox)
-        \begin{column}{0.49\textwidth}
-            \begin{sqlcodebox}{Paradigm 3: Spark SQL}
--- Pipeline 1: Stima quantili orari
+        \begin{column}{0.53\textwidth}
+            \begin{sqlcodebox}
+flights.filter("CANCELLED = 0")
+        .createOrReplaceTempView("validFlights");
+
+// Pipeline 1: Percentili orari approssimati
 SELECT
   OP_UNIQUE_CARRIER AS airline,
   CAST(CRS_DEP_TIME / 100 AS INT) AS hour,
@@ -784,16 +774,16 @@ SELECT
   percentile_approx(DEP_DELAY, 0.50) AS p50,
   percentile_approx(DEP_DELAY, 0.75) AS p75,
   percentile_approx(DEP_DELAY, 0.90) AS p90
-FROM flights
+FROM validFlights
 WHERE CANCELLED = 0
 GROUP BY OP_UNIQUE_CARRIER, hour;
 
--- Pipeline 2: Estremi globali
+// Pipeline 2: Min/Max assoluti
 SELECT
   OP_UNIQUE_CARRIER AS airline,
   MIN(DEP_DELAY) AS min_delay,
   MAX(DEP_DELAY) AS max_delay
-FROM flights
+FROM validFlights
 GROUP BY OP_UNIQUE_CARRIER;
             \end{sqlcodebox}
         \end{column}
@@ -802,13 +792,16 @@ GROUP BY OP_UNIQUE_CARRIER;
 
 \end{frame}
 
-\begin{frame}[fragile]{Algoritmi Percentili a Confronto: T-Digest vs KLL Sketch}
+\begin{frame}[fragile, t]{Query 3 - Percentili Orari e Min/Max Globali: T-Digest vs KLL Sketch}
 
-    \begin{columns}[T, totalwidth=\textwidth]
+    \queryobjective{Calcolo dei percentili 25, 50, 75 e 90 del departure delay per fascia oraria tramite algoritmi di sketch e calcolo di min/max globali.}
 
-        % COLONNA 1: T-DIGEST (Usa il nuovo appcodebox)
+    \begin{columns}[c]
+
         \begin{column}{0.49\textwidth}
-            \begin{appcodebox}{T-Digest (Ted Dunning's Library)}
+            \begin{appcodebox}{T-Digest}
+final int COMPRESSION = 100;
+
 // Inizializzazione buffer
 MergingDigest digest = new MergingDigest(100.0);
 
@@ -819,23 +812,25 @@ MergingDigest.fromBytes(ByteBuffer.wrap(state));
 ByteBuffer buf = ByteBuffer.allocate(
     digest.smallByteSize()
 );
+
 digest.asSmallBytes(buf);
 return buf.array();
             \end{appcodebox}
 
-            \vspace{-0.1cm}
-            \begin{itemize}
-                \item \scriptsize \textbf{Accuratezza}: $\sim$1\% errore nelle \textbf{code}.
-                \item \scriptsize \textbf{Parametro}: \texttt{COMPRESSION = 100.0}.
-                \item \scriptsize $\rightarrow$ Ottimo per l'analisi accurata degli estremi (es. ritardi record).
-            \end{itemize}
+            % Formule T-Digest: Caso Medio e Caso Peggiore
+            {\footnotesize
+                \[
+                \begin{aligned}
+                    \epsilon_{avg} &\approx \frac{\pi}{2\delta} \xRightarrow{\delta=100} \frac{\pi}{200} \approx 1.57\% \\[1ex]
+                    \epsilon_{worst} &\approx \frac{3}{\delta} \xRightarrow{\delta=100} \frac{3}{100} = 3.0\%
+                \end{aligned}
+                \]
+            }
+
         \end{column}
 
-        \hfill
-
-        % COLONNA 2: KLL SKETCH (Usa il nuovo appcodebox)
         \begin{column}{0.49\textwidth}
-            \begin{appcodebox}{KLL Sketch (Apache DataSketches)}
+            \begin{appcodebox}{KLL Sketch}
 // Allocazione nativa in Heap
 KllDoublesSketch.newHeapInstance();
 
@@ -850,32 +845,30 @@ sketch.getQuantile(q,
   QuantileSearchCriteria.INCLUSIVE);
             \end{appcodebox}
 
-            \vspace{-0.1cm}
-            \begin{itemize}
-                \item \scriptsize \textbf{Accuratezza}: Errore di rango $\sim$1.65\%.
-                \item \scriptsize \textbf{Parametro}: Default \texttt{k=200} (ottimale).
-                \item \scriptsize $\rightarrow$ Più veloce nell'I/O grazie all'integrazione con lo strato \texttt{Memory}.
-            \end{itemize}
+            % Formule KLL: Caso Medio e Caso Peggiore
+            {\footnotesize
+                \[
+                \begin{aligned}
+                    \epsilon_{avg} &\approx \frac{1.4}{k} \xRightarrow{k=200} \frac{1.4}{200} = 0.7\% \\[1ex]
+                    \epsilon_{worst} &\approx \frac{3.3}{k} \xRightarrow{k=200} \frac{3.3}{200} = 1.65\%
+                \end{aligned}
+                \]
+            }
+
         \end{column}
 
     \end{columns}
 
 \end{frame}
 
-\begin{frame}[fragile]{Query 4: Airline Clustering — ML Pipeline}
+\begin{frame}[fragile, t]{Query 4 - Airline Clustering: ML Pipeline}
 
-    \vspace{-0.3cm}
-    \begin{exampleblock}{\footnotesize Obiettivo Analisi}
-        \scriptsize Individuare gruppi di vettori con comportamenti simili su 11 metriche aggregate (11D), standardizzando lo spazio multivariato ed applicando l'algoritmo K-Means.
-    \end{exampleblock}
+    \queryobjective{Individuare gruppi di compagnie con comportamenti simili su metriche aggregate, standardizzando lo spazio multivariato ed applicando l'algoritmo K-Means.}
 
-    \vspace{-0.2cm}
+    \begin{columns}[c]
 
-    \begin{columns}[T, totalwidth=\textwidth]
-
-        % COLONNA 1: SILHOUETTE ANALYSIS & K-MEANS
-        \begin{column}{0.49\textwidth}
-            \begin{appcodebox}{Silhouette Analysis \& K-Means}
+        \begin{column}{0.51\textwidth}
+            \begin{appcodebox}{Silhouette Analysis e K-Means}
 ClusteringEvaluator evaluator = new ClusteringEvaluator()
     .setFeaturesCol("features")
     .setPredictionCol("prediction")
@@ -892,18 +885,9 @@ for (int k = 2; k <= 5; k++) {
 KMeansModel modelFinal = new KMeans()
     .setK(bestK).setSeed(42L).fit(scaledData);
             \end{appcodebox}
-
-            \vspace{-0.1cm}
-            \begin{itemize}
-                \item \scriptsize \textbf{Scaling}: Spazio standardizzato a 11D tramite \texttt{StandardScaler}.
-                \item \scriptsize \textbf{Ottimizzazione}: Selezione iterativa del $K$ per ridurre l'arbitrarietà.
-            \end{itemize}
         \end{column}
 
-        \hfill
-
-        % COLONNA 2: PCA PROJECTION
-        \begin{column}{0.49\textwidth}
+        \begin{column}{0.51\textwidth}
             \begin{appcodebox}{Proiezione PCA per Visualizzazione}
 PCA pca = new PCA()
     .setInputCol("features")
@@ -914,20 +898,15 @@ PCAModel pcaModel = pca.fit(finalPredictions);
 
 // Espansione del vettore nei componenti x e y
 Dataset<Row> finalOutput = appendPcaColumns(
-    pcaModel.transform(finalPredictions)
+    pcaModel.transform(finalPredictions), ...
 );
             \end{appcodebox}
-
-            \vspace{-0.1cm}
-            \begin{itemize}
-                \item \scriptsize \textbf{Dimensionalità}: Il clustering avviene nel blocco nativo a 11D.
-                \item \scriptsize \textbf{Riduzione Geometrica}: PCA applicata \textit{post-clustering} solo per mappare i punti sul piano cartesiano 2D.
-            \end{itemize}
         \end{column}
 
     \end{columns}
 
 \end{frame}
+
 
 \begin{frame}[fragile]{Spark: Misurazione delle Metriche}
     \begin{columns}[c]
