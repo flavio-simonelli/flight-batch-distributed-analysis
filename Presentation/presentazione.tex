@@ -262,14 +262,45 @@
 
 % Slide dell'Indice
 \begin{frame}{Indice}
-    \tableofcontents[hideallsubsections]
+    \vspace{-0.3cm}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \begin{enumerate}
+                \item \textbf{Architettura e Flusso}
+                \\{\scriptsize Panoramica del sistema e diagrammi}
+                \vspace{0.35cm}
+
+                \item \textbf{Extraction e Ingestion Layer}
+                \\{\scriptsize NiFi: ingest, validazione e routing}
+                \vspace{0.35cm}
+
+                \item \textbf{Computation Layer}
+                \\{\scriptsize Spark: RDD / DataFrame / SQL e pattern}
+            \end{enumerate}
+        \end{column}
+
+        \begin{column}{0.48\textwidth}
+            \begin{enumerate}\setcounter{enumi}{3}
+                \item \textbf{Orchestration Layer}
+                \\{\scriptsize Airflow: DAG, trigger e callback}
+                \vspace{0.35cm}
+
+                \item \textbf{Valutazione Sperimentale}
+                \\{\scriptsize Setup sperimentale, benchmark e metriche}
+                \vspace{0.35cm}
+
+                \item \textbf{Risultati Analitici}
+                \\{\scriptsize Grafici, tabelle e conclusioni}
+            \end{enumerate}
+        \end{column}
+    \end{columns}
 \end{frame}
 
 
 \section{Architettura e Flusso}\label{sec:architecture_and_flow}
 
 % Big Data Stack e Diagramma di Flusso
-\begin{frame}{Big Data Stack \& Flow Diagram}
+\begin{frame}{Big Data Stack e Flow Diagram}
     \begin{columns}[c]
         \begin{column}{0.48\textwidth}
             \centering
