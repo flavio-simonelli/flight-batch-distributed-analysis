@@ -623,7 +623,7 @@ flights
     avg(when(col("CANCELLED") == 0, col("DEP_DELAY"))).as("mean"),
     min(when(col("CANCELLED") == 0, col("DEP_DELAY"))).as("min"),
     max(when(col("CANCELLED") == 0, col("DEP_DELAY"))).as("max"),
-    sum(when(col("CANCELLED") == 0, col("DEP_DELAY"))).as("sum")
+    (sum(col("CANCELLED")) / count("*") * 100).as("cancel_rate")
   )
   .withColumnRenamed("MONTH", "month")
   .withColumnRenamed("OP_UNIQUE_CARRIER", "airline")
