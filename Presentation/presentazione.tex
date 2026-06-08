@@ -255,6 +255,19 @@
 
 \begin{document}
 
+% Macro per slide di transizione di sezione (stile sobrio e professionale)
+\newcommand{\SectionFrame}[2][]{%
+    \begin{frame}[plain]
+        \vfill
+        \begin{center}
+            {\Huge\bfseries #2\par}
+            \vspace{0.45cm}
+            {\small\color{black!60}\begin{minipage}{0.78\textwidth}\centering #1\end{minipage}\par}
+        \end{center}
+        \vfill
+    \end{frame}
+}
+
 % Slide del Titolo
 \begin{frame}
     \titlepage
@@ -298,6 +311,7 @@
 
 
 \section{Architettura e Flusso}\label{sec:architecture_and_flow}
+\SectionFrame[Panoramica dei componenti del sistema e dei flussi di dati: diagrammi ad alto livello e responsabilit\`a dei moduli.]{Architettura e Flusso}
 
 % Big Data Stack e Diagramma di Flusso
 \begin{frame}{Big Data Stack e Flow Diagram}
@@ -353,6 +367,7 @@
 
 % Extraction e Ingestion Layer
 \section{Extraction e Ingestion Layer}\label{sec:extraction_and_ingestion_layer}
+\SectionFrame[NiFi pipeline: ingest, validazione JSON, decompressione, sanitizzazione e routing verso raw/preprocessed.]{Extraction e Ingestion Layer}
 
 \begin{frame}[fragile]{NiFi Ingestion Pipeline: REST Trigger}
     \begin{columns}[c]
@@ -537,6 +552,7 @@
 
 %Computation Layer
 \section{Computation Layer}\label{sec:computation_layer}
+\SectionFrame[Motori di calcolo: RDD, DataFrame e SQL; strategie di ottimizzazione e pattern Java usati nei job Spark.]{Computation Layer}
 
 \begin{frame}[fragile]{Configurazione a Start-Time e Design Pattern Java}
 
@@ -1006,6 +1022,7 @@ public void onTaskEnd(SparkListenerTaskEnd te) {
 
 
 \section{Orchestration Layer}\label{sec:orchestration_layer}
+\SectionFrame[Airflow: definizione dei DAG, trigger, callback e integrazione con NiFi e Spark per orchestrare i job.]{Orchestration Layer}
 
 \begin{frame}[fragile]{Orchestrazione End-to-End: \texttt{flight\_analysis}}
     \begin{columns}[c]
@@ -1104,6 +1121,7 @@ watch_step = EmrStepSensor(
 
 
 \section{Valutazione Sperimentale}\label{sec:experimental_evaluation}
+\SectionFrame[Setup sperimentale, metriche raccolte, configurazioni testate e risultati di benchmark.]{Valutazione Sperimentale}
 
 \begin{frame}{Metodologia di Benchmarking: EC2 Deployment}
 
@@ -1342,6 +1360,7 @@ watch_step = EmrStepSensor(
 \end{frame}
 
 \section{Risultati Analitici}\label{sec:analytical_results}
+\SectionFrame[Presentazione dei grafici principali, tabelle riassuntive e interpretazione degli insight ottenuti.]{Risultati Analitici}
 
 \begin{frame}{Risultati Analitici: Q3 - Percentili Orari}
 
