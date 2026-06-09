@@ -787,6 +787,75 @@ globalRows = validFlights.mapToPair(f -> (f.getString(CARRIER), f))
 
 \end{frame}
 
+\begin{frame}[fragile, t]{Query 3 - Percentili Orari e Min/Max Globali: T-Digest vs KLL Sketch}
+
+    \queryobjective{Calcolo dei percentili 25, 50, 75 e 90 del departure delay per fascia oraria tramite algoritmi di sketch e calcolo di min/max globali.}
+
+    \begin{columns}[c]
+
+        \begin{column}{0.49\textwidth}
+            \begin{appcodebox}{T-Digest}
+                final int COMPRESSION = 100;
+
+                // Inizializzazione buffer
+                MergingDigest digest = new MergingDigest(100.0);
+
+                // Update / Merge via ByteBuffer
+                MergingDigest.fromBytes(ByteBuffer.wrap(state));
+
+                // Compattazione in byte array
+                ByteBuffer buf = ByteBuffer.allocate(
+                digest.smallByteSize()
+                );
+
+                digest.asSmallBytes(buf);
+                return buf.array();
+            \end{appcodebox}
+
+            % Formule T-Digest: Caso Medio e Caso Peggiore
+                {\footnotesize
+            \[
+                \begin{aligned}
+                    \epsilon_{avg} &\approx \frac{\pi}{2\delta} \xRightarrow{\delta=100} \frac{\pi}{200} \approx 1.57\% \\[1ex]
+                    \epsilon_{worst} &\approx \frac{3}{\delta} \xRightarrow{\delta=100} \frac{3}{100} = 3.0\%
+                \end{aligned}
+            \]
+            }
+
+        \end{column}
+
+        \begin{column}{0.49\textwidth}
+            \begin{appcodebox}{KLL Sketch}
+                // Allocazione nativa in Heap
+                KllDoublesSketch.newHeapInstance();
+
+                // Ricostruzione stato tramite Memory
+                KllDoublesSketch.heapify(Memory.wrap(state));
+
+                // Export diretto nativo ultra-veloce
+                return sketch.toByteArray();
+
+                // Estrazione quantili con criterio inclusivo
+                sketch.getQuantile(q,
+                QuantileSearchCriteria.INCLUSIVE);
+            \end{appcodebox}
+
+            % Formule KLL: Caso Medio e Caso Peggiore
+                {\footnotesize
+            \[
+                \begin{aligned}
+                    \epsilon_{avg} &\approx \frac{1.4}{k} \xRightarrow{k=200} \frac{1.4}{200} = 0.7\% \\[1ex]
+                    \epsilon_{worst} &\approx \frac{3.3}{k} \xRightarrow{k=200} \frac{3.3}{200} = 1.65\%
+                \end{aligned}
+            \]
+            }
+
+        \end{column}
+
+    \end{columns}
+
+\end{frame}
+
 \begin{frame}[fragile, t]{Query 3 - Percentili Orari e Min/Max Globali: High-Level APIs}
 
     \queryobjective{Calcolo dei percentili 25, 50, 75 e 90 del departure delay per fascia oraria tramite algoritmi di sketch e calcolo di min/max globali.}
@@ -847,75 +916,6 @@ SELECT
 FROM validFlights
 GROUP BY OP_UNIQUE_CARRIER;
             \end{sqlcodebox}
-        \end{column}
-
-    \end{columns}
-
-\end{frame}
-
-\begin{frame}[fragile, t]{Query 3 - Percentili Orari e Min/Max Globali: T-Digest vs KLL Sketch}
-
-    \queryobjective{Calcolo dei percentili 25, 50, 75 e 90 del departure delay per fascia oraria tramite algoritmi di sketch e calcolo di min/max globali.}
-
-    \begin{columns}[c]
-
-        \begin{column}{0.49\textwidth}
-            \begin{appcodebox}{T-Digest}
-final int COMPRESSION = 100;
-
-// Inizializzazione buffer
-MergingDigest digest = new MergingDigest(100.0);
-
-// Update / Merge via ByteBuffer
-MergingDigest.fromBytes(ByteBuffer.wrap(state));
-
-// Compattazione in byte array
-ByteBuffer buf = ByteBuffer.allocate(
-    digest.smallByteSize()
-);
-
-digest.asSmallBytes(buf);
-return buf.array();
-            \end{appcodebox}
-
-            % Formule T-Digest: Caso Medio e Caso Peggiore
-            {\footnotesize
-                \[
-                \begin{aligned}
-                    \epsilon_{avg} &\approx \frac{\pi}{2\delta} \xRightarrow{\delta=100} \frac{\pi}{200} \approx 1.57\% \\[1ex]
-                    \epsilon_{worst} &\approx \frac{3}{\delta} \xRightarrow{\delta=100} \frac{3}{100} = 3.0\%
-                \end{aligned}
-                \]
-            }
-
-        \end{column}
-
-        \begin{column}{0.49\textwidth}
-            \begin{appcodebox}{KLL Sketch}
-// Allocazione nativa in Heap
-KllDoublesSketch.newHeapInstance();
-
-// Ricostruzione stato tramite Memory
-KllDoublesSketch.heapify(Memory.wrap(state));
-
-// Export diretto nativo ultra-veloce
-return sketch.toByteArray();
-
-// Estrazione quantili con criterio inclusivo
-sketch.getQuantile(q,
-  QuantileSearchCriteria.INCLUSIVE);
-            \end{appcodebox}
-
-            % Formule KLL: Caso Medio e Caso Peggiore
-            {\footnotesize
-                \[
-                \begin{aligned}
-                    \epsilon_{avg} &\approx \frac{1.4}{k} \xRightarrow{k=200} \frac{1.4}{200} = 0.7\% \\[1ex]
-                    \epsilon_{worst} &\approx \frac{3.3}{k} \xRightarrow{k=200} \frac{3.3}{200} = 1.65\%
-                \end{aligned}
-                \]
-            }
-
         \end{column}
 
     \end{columns}
@@ -1276,31 +1276,31 @@ watch_step = EmrStepSensor(
 
 \end{frame}
 
-\begin{frame}{Overhead Infrastrutturale: EC2 vs EMR}
-
-    \begin{itemize}
-        \item EMR riduce i tempi assoluti di esecuzione, mantenendo comunque dei tempi di overhead fisiologici.
-        \item Il vantaggio prestazionale è amplificato dalle risorse hardware nettamente superiori a disposizione.
-    \end{itemize}
-
-    \begin{columns}[T]
-
-        \begin{column}{0.49\textwidth}
-            \centering
-            \includegraphics[width=\textwidth]{../Results/charts/telemetry/ec2/pred_push/panel_ec2_q1_time_pred_push}
-            \vskip -0.1cm
-            {\tiny Overhead di sistema con predicate pushdown su EC2 nella Q1}
-        \end{column}
-
-        \begin{column}{0.49\textwidth}
-            \centering
-            \includegraphics[width=\textwidth]{../Results/charts/telemetry/emr/pred_push/panel_emr_q1_time_pred_push}
-            \vskip -0.1cm
-            {\tiny Overhead di sistema con predicate pushdown su EMR nella Q1}
-        \end{column}
-    \end{columns}
-
-\end{frame}
+% \begin{frame}{Overhead Infrastrutturale: EC2 vs EMR}
+%
+%     \begin{itemize}
+%         \item EMR riduce i tempi assoluti di esecuzione, mantenendo comunque dei tempi di overhead fisiologici.
+%         \item Il vantaggio prestazionale è amplificato dalle risorse hardware nettamente superiori a disposizione.
+%     \end{itemize}
+%
+%     \begin{columns}[T]
+%
+%         \begin{column}{0.49\textwidth}
+%             \centering
+%             \includegraphics[width=\textwidth]{../Results/charts/telemetry/ec2/pred_push/panel_ec2_q1_time_pred_push}
+%             \vskip -0.1cm
+%             {\tiny Overhead di sistema con predicate pushdown su EC2 nella Q1}
+%         \end{column}
+%
+%         \begin{column}{0.49\textwidth}
+%             \centering
+%             \includegraphics[width=\textwidth]{../Results/charts/telemetry/emr/pred_push/panel_emr_q1_time_pred_push}
+%             \vskip -0.1cm
+%             {\tiny Overhead di sistema con predicate pushdown su EMR nella Q1}
+%         \end{column}
+%     \end{columns}
+%
+% \end{frame}
 
 \begin{frame}{Confronto Sketch: KLL vs T-Digest}
 
