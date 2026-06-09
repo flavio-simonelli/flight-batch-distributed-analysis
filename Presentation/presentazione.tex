@@ -795,59 +795,59 @@ globalRows = validFlights.mapToPair(f -> (f.getString(CARRIER), f))
 
         \begin{column}{0.49\textwidth}
             \begin{appcodebox}{T-Digest}
-                final int COMPRESSION = 100;
+final int COMPRESSION = 100;
 
-                // Inizializzazione buffer
-                MergingDigest digest = new MergingDigest(100.0);
+// Inizializzazione buffer
+MergingDigest digest = new MergingDigest(100.0);
 
-                // Update / Merge via ByteBuffer
-                MergingDigest.fromBytes(ByteBuffer.wrap(state));
+// Update / Merge via ByteBuffer
+MergingDigest.fromBytes(ByteBuffer.wrap(state));
 
-                // Compattazione in byte array
-                ByteBuffer buf = ByteBuffer.allocate(
-                digest.smallByteSize()
-                );
+// Compattazione in byte array
+ByteBuffer buf = ByteBuffer.allocate(
+digest.smallByteSize()
+);
 
-                digest.asSmallBytes(buf);
-                return buf.array();
+digest.asSmallBytes(buf);
+return buf.array();
             \end{appcodebox}
 
             % Formule T-Digest: Caso Medio e Caso Peggiore
-                {\footnotesize
-            \[
-                \begin{aligned}
-                    \epsilon_{avg} &\approx \frac{\pi}{2\delta} \xRightarrow{\delta=100} \frac{\pi}{200} \approx 1.57\% \\[1ex]
-                    \epsilon_{worst} &\approx \frac{3}{\delta} \xRightarrow{\delta=100} \frac{3}{100} = 3.0\%
-                \end{aligned}
-            \]
+            {\footnotesize
+                \[
+                    \begin{aligned}
+                        \epsilon_{avg} &\approx \frac{\pi}{2\delta} \xRightarrow{\delta=100} \frac{\pi}{200} \approx 1.57\% \\[1ex]
+                        \epsilon_{worst} &\approx \frac{3}{\delta} \xRightarrow{\delta=100} \frac{3}{100} = 3.0\%
+                    \end{aligned}
+                \]
             }
 
         \end{column}
 
         \begin{column}{0.49\textwidth}
             \begin{appcodebox}{KLL Sketch}
-                // Allocazione nativa in Heap
-                KllDoublesSketch.newHeapInstance();
+// Allocazione nativa in Heap
+KllDoublesSketch.newHeapInstance();
 
-                // Ricostruzione stato tramite Memory
-                KllDoublesSketch.heapify(Memory.wrap(state));
+// Ricostruzione stato tramite Memory
+KllDoublesSketch.heapify(Memory.wrap(state));
 
-                // Export diretto nativo ultra-veloce
-                return sketch.toByteArray();
+// Export diretto nativo ultra-veloce
+return sketch.toByteArray();
 
-                // Estrazione quantili con criterio inclusivo
-                sketch.getQuantile(q,
-                QuantileSearchCriteria.INCLUSIVE);
+// Estrazione quantili con criterio inclusivo
+sketch.getQuantile(q,
+QuantileSearchCriteria.INCLUSIVE);
             \end{appcodebox}
 
             % Formule KLL: Caso Medio e Caso Peggiore
-                {\footnotesize
-            \[
-                \begin{aligned}
-                    \epsilon_{avg} &\approx \frac{1.4}{k} \xRightarrow{k=200} \frac{1.4}{200} = 0.7\% \\[1ex]
-                    \epsilon_{worst} &\approx \frac{3.3}{k} \xRightarrow{k=200} \frac{3.3}{200} = 1.65\%
-                \end{aligned}
-            \]
+            {\footnotesize
+                \[
+                    \begin{aligned}
+                        \epsilon_{avg} &\approx \frac{1.4}{k} \xRightarrow{k=200} \frac{1.4}{200} = 0.7\% \\[1ex]
+                        \epsilon_{worst} &\approx \frac{3.3}{k} \xRightarrow{k=200} \frac{3.3}{200} = 1.65\%
+                    \end{aligned}
+                \]
             }
 
         \end{column}
