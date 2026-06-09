@@ -775,11 +775,11 @@ globalRows = validFlights.mapToPair(f -> (f.getString(CARRIER), f))
         zeroValue: new double[]{+inf, -inf},  // [0: minDelay, 1: maxDelay]
         combiner: (acc, f) -> {
             double d = getSafe(f, DEP_DELAY)
-            acc.min = MIN(acc[0], d)            acc.max = MAX(acc[1], d)
+            acc.min = MIN(acc.min, d)                   acc.max = MAX(acc.max, d)
             return acc
         },
         reducer: (a1, a2) -> {
-            a1.min = MIN(a1.min, a2.min)              a1.max = MAX(a1.max, a2.max)
+            a1.min = MIN(a1.min, a2.min)                a1.max = MAX(a1.max, a2.max)
             return a1
         })
     .map(t -> Row(t.carrier, t.res.min, t.res.max))
